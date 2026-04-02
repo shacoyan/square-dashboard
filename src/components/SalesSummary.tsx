@@ -1,43 +1,49 @@
-import { SalesSummary as SalesSummaryType } from '../hooks/useSquareData'
+// src/components/SalesSummary.tsx
 
 interface SalesSummaryProps {
-  summary: SalesSummaryType | null
-  loading: boolean
+  total: number;
+  count: number;
+  loading: boolean;
 }
 
-function formatCurrency(amount: number): string {
-  return `¥${amount.toLocaleString('ja-JP')}`
-}
-
-export default function SalesSummary({ summary, loading }: SalesSummaryProps) {
+function SkeletonCard() {
   return (
-    <div className="grid grid-cols-2 gap-3">
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-        <p className="text-xs text-gray-500 mb-1">合計売上</p>
-        {loading ? (
-          <div className="h-7 bg-gray-100 rounded animate-pulse w-3/4 mt-1" />
-        ) : (
-          <p className="text-2xl font-bold text-gray-900 leading-tight">
-            {summary ? formatCurrency(summary.total_amount) : '—'}
-          </p>
-        )}
+    <div className="bg-white rounded-xl shadow p-6 animate-pulse">
+      <div className="h-4 bg-gray-200 rounded w-24 mb-3" />
+      <div className="h-8 bg-gray-200 rounded w-32" />
+    </div>
+  );
+}
+
+function formatYen(amount: number): string {
+  return `¥${amount.toLocaleString()}`;
+}
+
+export default function SalesSummary({
+  total,
+  count,
+  loading,
+}: SalesSummaryProps) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="bg-white rounded-xl shadow p-6">
+        <p className="text-sm font-medium text-gray-500 mb-1">本日の売上</p>
+        <p className="text-2xl font-bold text-gray-900">{formatYen(total)}</p>
       </div>
 
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-        <p className="text-xs text-gray-500 mb-1">決済件数</p>
-        {loading ? (
-          <div className="h-7 bg-gray-100 rounded animate-pulse w-1/2 mt-1" />
-        ) : (
-          <p className="text-2xl font-bold text-gray-900 leading-tight">
-            {summary ? `${summary.total_count}件` : '—'}
-          </p>
-        )}
-        {!loading && summary && summary.all_count !== summary.total_count && (
-          <p className="text-xs text-gray-400 mt-0.5">
-            全{summary.all_count}件中
-          </p>
-        )}
+      <div className="bg-white rounded-xl shadow p-6">
+        <p className="text-sm font-medium text-gray-500 mb-1">取引件数</p>
+        <p className="text-2xl font-bold text-gray-900">{count}件</p>
       </div>
     </div>
-  )
+  );
 }

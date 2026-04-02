@@ -1,49 +1,56 @@
-const SQUARE_BASE_URL = 'https://connect.squareup.com';
+/*** square-dashboard/api/locations.js ***/
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const authHeader = req.headers['authorization'];
-  if (!authHeader) {
-    return res.status(401).json({ error: '認証が必要です' });
-  }
-
-  const accessToken = process.env.SQUARE_ACCESS_TOKEN;
-  if (!accessToken) {
-    return res.status(500).json({ error: 'Square APIトークンが設定されていません' });
-  }
-
   try {
-    const response = await fetch(`${SQUARE_BASE_URL}/v2/locations`, {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = Buffer.from(token, 'base64').toString('utf-8');
+
+    if (!decoded.startsWith(process.env.APP_PASSWORD + ':')) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const response = await fetch('https://connect.squareup.com/v2/locations', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        'Authorization': `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
         'Content-Type': 'application/json',
-        'Square-Version': '2024-01-18',
-      },
+        'Square-Version': '2024-01-18'
+      }
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      return res.status(response.status).json({
-        error: 'Square APIエラー',
-        details: errorData,
-      });
+      const errorBody = await response.text();
+      console.error('Square API error:', response.status, errorBody);
+      return res.status(response.status).json({ error: 'Failed to fetch locations from Square API' });
     }
 
     const data = await response.json();
-    const locations = (data.locations || []).map((loc) => ({
+
+    const locations = (data.locations || []).map(loc => ({
       id: loc.id,
-      name: loc.name,
-      address: loc.address,
-      status: loc.status,
+      name: loc.name
     }));
 
-    return res.json({ locations });
+    return res.status(200).json({ locations });
   } catch (error) {
-    console.error('locations error:', error);
-    return res.status(500).json({ error: 'サーバーエラーが発生しました' });
+    console.error('Error fetching locations:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
-}
+};

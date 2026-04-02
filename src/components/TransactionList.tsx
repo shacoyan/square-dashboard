@@ -1,96 +1,108 @@
-import { Transaction } from '../hooks/useSquareData'
+// src/components/TransactionList.tsx
+
+interface Transaction {
+  id: string;
+  created_at_jst: string;
+  amount: number;
+  status: string;
+  source: string;
+}
 
 interface TransactionListProps {
-  transactions: Transaction[]
-  loading: boolean
+  transactions: Transaction[];
+  loading: boolean;
 }
 
-function formatCurrency(amount: number): string {
-  return `¥${amount.toLocaleString('ja-JP')}`
+function formatYen(amount: number): string {
+  return `¥${amount.toLocaleString()}`;
 }
 
-function getStatusLabel(status: string): { label: string; className: string } {
+function StatusBadge({ status }: { status: string }) {
+  let bgColor: string;
+  let textColor: string;
+  let label: string;
+
   switch (status) {
-    case 'COMPLETED':
-      return { label: '完了', className: 'bg-green-50 text-green-700' }
-    case 'CANCELED':
-      return { label: 'キャンセル', className: 'bg-red-50 text-red-600' }
-    case 'FAILED':
-      return { label: '失敗', className: 'bg-red-50 text-red-600' }
-    case 'PENDING':
-      return { label: '保留中', className: 'bg-yellow-50 text-yellow-700' }
+    case "COMPLETED":
+      bgColor = "bg-green-100";
+      textColor = "text-green-700";
+      label = "成功";
+      break;
+    case "FAILED":
+      bgColor = "bg-red-100";
+      textColor = "text-red-700";
+      label = "失敗";
+      break;
     default:
-      return { label: status, className: 'bg-gray-100 text-gray-600' }
+      bgColor = "bg-gray-100";
+      textColor = "text-gray-600";
+      label = status;
   }
+
+  return (
+    <span
+      className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full ${bgColor} ${textColor}`}
+    >
+      {label}
+    </span>
+  );
 }
 
-export default function TransactionList({ transactions, loading }: TransactionListProps) {
+export default function TransactionList({
+  transactions,
+  loading,
+}: TransactionListProps) {
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-50">
-          <h2 className="text-sm font-semibold text-gray-700">伝票一覧</h2>
-        </div>
-        <div className="divide-y divide-gray-50">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="px-4 py-3.5 flex items-center justify-between">
-              <div className="space-y-1.5 flex-1">
-                <div className="h-3.5 bg-gray-100 rounded animate-pulse w-1/3" />
-                <div className="h-3 bg-gray-100 rounded animate-pulse w-1/4" />
-              </div>
-              <div className="h-5 bg-gray-100 rounded animate-pulse w-16 ml-4" />
-            </div>
-          ))}
-        </div>
+      <div className="bg-white rounded-xl shadow p-6 text-center text-gray-400">
+        読み込み中...
       </div>
-    )
+    );
   }
 
   if (transactions.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-        <p className="text-gray-400 text-sm">この日の伝票はありません</p>
+      <div className="bg-white rounded-xl shadow p-6 text-center text-gray-400">
+        取引がありません
       </div>
-    )
+    );
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-50">
-        <h2 className="text-sm font-semibold text-gray-700">
-          伝票一覧
-          <span className="ml-2 text-xs font-normal text-gray-400">{transactions.length}件</span>
-        </h2>
-      </div>
-      <div className="divide-y divide-gray-50">
-        {transactions.map((tx) => {
-          const status = getStatusLabel(tx.status)
-          return (
-            <div key={tx.id} className="px-4 py-3.5 flex items-center justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-sm font-medium text-gray-900">{tx.time_jst}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${status.className}`}>
-                    {status.label}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 truncate">{tx.payment_method}</p>
-                {tx.note && (
-                  <p className="text-xs text-gray-400 truncate mt-0.5">{tx.note}</p>
-                )}
-              </div>
-              <div className="text-right shrink-0">
-                <p className={`text-sm font-semibold ${tx.status === 'CANCELED' || tx.status === 'FAILED' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                  {formatCurrency(tx.amount)}
-                </p>
-                {tx.receipt_number && (
-                  <p className="text-xs text-gray-400 mt-0.5">#{tx.receipt_number}</p>
-                )}
-              </div>
-            </div>
-          )
-        })}
+    <div className="bg-white rounded-xl shadow overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-200">
+              <th className="text-left px-4 py-3 font-medium text-gray-500">時刻</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-500">金額</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-500">支払い方法</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-500">ステータス</th>
+            </tr>
+          </thead>
+          <tbody>
+            {transactions.map((tx) => (
+              <tr
+                key={tx.id}
+                className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition"
+              >
+                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                  {tx.created_at_jst ? new Date(tx.created_at_jst).toLocaleTimeString('ja-JP') : '-'}
+                </td>
+                <td className="px-4 py-3 text-gray-900 font-semibold text-right whitespace-nowrap">
+                  {formatYen(tx.amount)}
+                </td>
+                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                  {tx.source}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <StatusBadge status={tx.status} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
-  )
+  );
 }

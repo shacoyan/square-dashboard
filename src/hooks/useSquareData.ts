@@ -1,173 +1,110 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+// src/hooks/useSquareData.ts
+import { useState, useEffect, useCallback, useRef } from 'react';
 
-export interface Location {
-  id: string
-  name: string
-  address?: {
-    address_line_1?: string
-    locality?: string
-  }
-  status: string
+interface Transaction {
+  id: string;
+  created_at_jst: string;
+  amount: number;
+  status: string;
+  source: string;
 }
 
-export interface SalesSummary {
-  date: string
-  total_amount: number
-  total_count: number
-  all_count: number
+interface SalesData {
+  total_amount: number;
+  transaction_count: number;
+  currency: string;
 }
 
-export interface Transaction {
-  id: string
-  created_at: string
-  time_jst: string
-  amount: number
-  currency: string
-  status: string
-  payment_method: string
-  receipt_number: string | null
-  note: string | null
+interface UseSquareDataArgs {
+  token: string;
+  date: string;
+  locationId: string;
 }
 
-interface UseSquareDataReturn {
-  locations: Location[]
-  selectedLocationId: string
-  setSelectedLocationId: (id: string) => void
-  selectedDate: string
-  setSelectedDate: (date: string) => void
-  summary: SalesSummary | null
-  transactions: Transaction[]
-  loading: boolean
-  error: string | null
-  lastUpdated: Date | null
-  refresh: () => void
+interface SquareData {
+  sales: SalesData | null;
+  transactions: Transaction[];
+  loading: boolean;
+  error: string | null;
+  lastUpdated: Date | null;
+  refresh: () => void;
 }
 
-function getTodayJST(): string {
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
-    .format(new Date())
-    .replace(/\//g, '-')
-}
+export function useSquareData({ token, date, locationId }: UseSquareDataArgs): SquareData {
+  const [sales, setSales] = useState<SalesData | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-export function useSquareData(token: string): UseSquareDataReturn {
-  const [locations, setLocations] = useState<Location[]>([])
-  const [selectedLocationId, setSelectedLocationId] = useState<string>('')
-  const [selectedDate, setSelectedDate] = useState<string>(getTodayJST())
-  const [summary, setSummary] = useState<SalesSummary | null>(null)
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const authHeaders = {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  }
+  const fetchData = useCallback(async () => {
+    if (!locationId) return;
 
-  // 店舗一覧取得
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const res = await fetch('/api/locations', { headers: authHeaders })
-        const data = await res.json()
-        if (res.ok && data.locations) {
-          setLocations(data.locations)
-          if (data.locations.length > 0 && !selectedLocationId) {
-            setSelectedLocationId(data.locations[0].id)
-          }
-        } else {
-          setError(data.error || '店舗情報の取得に失敗しました')
-        }
-      } catch {
-        setError('店舗情報の取得中にエラーが発生しました')
-      }
-    }
-    fetchLocations()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token])
-
-  // 売上データ取得
-  const fetchSalesData = useCallback(async () => {
-    if (!selectedLocationId || !selectedDate) return
-
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
-      const params = new URLSearchParams({ date: selectedDate, location_id: selectedLocationId })
+      const headers: HeadersInit = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
 
-      const [summaryRes, transactionsRes] = await Promise.all([
-        fetch(`/api/sales?${params}`, { headers: authHeaders }),
-        fetch(`/api/transactions?${params}`, { headers: authHeaders }),
-      ])
+      const params = new URLSearchParams({ date, location_id: locationId });
 
-      const [summaryData, transactionsData] = await Promise.all([
-        summaryRes.json(),
-        transactionsRes.json(),
-      ])
+      const [salesRes, transactionsRes] = await Promise.all([
+        fetch(`/api/sales?${params}`, { headers }),
+        fetch(`/api/transactions?${params}`, { headers }),
+      ]);
 
-      if (summaryRes.ok && summaryData.summary) {
-        setSummary(summaryData.summary)
-      } else {
-        setError(summaryData.error || '売上データの取得に失敗しました')
+      if (!salesRes.ok) {
+        throw new Error(`売上データの取得に失敗しました (HTTP ${salesRes.status})`);
+      }
+      if (!transactionsRes.ok) {
+        throw new Error(`取引データの取得に失敗しました (HTTP ${transactionsRes.status})`);
       }
 
-      if (transactionsRes.ok && transactionsData.transactions) {
-        setTransactions(transactionsData.transactions)
-      } else if (!transactionsRes.ok) {
-        setError(transactionsData.error || '伝票データの取得に失敗しました')
-      }
+      const salesData: SalesData = await salesRes.json();
+      const transactionsData: { transactions: Transaction[] } = await transactionsRes.json();
 
-      setLastUpdated(new Date())
-    } catch {
-      setError('データの取得中にエラーが発生しました')
+      setSales(salesData);
+      setTransactions(transactionsData.transactions ?? []);
+      setLastUpdated(new Date());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'データの取得に失敗しました');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLocationId, selectedDate, token])
+  }, [token, date, locationId]);
 
-  // 日付・店舗変更時にデータ再取得
   useEffect(() => {
-    if (selectedLocationId) {
-      fetchSalesData()
-    }
-  }, [fetchSalesData, selectedLocationId])
+    fetchData();
+  }, [fetchData]);
 
-  // 60秒ごとの自動更新
   useEffect(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current)
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
     }
-    if (selectedLocationId) {
-      timerRef.current = setInterval(() => {
-        fetchSalesData()
-      }, 60000)
+
+    if (locationId) {
+      intervalRef.current = setInterval(fetchData, 60000);
     }
+
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
-    }
-  }, [fetchSalesData, selectedLocationId])
+    };
+  }, [fetchData, locationId]);
 
   return {
-    locations,
-    selectedLocationId,
-    setSelectedLocationId,
-    selectedDate,
-    setSelectedDate,
-    summary,
+    sales,
     transactions,
     loading,
     error,
     lastUpdated,
-    refresh: fetchSalesData,
-  }
+    refresh: fetchData,
+  };
 }
