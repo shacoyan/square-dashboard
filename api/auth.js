@@ -1,7 +1,7 @@
 /*** square-dashboard/api/auth.js ***/
 
 const STORE_MAP = {
-  'sababa_gb': 'Goodbye',
+  'sababa_goodbye': 'Goodbye',
   'sababa_kitune': 'KITUNE',
   'sababa_lr': 'LR',
   'sababa_moumou': 'moumou',
