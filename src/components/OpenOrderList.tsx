@@ -61,9 +61,13 @@ export default function OpenOrderList({ orders, loading, error }: Props) {
                   </ul>
                   <button
                     onClick={(e) => handleCopy(e, order)}
-                    className="text-xs text-gray-400 hover:text-gray-600 whitespace-nowrap"
+                    className={`text-xs px-2 py-1 rounded border whitespace-nowrap transition-colors flex-shrink-0 ${
+                      copiedId === order.id
+                        ? 'border-green-400 text-green-600 bg-green-50'
+                        : 'border-gray-300 text-gray-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50'
+                    }`}
                   >
-                    {copiedId === order.id ? '✓ コピー済' : 'コピー'}
+                    {copiedId === order.id ? '✓ コピー済' : '📋 コピー'}
                   </button>
                 </div>
               )}
