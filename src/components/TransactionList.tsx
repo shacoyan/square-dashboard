@@ -187,7 +187,10 @@ export default function TransactionList({
                           .sort((a, b) => getCategoryRank(a.category) - getCategoryRank(b.category))
                           .map((item, i) => (
                           <li key={i} className="flex justify-between text-xs text-gray-700">
-                            <span>{item.name} × {item.quantity}</span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="text-gray-400">[{item.category ?? '未分類'}]</span>
+                              <span>{item.name} × {item.quantity}</span>
+                            </span>
                             <span className="font-medium">{item.amount > 0 ? formatYen(item.amount) : '¥0'}</span>
                           </li>
                         ))}
