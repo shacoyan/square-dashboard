@@ -1,4 +1,3 @@
-```tsx
 import { useState, Fragment } from 'react';
 
 interface LineItem {
@@ -237,4 +236,3 @@ export default function TransactionList({
     </div>
   );
 }
-```
