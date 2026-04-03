@@ -1,21 +1,6 @@
 import { useState, Fragment } from 'react';
-
-interface LineItem {
-  name: string;
-  quantity: string;
-  amount: number;
-  category?: string | null;
-}
-
-interface Transaction {
-  id: string;
-  customer_name: string | null;
-  created_at_jst: string;
-  amount: number;
-  status: string;
-  source: string;
-  line_items: LineItem[];
-}
+import type { LineItem, Transaction } from '../types';
+import { formatYen } from '../utils';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -68,10 +53,6 @@ function mergeLineItems(items: LineItem[]): LineItem[] {
 
 function stripBrackets(name: string): string {
   return name.replace(/[\[［][^\]］]*[\]］]/g, '').trim();
-}
-
-function formatYen(amount: number): string {
-  return `¥${amount.toLocaleString()}`;
 }
 
 function buildCopyText(items: LineItem[]): string {

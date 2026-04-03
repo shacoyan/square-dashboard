@@ -1,9 +1,7 @@
-export default async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+import { setCors, validateToken, squareHeaders, parseTimeRange } from './_shared.js';
 
-  if (req.method === 'OPTIONS') {
+export default async (req, res) => {
+  if (setCors(req, res)) {
     return res.status(200).end();
   }
 
@@ -12,19 +10,8 @@ export default async (req, res) => {
   }
 
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!validateToken(req)) {
       return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const VALID_LABELS = new Set(['ALL', 'Goodbye', 'KITUNE', 'LR', 'moumou', '吸暮', '狛犬', '金魚']);
-    const token = authHeader.split(' ')[1];
-    const decoded = Buffer.from(token, 'base64').toString('utf-8');
-    const colonIdx = decoded.indexOf(':');
-    const storeLabel = colonIdx !== -1 ? decoded.slice(0, colonIdx) : '';
-
-    if (!VALID_LABELS.has(storeLabel)) {
-      return res.status(401).json({ error: 'Invalid token' });
     }
 
     const { date, location_id, start_hour, end_hour } = req.query;
@@ -33,16 +20,7 @@ export default async (req, res) => {
       return res.status(400).json({ error: 'date and location_id are required' });
     }
 
-    const startHour = parseInt(start_hour ?? '0', 10);
-    const endHour = end_hour !== undefined ? parseInt(end_hour, 10) : (startHour > 0 ? startHour - 1 : 23);
-    const isNextDay = endHour < startHour;
-    const endDate = isNextDay ? (() => {
-      const d = new Date(date + 'T12:00:00+09:00');
-      d.setDate(d.getDate() + 1);
-      return d.toISOString().split('T')[0];
-    })() : date;
-    const beginTimeJST = `${date}T${String(startHour).padStart(2, '0')}:00:00+09:00`;
-    const endTimeJST = `${endDate}T${String(endHour).padStart(2, '0')}:59:59.999+09:00`;
+    const { beginTimeJST, endTimeJST } = parseTimeRange({ date, start_hour, end_hour });
 
     let allPayments = [];
     let cursor = undefined;
@@ -56,11 +34,7 @@ export default async (req, res) => {
 
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
-          'Content-Type': 'application/json',
-          'Square-Version': '2024-01-18'
-        }
+        headers: squareHeaders()
       });
 
       if (!response.ok) {

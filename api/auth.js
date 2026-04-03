@@ -1,4 +1,4 @@
-/*** square-dashboard/api/auth.js ***/
+import { setCors } from './_shared.js';
 
 const STORE_MAP = {
   'sababa_goodbye': 'Goodbye',
@@ -11,11 +11,7 @@ const STORE_MAP = {
 };
 
 export default async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
+  if (setCors(req, res, 'POST, OPTIONS')) {
     return res.status(200).end();
   }
 

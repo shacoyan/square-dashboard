@@ -1,24 +1,13 @@
 // src/hooks/useSquareData.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
-
-interface Transaction {
-  id: string;
-  created_at_jst: string;
-  amount: number;
-  status: string;
-  source: string;
-}
-
-interface SalesData {
-  total_amount: number;
-  transaction_count: number;
-  currency: string;
-}
+import type { Transaction, SalesData } from '../types';
 
 interface UseSquareDataArgs {
   token: string;
   date: string;
   locationId: string;
+  startHour: number;
+  endHour: number;
 }
 
 interface SquareData {
@@ -30,7 +19,7 @@ interface SquareData {
   refresh: () => void;
 }
 
-export function useSquareData({ token, date, locationId }: UseSquareDataArgs): SquareData {
+export function useSquareData({ token, date, locationId, startHour, endHour }: UseSquareDataArgs): SquareData {
   const [sales, setSales] = useState<SalesData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,7 +40,7 @@ export function useSquareData({ token, date, locationId }: UseSquareDataArgs): S
         'Content-Type': 'application/json',
       };
 
-      const params = new URLSearchParams({ date, location_id: locationId });
+      const params = new URLSearchParams({ date, location_id: locationId, start_hour: String(startHour), end_hour: String(endHour) });
 
       const [salesRes, transactionsRes] = await Promise.all([
         fetch(`/api/sales?${params}`, { headers }),
@@ -76,7 +65,7 @@ export function useSquareData({ token, date, locationId }: UseSquareDataArgs): S
     } finally {
       setLoading(false);
     }
-  }, [token, date, locationId]);
+  }, [token, date, locationId, startHour, endHour]);
 
   useEffect(() => {
     fetchData();

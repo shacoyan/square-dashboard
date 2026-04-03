@@ -1,23 +1,50 @@
-// src/components/Dashboard.tsx
 import { useState, useEffect } from 'react';
 import StoreSwitcher from './StoreSwitcher';
 import SalesSummary from './SalesSummary';
 import TransactionList from './TransactionList';
+import OpenOrderList from './OpenOrderList';
+import DatePicker from './DatePicker';
 import { useSquareData } from '../hooks/useSquareData';
-
-interface Location {
-  id: string;
-  name: string;
-}
+import { useOpenOrders } from '../hooks/useOpenOrders';
+import type { Location } from '../types';
 
 interface DashboardProps {
   token: string;
   onLogout: () => void;
 }
 
+function getBusinessDate(startHour: number): string {
+  const now = new Date();
+  const jstHour = (now.getUTCHours() + 9) % 24;
+  if (startHour > 0 && jstHour < startHour) {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return yesterday.toISOString().split('T')[0];
+  }
+  return now.toISOString().split('T')[0];
+}
+
+function getPeriodLabel(date: string, startHour: number, endHour: number): string {
+  const isNextDay = endHour < startHour;
+  const endDate = isNextDay ? (() => {
+    const d = new Date(date + 'T12:00:00+09:00');
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  })() : date;
+  return `${date} ${String(startHour).padStart(2, '0')}:00 〜 ${endDate} ${String(endHour).padStart(2, '0')}:59`;
+}
+
 export default function Dashboard({ token, onLogout }: DashboardProps) {
-  const today = new Date().toISOString().split('T')[0];
-  const [date, setDate] = useState(today);
+  const [startHour, setStartHour] = useState<number>(() => {
+    const saved = localStorage.getItem('sq_start_hour');
+    return saved ? parseInt(saved, 10) : 13;
+  });
+  const [endHour, setEndHour] = useState<number>(() => {
+    const saved = localStorage.getItem('sq_end_hour');
+    return saved ? parseInt(saved, 10) : 12;
+  });
+
+  const [date, setDate] = useState(() => getBusinessDate(startHour));
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState('');
   const [locationsLoading, setLocationsLoading] = useState(true);
@@ -53,7 +80,20 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     token,
     date,
     locationId: selectedLocationId,
+    startHour,
+    endHour,
   });
+
+  const { orders: openOrders, loading: openOrdersLoading, error: openOrdersError } = useOpenOrders({
+    token,
+    locationId: selectedLocationId,
+    date,
+    startHour,
+    endHour,
+  });
+
+  const openTotal = openOrders.reduce((sum, o) => sum + o.total_money, 0);
+  const openCount = openOrders.length;
 
   const formattedLastUpdated = lastUpdated
     ? lastUpdated.toLocaleTimeString('ja-JP', { hour12: false })
@@ -76,16 +116,43 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         <div className="bg-white rounded-lg shadow p-4 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <label htmlFor="date-select" className="text-sm font-medium text-gray-700 whitespace-nowrap">
-              日付:
-            </label>
-            <input
-              id="date-select"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            <DatePicker value={date} onChange={setDate} />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">営業開始:</label>
+              <select
+                value={startHour}
+                onChange={(e) => {
+                  const h = parseInt(e.target.value, 10);
+                  setStartHour(h);
+                  localStorage.setItem('sq_start_hour', String(h));
+                  setDate(getBusinessDate(h));
+                }}
+                className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">営業終了:</label>
+              <select
+                value={endHour}
+                onChange={(e) => {
+                  const h = parseInt(e.target.value, 10);
+                  setEndHour(h);
+                  localStorage.setItem('sq_end_hour', String(h));
+                }}
+                className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>{String(i).padStart(2, '0')}:59</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {locationsLoading ? (
@@ -110,9 +177,12 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
             >
               {loading ? '読み込み中...' : '更新'}
             </button>
-            <span className="text-xs text-gray-500">
-              最終更新: {formattedLastUpdated}
-            </span>
+            <div className="text-right">
+              <p className="text-xs text-gray-400">{getPeriodLabel(date, startHour, endHour)}</p>
+              <span className="text-xs text-gray-500">
+                最終更新: {formattedLastUpdated}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -130,9 +200,13 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           </div>
         )}
 
+        <OpenOrderList orders={openOrders} loading={openOrdersLoading} error={openOrdersError} />
+
         <SalesSummary
           total={sales?.total_amount ?? 0}
           count={sales?.transaction_count ?? 0}
+          openTotal={openTotal}
+          openCount={openCount}
           loading={loading}
         />
 
@@ -141,3 +215,4 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     </div>
   );
 }
+

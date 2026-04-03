@@ -1,13 +1,7 @@
-function toJSTString(utcDateString) {
-  return utcDateString; // ブラウザのtoLocaleTimeString('ja-JP')がJSTに変換する
-}
+import { setCors, validateToken, squareHeaders, parseTimeRange, fetchCustomers } from './_shared.js';
 
 export default async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
+  if (setCors(req, res)) {
     return res.status(200).end();
   }
 
@@ -16,19 +10,8 @@ export default async (req, res) => {
   }
 
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!validateToken(req)) {
       return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const VALID_LABELS = new Set(['ALL', 'Goodbye', 'KITUNE', 'LR', 'moumou', '吸暮', '狛犬', '金魚']);
-    const token = authHeader.split(' ')[1];
-    const decoded = Buffer.from(token, 'base64').toString('utf-8');
-    const colonIdx = decoded.indexOf(':');
-    const storeLabel = colonIdx !== -1 ? decoded.slice(0, colonIdx) : '';
-
-    if (!VALID_LABELS.has(storeLabel)) {
-      return res.status(401).json({ error: 'Invalid token' });
     }
 
     const { date, location_id, start_hour, end_hour } = req.query;
@@ -37,17 +20,7 @@ export default async (req, res) => {
       return res.status(400).json({ error: 'date and location_id are required' });
     }
 
-    const startHour = parseInt(start_hour ?? '0', 10);
-    const endHour = end_hour !== undefined ? parseInt(end_hour, 10) : (startHour > 0 ? startHour - 1 : 23);
-    const isNextDay = endHour < startHour;
-    const endDate = isNextDay ? (() => {
-      const d = new Date(date + 'T12:00:00+09:00');
-      d.setDate(d.getDate() + 1);
-      return d.toISOString().split('T')[0];
-    })() : date;
-
-    const beginTimeJST = `${date}T${String(startHour).padStart(2, '0')}:00:00+09:00`;
-    const endTimeJST = `${endDate}T${String(endHour).padStart(2, '0')}:59:59.999+09:00`;
+    const { beginTimeJST, endTimeJST } = parseTimeRange({ date, start_hour, end_hour });
 
     let allPayments = [];
     let cursor = undefined;
@@ -61,11 +34,7 @@ export default async (req, res) => {
 
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
-          'Content-Type': 'application/json',
-          'Square-Version': '2024-01-18'
-        }
+        headers: squareHeaders()
       });
 
       if (!response.ok) {
@@ -94,11 +63,7 @@ export default async (req, res) => {
       try {
         const orderRes = await fetch('https://connect.squareup.com/v2/orders/batch-retrieve', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
-            'Content-Type': 'application/json',
-            'Square-Version': '2024-01-18'
-          },
+          headers: squareHeaders(),
           body: JSON.stringify({ order_ids: batch })
         });
         if (orderRes.ok) {
@@ -112,119 +77,95 @@ export default async (req, res) => {
       }
     }
 
-    // catalog batch-retrieve (カテゴリ取得) - 2段階方式
-    const catalogObjectIds = [...new Set(
-      Object.values(ordersMap).flatMap(order =>
-        (order.line_items ?? [])
-          .filter(item => parseFloat(item.quantity) > 0 && item.catalog_object_id)
-          .map(item => item.catalog_object_id)
-      )
-    )];
+    // catalog取得とcustomers取得を並列実行
+    const [customersMap, variationCategoryMap] = await Promise.all([
+      // customers bulk-retrieve
+      (async () => {
+        const customerIds = allPayments.filter(p => p.customer_id).map(p => p.customer_id);
+        return await fetchCustomers(customerIds);
+      })(),
 
-    const variationToItemId = {};
-    const itemToCategoryId = {};
-    const variationCategoryMap = {};
+      // catalog batch-retrieve (カテゴリ取得) - 2段階方式
+      (async () => {
+        const catalogObjectIds = [...new Set(
+          Object.values(ordersMap).flatMap(order =>
+            (order.line_items ?? [])
+              .filter(item => parseFloat(item.quantity) > 0 && item.catalog_object_id)
+              .map(item => item.catalog_object_id)
+          )
+        )];
 
-    // 第1段階: ITEM_VARIATIONとITEMを取得
-    for (let i = 0; i < catalogObjectIds.length; i += 100) {
-      const batch = catalogObjectIds.slice(i, i + 100);
-      try {
-        const catalogRes = await fetch('https://connect.squareup.com/v2/catalog/batch-retrieve', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
-            'Content-Type': 'application/json',
-            'Square-Version': '2024-01-18'
-          },
-          body: JSON.stringify({ object_ids: batch, include_related_objects: true })
-        });
-        if (!catalogRes.ok) {
-          console.error('Catalog API error (stage1):', catalogRes.status, await catalogRes.text());
-          continue;
-        }
-        const catalogData = await catalogRes.json();
-        for (const obj of (catalogData.objects ?? [])) {
-          if (obj.type === 'ITEM_VARIATION') {
-            variationToItemId[obj.id] = obj.item_variation_data?.item_id ?? null;
+        const variationToItemId = {};
+        const itemToCategoryId = {};
+
+        // 第1段階: ITEM_VARIATIONとITEMを取得
+        for (let i = 0; i < catalogObjectIds.length; i += 100) {
+          const batch = catalogObjectIds.slice(i, i + 100);
+          try {
+            const catalogRes = await fetch('https://connect.squareup.com/v2/catalog/batch-retrieve', {
+              method: 'POST',
+              headers: squareHeaders(),
+              body: JSON.stringify({ object_ids: batch, include_related_objects: true })
+            });
+            if (!catalogRes.ok) {
+              console.error('Catalog API error (stage1):', catalogRes.status, await catalogRes.text());
+              continue;
+            }
+            const catalogData = await catalogRes.json();
+            for (const obj of (catalogData.objects ?? [])) {
+              if (obj.type === 'ITEM_VARIATION') {
+                variationToItemId[obj.id] = obj.item_variation_data?.item_id ?? null;
+              }
+            }
+            for (const obj of (catalogData.related_objects ?? [])) {
+              if (obj.type === 'ITEM') {
+                const catId = obj.item_data?.reporting_category?.id ?? null;
+                if (catId) itemToCategoryId[obj.id] = catId;
+              }
+            }
+          } catch (e) {
+            console.error('Catalog batch error (stage1):', e);
           }
         }
-        for (const obj of (catalogData.related_objects ?? [])) {
-          if (obj.type === 'ITEM') {
-            const catId = obj.item_data?.reporting_category?.id ?? null;
-            if (catId) itemToCategoryId[obj.id] = catId;
+
+        // 第2段階: CATEGORYを取得
+        const categoryIds = [...new Set(Object.values(itemToCategoryId).filter(Boolean))];
+        const categoryIdToName = {};
+
+        for (let i = 0; i < categoryIds.length; i += 100) {
+          const batch = categoryIds.slice(i, i + 100);
+          try {
+            const catRes = await fetch('https://connect.squareup.com/v2/catalog/batch-retrieve', {
+              method: 'POST',
+              headers: squareHeaders(),
+              body: JSON.stringify({ object_ids: batch })
+            });
+            if (!catRes.ok) {
+              console.error('Catalog API error (stage2):', catRes.status, await catRes.text());
+              continue;
+            }
+            const catData = await catRes.json();
+            for (const obj of (catData.objects ?? [])) {
+              if (obj.type === 'CATEGORY') {
+                categoryIdToName[obj.id] = obj.category_data?.name ?? null;
+              }
+            }
+          } catch (e) {
+            console.error('Catalog batch error (stage2):', e);
           }
         }
-      } catch (e) {
-        console.error('Catalog batch error (stage1):', e);
-      }
-    }
 
-    // 第2段階: CATEGORYを取得
-    const categoryIds = [...new Set(Object.values(itemToCategoryId).filter(Boolean))];
-    const categoryIdToName = {};
-
-    for (let i = 0; i < categoryIds.length; i += 100) {
-      const batch = categoryIds.slice(i, i + 100);
-      try {
-        const catRes = await fetch('https://connect.squareup.com/v2/catalog/batch-retrieve', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
-            'Content-Type': 'application/json',
-            'Square-Version': '2024-01-18'
-          },
-          body: JSON.stringify({ object_ids: batch })
-        });
-        if (!catRes.ok) {
-          console.error('Catalog API error (stage2):', catRes.status, await catRes.text());
-          continue;
+        // 最終マップ構築: variationId → categoryName
+        const localVariationCategoryMap = {};
+        for (const [varId, itemId] of Object.entries(variationToItemId)) {
+          if (!itemId) { localVariationCategoryMap[varId] = null; continue; }
+          const catId = itemToCategoryId[itemId];
+          localVariationCategoryMap[varId] = catId ? (categoryIdToName[catId] ?? null) : null;
         }
-        const catData = await catRes.json();
-        for (const obj of (catData.objects ?? [])) {
-          if (obj.type === 'CATEGORY') {
-            categoryIdToName[obj.id] = obj.category_data?.name ?? null;
-          }
-        }
-      } catch (e) {
-        console.error('Catalog batch error (stage2):', e);
-      }
-    }
 
-    // 最終マップ構築: variationId → categoryName
-    for (const [varId, itemId] of Object.entries(variationToItemId)) {
-      if (!itemId) { variationCategoryMap[varId] = null; continue; }
-      const catId = itemToCategoryId[itemId];
-      variationCategoryMap[varId] = catId ? (categoryIdToName[catId] ?? null) : null;
-    }
-
-    // customers bulk-retrieve
-    const customerIds = [...new Set(
-      allPayments.filter(p => p.customer_id).map(p => p.customer_id)
-    )];
-    const customersMap = {};
-    for (let i = 0; i < customerIds.length; i += 100) {
-      const batch = customerIds.slice(i, i + 100);
-      try {
-        const custRes = await fetch('https://connect.squareup.com/v2/customers/bulk-retrieve', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
-            'Content-Type': 'application/json',
-            'Square-Version': '2024-01-18'
-          },
-          body: JSON.stringify({ customer_ids: batch })
-        });
-        if (custRes.ok) {
-          const custData = await custRes.json();
-          for (const [id, entry] of Object.entries(custData.responses ?? {})) {
-            const c = entry.customer ?? entry;
-            const given = c.given_name ?? '';
-            const family = c.family_name ?? '';
-            customersMap[id] = [family, given].filter(Boolean).join(' ') || null;
-          }
-        }
-      } catch (e) { /* 失敗しても続行 */ }
-    }
+        return localVariationCategoryMap;
+      })()
+    ]);
 
     const transactions = allPayments.map(payment => {
       const order = payment.order_id ? ordersMap[payment.order_id] : null;
@@ -238,7 +179,7 @@ export default async (req, res) => {
         }));
       return {
         id: payment.id,
-        created_at_jst: payment.created_at ? toJSTString(payment.created_at) : null,
+        created_at_jst: payment.created_at ?? null,
         amount: payment.amount_money?.amount ?? 0,
         status: payment.status,
         source: payment.source_type ?? 'CARD',
@@ -259,4 +200,3 @@ export default async (req, res) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
-

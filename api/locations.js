@@ -1,11 +1,7 @@
-/*** square-dashboard/api/locations.js ***/
+import { setCors, validateToken, squareHeaders } from './_shared.js';
 
 export default async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
+  if (setCors(req, res)) {
     return res.status(200).end();
   }
 
@@ -13,30 +9,16 @@ export default async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const VALID_LABELS = new Set(['ALL', 'Goodbye', 'KITUNE', 'LR', 'moumou', '吸暮', '狛犬', '金魚']);
-
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const authResult = validateToken(req);
+    if (!authResult) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = Buffer.from(token, 'base64').toString('utf-8');
-    const colonIdx = decoded.indexOf(':');
-    const storeLabel = colonIdx !== -1 ? decoded.slice(0, colonIdx) : '';
-
-    if (!VALID_LABELS.has(storeLabel)) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
+    const { storeLabel } = authResult;
 
     const response = await fetch('https://connect.squareup.com/v2/locations', {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
-        'Content-Type': 'application/json',
-        'Square-Version': '2024-01-18'
-      }
+      headers: squareHeaders()
     });
 
     if (!response.ok) {
