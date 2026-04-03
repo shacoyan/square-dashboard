@@ -66,6 +66,10 @@ function mergeLineItems(items: LineItem[]): LineItem[] {
     .filter(Boolean) as LineItem[];
 }
 
+function stripBrackets(name: string): string {
+  return name.replace(/[\[［][^\]］]*[\]］]/g, '').trim();
+}
+
 function formatYen(amount: number): string {
   return `¥${amount.toLocaleString()}`;
 }
@@ -74,10 +78,9 @@ function buildCopyText(items: LineItem[]): string {
   const sorted = mergeLineItems(items)
     .sort((a, b) => getCategoryRank(a.category) - getCategoryRank(b.category));
   const lines = sorted.map(item =>
-    `${item.name} × ${item.quantity}  ${item.amount > 0 ? formatYen(item.amount) : '¥0'}`
+    `${stripBrackets(item.name)} × ${item.quantity}  ${item.amount > 0 ? formatYen(item.amount) : '¥0'}`
   );
-  const total = sorted.reduce((sum, item) => sum + item.amount, 0);
-  return lines.join('\n') + '\n---\n合計: ' + formatYen(total);
+  return lines.join('\n');
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -211,7 +214,7 @@ export default function TransactionList({
                             .map((item, i) => (
                             <li key={i} className="flex justify-between text-xs text-gray-700">
                               <span className="flex items-center gap-1.5">
-                                <span>{item.name} × {item.quantity}</span>
+                                <span>{stripBrackets(item.name)} × {item.quantity}</span>
                               </span>
                               <span className="font-medium">{item.amount > 0 ? formatYen(item.amount) : '¥0'}</span>
                             </li>
