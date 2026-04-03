@@ -1,6 +1,6 @@
 /*** square-dashboard/api/locations.js ***/
 
-module.exports = async (req, res) => {
+export default async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -13,6 +13,8 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const VALID_LABELS = new Set(['ALL', 'Goodbye', 'KITUNE', 'LR', 'moumou', '吸暮', '狛犬', '金魚']);
+
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -21,8 +23,10 @@ module.exports = async (req, res) => {
 
     const token = authHeader.split(' ')[1];
     const decoded = Buffer.from(token, 'base64').toString('utf-8');
+    const colonIdx = decoded.indexOf(':');
+    const storeLabel = colonIdx !== -1 ? decoded.slice(0, colonIdx) : '';
 
-    if (!decoded.startsWith(process.env.APP_PASSWORD + ':')) {
+    if (!VALID_LABELS.has(storeLabel)) {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
@@ -43,10 +47,14 @@ module.exports = async (req, res) => {
 
     const data = await response.json();
 
-    const locations = (data.locations || []).map(loc => ({
+    const allLocations = (data.locations || []).map(loc => ({
       id: loc.id,
       name: loc.name
     }));
+
+    const locations = storeLabel === 'ALL'
+      ? allLocations
+      : allLocations.filter(loc => loc.name.includes(storeLabel));
 
     return res.status(200).json({ locations });
   } catch (error) {
