@@ -22,7 +22,7 @@ interface TransactionListProps {
   loading: boolean;
 }
 
-const CATEGORY_ORDER = ['チャージ', 'シーシャ', 'ドリンク', 'フード'];
+const CATEGORY_ORDER = ['客タイプ', 'チャージ', 'シーシャ', 'ドリンク', 'フード'];
 function getCategoryRank(category: string | null | undefined): number {
   if (!category) return CATEGORY_ORDER.length;
   const idx = CATEGORY_ORDER.findIndex(c => category.includes(c) || c.includes(category));
