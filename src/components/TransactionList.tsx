@@ -21,23 +21,36 @@ interface TransactionListProps {
   loading: boolean;
 }
 
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
 function mergeLineItems(items: LineItem[]): LineItem[] {
-  const map = new Map<string, { quantity: number; amount: number }>();
+  const map = new Map<string, { quantity: number; amount: number; originalName: string; merged: boolean }>();
+
   for (const item of items) {
+    const key = normalizeName(item.name);
     const qty = parseFloat(item.quantity) || 0;
-    const existing = map.get(item.name);
-    if (existing) {
-      existing.quantity += qty;
-      existing.amount += item.amount;
+    if (map.has(key)) {
+      const acc = map.get(key)!;
+      acc.quantity = Math.round((acc.quantity + qty) * 1e10) / 1e10;
+      acc.amount = Math.round((acc.amount + item.amount) * 1e10) / 1e10;
     } else {
-      map.set(item.name, { quantity: qty, amount: item.amount });
+      map.set(key, { quantity: qty, amount: item.amount, originalName: item.name.trim(), merged: false });
     }
   }
-  return Array.from(map.entries()).map(([name, v]) => ({
-    name,
-    quantity: Number.isInteger(v.quantity) ? String(v.quantity) : v.quantity.toFixed(1),
-    amount: v.amount,
-  }));
+
+  return items
+    .map((item) => {
+      const key = normalizeName(item.name);
+      const acc = map.get(key)!;
+      if (!acc.merged) {
+        acc.merged = true;
+        return { ...item, name: acc.originalName, quantity: String(acc.quantity), amount: acc.amount };
+      }
+      return null;
+    })
+    .filter(Boolean) as LineItem[];
 }
 
 function formatYen(amount: number): string {
