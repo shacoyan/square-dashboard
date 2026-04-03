@@ -44,10 +44,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-purple-100">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-wider">
-            🚧 DEPLOY TEST 🚧
+          <h1 className="text-3xl font-bold tracking-wider text-indigo-600">
+            SABABA
           </h1>
-          <p className="text-sm text-gray-400 mt-1">この文字が見えたら反映済み</p>
+          <p className="text-sm text-gray-400 mt-1">Sales Dashboard</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
