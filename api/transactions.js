@@ -112,6 +112,54 @@ export default async (req, res) => {
       }
     }
 
+    // catalog batch-retrieve (カテゴリ取得)
+    const catalogObjectIds = [...new Set(
+      Object.values(ordersMap).flatMap(order =>
+        (order.line_items ?? [])
+          .filter(item => parseFloat(item.quantity) > 0 && item.catalog_object_id)
+          .map(item => item.catalog_object_id)
+      )
+    )];
+
+    const categoryIdToName = {};
+    const itemIdToCategoryName = {};
+    const variationCategoryMap = {};
+
+    for (let i = 0; i < catalogObjectIds.length; i += 100) {
+      const batch = catalogObjectIds.slice(i, i + 100);
+      try {
+        const catalogRes = await fetch('https://connect.squareup.com/v2/catalog/batch-retrieve', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
+            'Content-Type': 'application/json',
+            'Square-Version': '2024-01-18'
+          },
+          body: JSON.stringify({ object_ids: batch, include_related_objects: true })
+        });
+        if (!catalogRes.ok) {
+          console.error('Catalog API error:', catalogRes.status, await catalogRes.text());
+          continue;
+        }
+        const catalogData = await catalogRes.json();
+        for (const obj of (catalogData.related_objects ?? [])) {
+          if (obj.type === 'CATEGORY') categoryIdToName[obj.id] = obj.category_data?.name;
+        }
+        for (const obj of (catalogData.related_objects ?? [])) {
+          if (obj.type === 'ITEM') {
+            itemIdToCategoryName[obj.id] = categoryIdToName[obj.item_data?.reporting_category?.id] ?? null;
+          }
+        }
+        for (const obj of (catalogData.objects ?? [])) {
+          if (obj.type === 'ITEM_VARIATION') {
+            variationCategoryMap[obj.id] = itemIdToCategoryName[obj.item_variation_data?.item_id] ?? null;
+          }
+        }
+      } catch (e) {
+        console.error('Catalog batch error:', e);
+      }
+    }
+
     // customers bulk-retrieve
     const customerIds = [...new Set(
       allPayments.filter(p => p.customer_id).map(p => p.customer_id)
@@ -148,7 +196,8 @@ export default async (req, res) => {
         .map(item => ({
           name: item.name ?? '不明',
           quantity: item.quantity,
-          amount: item.gross_sales_money?.amount ?? 0
+          amount: item.gross_sales_money?.amount ?? 0,
+          category: variationCategoryMap[item.catalog_object_id] ?? null
         }));
       return {
         id: payment.id,

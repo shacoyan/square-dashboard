@@ -4,6 +4,7 @@ interface LineItem {
   name: string;
   quantity: string;
   amount: number;
+  category?: string | null;
 }
 
 interface Transaction {
@@ -19,6 +20,13 @@ interface Transaction {
 interface TransactionListProps {
   transactions: Transaction[];
   loading: boolean;
+}
+
+const CATEGORY_ORDER = ['チャージ', 'シーシャ', 'ドリンク', 'フード'];
+function getCategoryRank(category: string | null | undefined): number {
+  if (!category) return CATEGORY_ORDER.length;
+  const idx = CATEGORY_ORDER.findIndex(c => category.includes(c) || c.includes(category));
+  return idx === -1 ? CATEGORY_ORDER.length : idx;
 }
 
 function normalizeName(name: string): string {
@@ -175,7 +183,9 @@ export default function TransactionList({
                   <tr className="bg-indigo-50">
                     <td colSpan={5} className="px-6 py-2">
                       <ul className="space-y-1">
-                        {mergeLineItems(tx.line_items).map((item, i) => (
+                        {mergeLineItems(tx.line_items)
+                          .sort((a, b) => getCategoryRank(a.category) - getCategoryRank(b.category))
+                          .map((item, i) => (
                           <li key={i} className="flex justify-between text-xs text-gray-700">
                             <span>{item.name} × {item.quantity}</span>
                             <span className="font-medium">{item.amount > 0 ? formatYen(item.amount) : '¥0'}</span>
