@@ -112,7 +112,7 @@ export default async (req, res) => {
       }
     }
 
-    // catalog batch-retrieve (カテゴリ取得)
+    // catalog batch-retrieve (カテゴリ取得) - 2段階方式
     const catalogObjectIds = [...new Set(
       Object.values(ordersMap).flatMap(order =>
         (order.line_items ?? [])
@@ -121,10 +121,11 @@ export default async (req, res) => {
       )
     )];
 
-    const categoryIdToName = {};
-    const itemIdToCategoryName = {};
+    const variationToItemId = {};
+    const itemToCategoryId = {};
     const variationCategoryMap = {};
 
+    // 第1段階: ITEM_VARIATIONとITEMを取得
     for (let i = 0; i < catalogObjectIds.length; i += 100) {
       const batch = catalogObjectIds.slice(i, i + 100);
       try {
@@ -138,26 +139,62 @@ export default async (req, res) => {
           body: JSON.stringify({ object_ids: batch, include_related_objects: true })
         });
         if (!catalogRes.ok) {
-          console.error('Catalog API error:', catalogRes.status, await catalogRes.text());
+          console.error('Catalog API error (stage1):', catalogRes.status, await catalogRes.text());
           continue;
         }
         const catalogData = await catalogRes.json();
-        for (const obj of (catalogData.related_objects ?? [])) {
-          if (obj.type === 'CATEGORY') categoryIdToName[obj.id] = obj.category_data?.name;
+        for (const obj of (catalogData.objects ?? [])) {
+          if (obj.type === 'ITEM_VARIATION') {
+            variationToItemId[obj.id] = obj.item_variation_data?.item_id ?? null;
+          }
         }
         for (const obj of (catalogData.related_objects ?? [])) {
           if (obj.type === 'ITEM') {
-            itemIdToCategoryName[obj.id] = categoryIdToName[obj.item_data?.reporting_category?.id] ?? null;
-          }
-        }
-        for (const obj of (catalogData.objects ?? [])) {
-          if (obj.type === 'ITEM_VARIATION') {
-            variationCategoryMap[obj.id] = itemIdToCategoryName[obj.item_variation_data?.item_id] ?? null;
+            const catId = obj.item_data?.reporting_category?.id ?? null;
+            if (catId) itemToCategoryId[obj.id] = catId;
           }
         }
       } catch (e) {
-        console.error('Catalog batch error:', e);
+        console.error('Catalog batch error (stage1):', e);
       }
+    }
+
+    // 第2段階: CATEGORYを取得
+    const categoryIds = [...new Set(Object.values(itemToCategoryId).filter(Boolean))];
+    const categoryIdToName = {};
+
+    for (let i = 0; i < categoryIds.length; i += 100) {
+      const batch = categoryIds.slice(i, i + 100);
+      try {
+        const catRes = await fetch('https://connect.squareup.com/v2/catalog/batch-retrieve', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
+            'Content-Type': 'application/json',
+            'Square-Version': '2024-01-18'
+          },
+          body: JSON.stringify({ object_ids: batch })
+        });
+        if (!catRes.ok) {
+          console.error('Catalog API error (stage2):', catRes.status, await catRes.text());
+          continue;
+        }
+        const catData = await catRes.json();
+        for (const obj of (catData.objects ?? [])) {
+          if (obj.type === 'CATEGORY') {
+            categoryIdToName[obj.id] = obj.category_data?.name ?? null;
+          }
+        }
+      } catch (e) {
+        console.error('Catalog batch error (stage2):', e);
+      }
+    }
+
+    // 最終マップ構築: variationId → categoryName
+    for (const [varId, itemId] of Object.entries(variationToItemId)) {
+      if (!itemId) { variationCategoryMap[varId] = null; continue; }
+      const catId = itemToCategoryId[itemId];
+      variationCategoryMap[varId] = catId ? (categoryIdToName[catId] ?? null) : null;
     }
 
     // customers bulk-retrieve
@@ -222,3 +259,4 @@ export default async (req, res) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+
