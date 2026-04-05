@@ -1,5 +1,5 @@
 import { useState, Fragment } from 'react';
-import type { LineItem, Transaction } from '../types';
+import type { LineItem, Transaction, Discount } from '../types';
 import { formatYen } from '../utils';
 
 interface TransactionListProps {
@@ -55,12 +55,17 @@ function stripBrackets(name: string): string {
   return name.replace(/[\[［][^\]］]*[\]］]/g, '').trim();
 }
 
-function buildCopyText(items: LineItem[]): string {
+function buildCopyText(items: LineItem[], discounts?: Discount[]): string {
   const sorted = mergeLineItems(items)
     .sort((a, b) => getCategoryRank(a.category) - getCategoryRank(b.category));
   const lines = sorted.map(item =>
     `${stripBrackets(item.name)} × ${item.quantity}  ${item.amount > 0 ? formatYen(item.amount) : '¥0'}`
   );
+  if (discounts && discounts.length > 0) {
+    for (const d of discounts) {
+      lines.push(`${d.name}  -${formatYen(Math.abs(d.amount))}`);
+    }
+  }
   return lines.join('\n');
 }
 
@@ -116,7 +121,7 @@ export default function TransactionList({
 
   const handleCopy = async (e: React.MouseEvent, tx: Transaction) => {
     e.stopPropagation();
-    const text = buildCopyText(tx.line_items);
+    const text = buildCopyText(tx.line_items, tx.discounts);
     try {
       await navigator.clipboard.writeText(text);
       setCopiedId(tx.id);
@@ -189,18 +194,30 @@ export default function TransactionList({
                   <tr className="bg-indigo-50">
                     <td colSpan={5} className="px-6 py-2">
                       <div className="flex justify-between items-start">
-                        <ul className="space-y-1 flex-1">
-                          {mergeLineItems(tx.line_items)
-                            .sort((a, b) => getCategoryRank(a.category) - getCategoryRank(b.category))
-                            .map((item, i) => (
-                            <li key={i} className="flex justify-between text-xs text-gray-700">
-                              <span className="flex items-center gap-1.5">
-                                <span>{stripBrackets(item.name)} × {item.quantity}</span>
-                              </span>
-                              <span className="font-medium">{item.amount > 0 ? formatYen(item.amount) : '¥0'}</span>
-                            </li>
-                          ))}
-                        </ul>
+                        <div className="flex-1">
+                          <ul className="space-y-1">
+                            {mergeLineItems(tx.line_items)
+                              .sort((a, b) => getCategoryRank(a.category) - getCategoryRank(b.category))
+                              .map((item, i) => (
+                              <li key={i} className="flex justify-between text-xs text-gray-700">
+                                <span className="flex items-center gap-1.5">
+                                  <span>{stripBrackets(item.name)} × {item.quantity}</span>
+                                </span>
+                                <span className="font-medium">{item.amount > 0 ? formatYen(item.amount) : '¥0'}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          {tx.discounts && tx.discounts.length > 0 && (
+                            <div className="border-t border-gray-200 mt-1 pt-1 space-y-1">
+                              {tx.discounts.map((d, i) => (
+                                <div key={i} className="flex justify-between text-xs text-red-500">
+                                  <span>{d.name}</span>
+                                  <span>-{formatYen(Math.abs(d.amount))}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <button
                           onClick={(e) => handleCopy(e, tx)}
                           className="ml-4 text-xs text-gray-400 hover:text-gray-600 whitespace-nowrap"

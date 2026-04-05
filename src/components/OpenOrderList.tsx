@@ -97,21 +97,33 @@ export default function OpenOrderList({ orders, loading, error }: Props) {
 
               {expandedIds.has(order.id) && order.line_items.length > 0 && (
                 <div className="mt-2 flex items-start gap-2">
-                  <ul className="flex-1 space-y-1 pl-5">
-                    {order.line_items.map((item, i) => (
-                      <li
-                        key={i}
-                        className="flex justify-between text-xs text-gray-600"
-                      >
-                        <span>
-                          {item.name} × {item.quantity}
-                        </span>
-                        <span>
-                          {item.amount > 0 ? formatYen(item.amount) : '¥0'}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="flex-1 pl-5">
+                    <ul className="space-y-1">
+                      {order.line_items.map((item, i) => (
+                        <li
+                          key={i}
+                          className="flex justify-between text-xs text-gray-600"
+                        >
+                          <span>
+                            {item.name} × {item.quantity}
+                          </span>
+                          <span>
+                            {item.amount > 0 ? formatYen(item.amount) : '¥0'}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    {order.discounts && order.discounts.length > 0 && (
+                      <div className="border-t border-gray-200 mt-1 pt-1 space-y-1">
+                        {order.discounts.map((d, i) => (
+                          <div key={i} className="flex justify-between text-xs text-red-500">
+                            <span>{d.name}</span>
+                            <span>-{formatYen(Math.abs(d.amount))}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={(e) => handleCopy(e, order)}
                     className={`text-xs px-2 py-1 rounded border whitespace-nowrap transition-colors flex-shrink-0 ${
@@ -131,3 +143,4 @@ export default function OpenOrderList({ orders, loading, error }: Props) {
     </div>
   );
 }
+

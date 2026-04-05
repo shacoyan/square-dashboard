@@ -57,7 +57,11 @@ export default async (req, res) => {
           name: item.name ?? '不明',
           quantity: item.quantity,
           amount: item.gross_sales_money?.amount ?? 0
-        }))
+        })),
+      discounts: (order.discounts ?? []).map(d => ({
+        name: d.name ?? '割引',
+        amount: d.applied_money?.amount ?? 0
+      }))
     }));
 
     return res.status(200).json({ orders });
@@ -66,3 +70,4 @@ export default async (req, res) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+

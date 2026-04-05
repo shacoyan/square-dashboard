@@ -184,7 +184,11 @@ export default async (req, res) => {
         status: payment.status,
         source: payment.source_type ?? 'CARD',
         customer_name: payment.customer_id ? (customersMap[payment.customer_id] ?? null) : null,
-        line_items: lineItems
+        line_items: lineItems,
+        discounts: (order?.discounts ?? []).map(d => ({
+          name: d.name ?? '割引',
+          amount: d.applied_money?.amount ?? 0
+        }))
       };
     });
 

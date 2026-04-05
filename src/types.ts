@@ -1,3 +1,8 @@
+export interface Discount {
+  name: string;
+  amount: number;
+}
+
 export interface Location {
   id: string;
   name: string;
@@ -18,6 +23,7 @@ export interface Transaction {
   status: string;
   source: string;
   line_items: LineItem[];
+  discounts: Discount[];
 }
 
 export interface OpenOrder {
@@ -26,6 +32,7 @@ export interface OpenOrder {
   total_money: number;
   customer_name: string | null;
   line_items: LineItem[];
+  discounts: Discount[];
 }
 
 export interface SalesData {
@@ -33,3 +40,4 @@ export interface SalesData {
   transaction_count: number;
   currency: string;
 }
+
