@@ -1,11 +1,73 @@
 import { useState } from 'react';
-import type { OpenOrder } from '../types';
+import type { OpenOrder, LineItem, Discount } from '../types';
 import { formatYen } from '../utils';
 
 interface Props {
   orders: OpenOrder[];
   loading: boolean;
   error: string | null;
+}
+
+const CATEGORY_ORDER = ['客タイプ', 'チャージ', 'シーシャ', 'ドリンク', 'フード'];
+function getCategoryRank(category: string | null | undefined): number {
+  if (!category) return CATEGORY_ORDER.length;
+  const idx = CATEGORY_ORDER.findIndex(c => category.includes(c) || c.includes(category));
+  return idx === -1 ? CATEGORY_ORDER.length : idx;
+}
+
+function normalizeName(name: string): string {
+  return name
+    .normalize('NFKC')
+    .replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200D\uFEFF\u00A0\u3000\u2060]/g, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+function mergeLineItems(items: LineItem[]): LineItem[] {
+  const map = new Map<string, { quantity: number; amount: number; originalName: string; merged: boolean }>();
+
+  for (const item of items) {
+    const key = normalizeName(item.name);
+    const qty = parseFloat(item.quantity) || 0;
+    if (map.has(key)) {
+      const acc = map.get(key)!;
+      acc.quantity = Math.round((acc.quantity + qty) * 1e10) / 1e10;
+      acc.amount = Math.round((acc.amount + item.amount) * 1e10) / 1e10;
+    } else {
+      map.set(key, { quantity: qty, amount: item.amount, originalName: item.name.trim(), merged: false });
+    }
+  }
+
+  return items
+    .map((item) => {
+      const key = normalizeName(item.name);
+      const acc = map.get(key)!;
+      if (!acc.merged) {
+        acc.merged = true;
+        return { ...item, name: acc.originalName, quantity: String(acc.quantity), amount: acc.amount };
+      }
+      return null;
+    })
+    .filter(Boolean) as LineItem[];
+}
+
+function stripBrackets(name: string): string {
+  return name.replace(/[\[［][^\]］]*[\]］]/g, '').trim();
+}
+
+function buildCopyText(items: LineItem[], discounts?: Discount[]): string {
+  const sorted = mergeLineItems(items)
+    .sort((a, b) => getCategoryRank(a.category) - getCategoryRank(b.category));
+  const lines = sorted.map(item =>
+    `${stripBrackets(item.name)} × ${item.quantity}  ${item.amount > 0 ? formatYen(item.amount) : '¥0'}`
+  );
+  if (discounts && discounts.length > 0) {
+    for (const d of discounts) {
+      lines.push(`${d.name}  -${formatYen(Math.abs(d.amount))}`);
+    }
+  }
+  return lines.join('\n');
 }
 
 export default function OpenOrderList({ orders, loading, error }: Props) {
@@ -22,9 +84,7 @@ export default function OpenOrderList({ orders, loading, error }: Props) {
 
   const handleCopy = async (e: React.MouseEvent, order: OpenOrder) => {
     e.stopPropagation();
-    const text = order.line_items
-      .map((item) => `${item.name} × ${item.quantity}`)
-      .join('\n');
+    const text = buildCopyText(order.line_items, order.discounts);
 
     try {
       await navigator.clipboard.writeText(text);
@@ -143,4 +203,3 @@ export default function OpenOrderList({ orders, loading, error }: Props) {
     </div>
   );
 }
-
