@@ -9,7 +9,6 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  LabelList,
 } from 'recharts';
 import type { DailySegmentPoint } from '../../types';
 
@@ -37,7 +36,7 @@ export default function SegmentTrendChart({ data }: Props) {
     : data;
 
   return (
-    <div className="w-full h-[260px]">
+    <div className="w-full h-[300px]">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
@@ -80,11 +79,7 @@ export default function SegmentTrendChart({ data }: Props) {
               dot={{ r: 3, fill: s.color }}
               activeDot={{ r: 5 }}
               connectNulls
-            >
-              {!isEmpty && (
-                <LabelList dataKey={s.key} position="top" fill="#374151" fontSize={10} />
-              )}
-            </Line>
+            />
           ))}
         </LineChart>
       </ResponsiveContainer>

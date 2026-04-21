@@ -15,38 +15,19 @@ const CHANNEL_CONFIG: { key: keyof AcquisitionBreakdown; label: string; color: s
   { key: 'unknown', label: '打ち漏れ', color: '#f87171' },    // red-400
 ];
 
-const renderLabel = (props: any) => {
-  const RADIAN = Math.PI / 180;
-  const r = props.outerRadius + 18;
-  const x = props.cx + r * Math.cos(-props.midAngle * RADIAN);
-  const y = props.cy + r * Math.sin(-props.midAngle * RADIAN);
-  return (
-    <text
-      x={x}
-      y={y}
-      fill="#374151"
-      textAnchor={x > props.cx ? 'start' : 'end'}
-      dominantBaseline="central"
-      fontSize={11}
-    >
-      {`${props.payload.name} ${props.payload.value}人 (${(props.percent * 100).toFixed(1)}%)`}
-    </text>
-  );
-};
-
 export default function AcquisitionChart({ data }: Props) {
   const total = CHANNEL_CONFIG.reduce((sum, ch) => sum + (data[ch.key] ?? 0), 0);
 
   if (total === 0) {
     return (
-      <div className="w-full h-[260px]">
+      <div className="w-full h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={[{ name: '新規客なし', value: 1 }]}
               cx="50%"
               cy="50%"
-              outerRadius={80}
+              outerRadius={110}
               dataKey="value"
             >
               <Cell fill="#374151" stroke="none" />
@@ -65,19 +46,17 @@ export default function AcquisitionChart({ data }: Props) {
   })).filter((d) => d.value > 0);
 
   return (
-    <div className="w-full h-[260px]">
+    <div className="w-full h-[300px]">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
             data={chartData}
             cx="50%"
             cy="50%"
-            innerRadius={50}
-            outerRadius={80}
+            innerRadius={60}
+            outerRadius={110}
             paddingAngle={2}
             dataKey="value"
-            label={renderLabel}
-            labelLine={false}
           >
             {chartData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />

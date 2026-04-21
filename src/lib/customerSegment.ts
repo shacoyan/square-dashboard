@@ -44,27 +44,22 @@ export function allocateSalesByTransaction(tx: Transaction): SegmentBreakdown {
 }
 
 export function detectAcquisitionChannels(tx: Transaction): AcquisitionBreakdown {
-  const hasNew = tx.line_items.some(item => item.name.includes('新規'));
-
-  if (!hasNew) {
-    return { google: 0, review: 0, signboard: 0, sns: 0, unknown: 0 };
-  }
-
   const result: AcquisitionBreakdown = { google: 0, review: 0, signboard: 0, sns: 0, unknown: 0 };
-
+  let newQty = 0;
   for (const item of tx.line_items) {
+    if (item.name.includes('新規')) newQty += Math.round(parseFloat(item.quantity) || 0);
+  }
+  if (newQty === 0) return result;
+  for (const item of tx.line_items) {
+    const qty = Math.round(parseFloat(item.quantity) || 0);
     const name = item.name;
-    if (name.includes('Google')) result.google += 1;
-    if (name.includes('口コミ') || name.includes('クチコミ')) result.review += 1;
-    if (name.includes('看板')) result.signboard += 1;
-    if (name.includes('SNS')) result.sns += 1;
+    if (name.includes('Google')) result.google += qty;
+    if (name.includes('口コミ') || name.includes('クチコミ')) result.review += qty;
+    if (name.includes('看板')) result.signboard += qty;
+    if (name.includes('SNS')) result.sns += qty;
   }
-
   const channelTotal = result.google + result.review + result.signboard + result.sns;
-  if (channelTotal === 0) {
-    result.unknown = 1;
-  }
-
+  result.unknown = Math.max(0, newQty - channelTotal);
   return result;
 }
 

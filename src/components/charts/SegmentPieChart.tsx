@@ -24,25 +24,6 @@ const formatTooltip = (value: number, name: string, props: { payload?: { percent
   return [`¥${value.toLocaleString()}（${(percent * 100).toFixed(1)}%）`, name];
 };
 
-const renderLabel = (props: any) => {
-  const RADIAN = Math.PI / 180;
-  const r = props.outerRadius + 18;
-  const x = props.cx + r * Math.cos(-props.midAngle * RADIAN);
-  const y = props.cy + r * Math.sin(-props.midAngle * RADIAN);
-  return (
-    <text
-      x={x}
-      y={y}
-      fill="#374151"
-      textAnchor={x > props.cx ? 'start' : 'end'}
-      dominantBaseline="central"
-      fontSize={11}
-    >
-      {`${props.payload.name} ¥${props.payload.value.toLocaleString()} (${(props.percent * 100).toFixed(1)}%)`}
-    </text>
-  );
-};
-
 export default function SegmentPieChart({ sales }: Props) {
   const total = sales.new + sales.repeat + sales.regular;
 
@@ -55,19 +36,17 @@ export default function SegmentPieChart({ sales }: Props) {
       }));
 
   return (
-    <div className="w-full h-[260px]">
+    <div className="w-full h-[300px]">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
             data={data}
             cx="50%"
             cy="50%"
-            innerRadius={50}
-            outerRadius={80}
+            innerRadius={60}
+            outerRadius={110}
             paddingAngle={total === 0 ? 0 : 2}
             dataKey="value"
-            label={total > 0 ? renderLabel : undefined}
-            labelLine={false}
           >
             {data.map((entry, index) => (
               <Cell
