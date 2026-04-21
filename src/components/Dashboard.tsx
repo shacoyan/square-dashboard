@@ -4,9 +4,12 @@ import SalesSummary from './SalesSummary';
 import TransactionList from './TransactionList';
 import OpenOrderList from './OpenOrderList';
 import DatePicker from './DatePicker';
+import CustomerSegmentSection from './CustomerSegmentSection';
 import { useSquareData } from '../hooks/useSquareData';
 import { useOpenOrders } from '../hooks/useOpenOrders';
+import { useCustomerSegment } from '../hooks/useCustomerSegment';
 import type { Location } from '../types';
+import type { PeriodPreset } from '../types';
 
 interface DashboardProps {
   token: string;
@@ -49,6 +52,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [selectedLocationId, setSelectedLocationId] = useState('');
   const [locationsLoading, setLocationsLoading] = useState(true);
   const [locationsError, setLocationsError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<PeriodPreset>('today');
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -80,6 +84,19 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     token,
     date,
     locationId: selectedLocationId,
+    startHour,
+    endHour,
+  });
+
+  const {
+    data: segmentData,
+    loading: segmentLoading,
+    error: segmentError,
+  } = useCustomerSegment({
+    token,
+    locationId: selectedLocationId,
+    period,
+    baseDate: date,
     startHour,
     endHour,
   });
@@ -210,9 +227,16 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           loading={loading}
         />
 
+        <CustomerSegmentSection
+          data={segmentData}
+          loading={segmentLoading}
+          error={segmentError}
+          period={period}
+          onPeriodChange={setPeriod}
+        />
+
         <TransactionList transactions={transactions} loading={loading} />
       </main>
     </div>
   );
 }
-

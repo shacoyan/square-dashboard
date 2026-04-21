@@ -41,3 +41,43 @@ export interface SalesData {
   currency: string;
 }
 
+export type CustomerSegment = 'new' | 'repeat' | 'regular';
+export type AcquisitionChannel = 'google' | 'review' | 'signboard' | 'sns' | 'unknown';
+
+export interface SegmentBreakdown {
+  new: number;
+  repeat: number;
+  regular: number;
+}
+
+export interface AcquisitionBreakdown {
+  google: number;
+  review: number;
+  signboard: number;
+  sns: number;
+  unknown: number; // 打ち漏れ
+}
+
+export interface DailySegmentPoint {
+  date: string; // YYYY-MM-DD (JST)
+  new: number;
+  repeat: number;
+  regular: number;
+}
+
+export type PeriodPreset = 'today' | 'week' | 'month';
+
+export interface CustomerSegmentAnalysis {
+  period: PeriodPreset;
+  periodStart: string; // YYYY-MM-DD
+  periodEnd: string;   // YYYY-MM-DD
+  elapsedDays: number;
+  totalSales: number;
+  totalCustomers: number;
+  averageDailySales: number | null; // today のとき null
+  overallAveragePerCustomer: number | null;
+  customersBySegment: SegmentBreakdown;
+  salesBySegment: SegmentBreakdown;
+  acquisitionBreakdown: AcquisitionBreakdown; // 新規客のみ
+  dailyTrend: DailySegmentPoint[];
+}
