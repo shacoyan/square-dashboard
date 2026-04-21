@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import StoreSwitcher from './StoreSwitcher';
-import SalesSummary from './SalesSummary';
-import TransactionList from './TransactionList';
-import OpenOrderList from './OpenOrderList';
 import DatePicker from './DatePicker';
-import CustomerSegmentSection from './CustomerSegmentSection';
+import DashboardTabs from './DashboardTabs';
+import DailyTabPanel from './tabs/DailyTabPanel';
+import SegmentTabPanel from './tabs/SegmentTabPanel';
 import { useSquareData } from '../hooks/useSquareData';
 import { useOpenOrders } from '../hooks/useOpenOrders';
 import { useCustomerSegment } from '../hooks/useCustomerSegment';
@@ -64,8 +63,18 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [selectedLocationId, setSelectedLocationId] = useState('');
   const [locationsLoading, setLocationsLoading] = useState(true);
   const [locationsError, setLocationsError] = useState<string | null>(null);
-  const [period, setPeriod] = useState<PeriodPreset>('today');
-  
+  const [period, setPeriod] = useState<PeriodPreset>('month');
+
+  type DashboardTab = 'daily' | 'segment';
+  const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
+    const saved = localStorage.getItem('sq_dashboard_tab');
+    return saved === 'segment' ? 'segment' : 'daily';
+  });
+  const handleTabChange = (t: DashboardTab) => {
+    setActiveTab(t);
+    localStorage.setItem('sq_dashboard_tab', t);
+  };
+
   const [weekIndex, setWeekIndex] = useState<number>(() => getWeekIndexForDate(getBusinessDate(13)));
 
   useEffect(() => {
@@ -237,28 +246,31 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           </div>
         )}
 
-        <SalesSummary
-          total={sales?.total_amount ?? 0}
-          count={sales?.transaction_count ?? 0}
-          openTotal={openTotal}
-          openCount={openCount}
-          loading={loading}
-        />
-
-        <CustomerSegmentSection
-          data={segmentData}
-          loading={segmentLoading}
-          error={segmentError}
-          period={period}
-          onPeriodChange={setPeriod}
-          weekIndex={weekIndex}
-          availableWeeks={segmentAvailableWeeks}
-          onWeekIndexChange={setWeekIndex}
-        />
-
-        <OpenOrderList orders={openOrders} loading={openOrdersLoading} error={openOrdersError} />
-
-        <TransactionList transactions={transactions} loading={loading} />
+        <DashboardTabs active={activeTab} onChange={handleTabChange} />
+        {activeTab === 'daily' ? (
+          <DailyTabPanel
+            salesTotal={sales?.total_amount ?? 0}
+            salesCount={sales?.transaction_count ?? 0}
+            openTotal={openTotal}
+            openCount={openCount}
+            loading={loading}
+            openOrders={openOrders}
+            openOrdersLoading={openOrdersLoading}
+            openOrdersError={openOrdersError}
+            transactions={transactions}
+          />
+        ) : (
+          <SegmentTabPanel
+            data={segmentData}
+            loading={segmentLoading}
+            error={segmentError}
+            period={period}
+            onPeriodChange={setPeriod}
+            weekIndex={weekIndex}
+            availableWeeks={segmentAvailableWeeks}
+            onWeekIndexChange={setWeekIndex}
+          />
+        )}
       </main>
     </div>
   );

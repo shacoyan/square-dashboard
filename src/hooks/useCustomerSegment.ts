@@ -146,6 +146,13 @@ export function useCustomerSegment(args: Args): {
 
     const dates = calculatePeriodDates(period, baseDate, weekIndex);
 
+    if (dates.length === 0) {
+      setLoading(false);
+      setData(null);
+      setError('この週はまだ経過していません');
+      return;
+    }
+
     const headers: HeadersInit = {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
