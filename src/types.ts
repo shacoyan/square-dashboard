@@ -41,13 +41,14 @@ export interface SalesData {
   currency: string;
 }
 
-export type CustomerSegment = 'new' | 'repeat' | 'regular';
+export type CustomerSegment = 'new' | 'repeat' | 'regular' | 'staff';
 export type AcquisitionChannel = 'google' | 'review' | 'signboard' | 'sns' | 'unknown'; // 'review' は「口コミ」（旧表記「クチコミ」）の内部キー。UI 表示は「口コミ」で統一。
 
 export interface SegmentBreakdown {
   new: number;
   repeat: number;
   regular: number;
+  staff: number;
 }
 
 export interface AcquisitionBreakdown {
@@ -63,6 +64,7 @@ export interface DailySegmentPoint {
   new: number;
   repeat: number;
   regular: number;
+  staff: number;
 }
 
 export type PeriodPreset = 'today' | 'week' | 'month';

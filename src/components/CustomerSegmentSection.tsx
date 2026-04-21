@@ -60,12 +60,14 @@ const SEGMENT_LABELS: { key: keyof SegmentBreakdown; label: string }[] = [
   { key: 'new', label: '新規' },
   { key: 'repeat', label: 'リピート' },
   { key: 'regular', label: '常連' },
+  { key: 'staff', label: 'スタッフ' },
 ];
 
 const SALES_COLORS: Record<keyof SegmentBreakdown, string> = {
   new: '#3b82f6',
   repeat: '#eab308',
-  regular: '#ef4444'
+  regular: '#ef4444',
+  staff: '#a855f7',
 };
 
 const ACQUISITION_CONFIG: { key: keyof AcquisitionBreakdown; label: string; color: string }[] = [
@@ -187,15 +189,15 @@ export default function CustomerSegmentSection({
               <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
                 <p className="text-sm font-medium text-gray-500 mb-1">合計客数</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {(data.customersBySegment.new + data.customersBySegment.repeat + data.customersBySegment.regular).toLocaleString()}人
+                  {(data.customersBySegment.new + data.customersBySegment.repeat + data.customersBySegment.regular + data.customersBySegment.staff).toLocaleString()}人
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  新規 {data.customersBySegment.new} / リピート {data.customersBySegment.repeat} / 常連 {data.customersBySegment.regular}
+                  新規 {data.customersBySegment.new} / リピート {data.customersBySegment.repeat} / 常連 {data.customersBySegment.regular} / スタ {data.customersBySegment.staff}
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {SEGMENT_LABELS.map(({ key, label }) => (
                 <SegmentCustomerCard
                   key={key}
@@ -241,7 +243,7 @@ export default function CustomerSegmentSection({
               <div className="max-h-[280px] overflow-y-auto space-y-2">
                 {data.dailyTrend.map((day) => (
                   <div key={day.date} className="text-sm text-gray-700">
-                    {day.date}: 合計{day.new + day.repeat + day.regular}人（新{day.new}/リ{day.repeat}/常{day.regular}）
+                    {day.date}: 合計{day.new + day.repeat + day.regular + day.staff}人（新{day.new}/リ{day.repeat}/常{day.regular}/ス{day.staff}）
                   </div>
                 ))}
               </div>

@@ -20,13 +20,14 @@ const SERIES = [
   { key: 'new' as const, color: '#3b82f6', label: '新規' },
   { key: 'repeat' as const, color: '#eab308', label: 'リピート' },
   { key: 'regular' as const, color: '#ef4444', label: '常連' },
+  { key: 'staff' as const, color: '#a855f7', label: 'スタッフ' },
 ];
 
 export default function SegmentTrendChart({ data }: Props) {
   const isEmpty = !data || data.length === 0;
 
   const chartData = isEmpty
-    ? [{ date: '', new: 0, repeat: 0, regular: 0 }]
+    ? [{ date: '', new: 0, repeat: 0, regular: 0, staff: 0 }]
     : data;
 
   return (
