@@ -33,7 +33,7 @@ const renderLabel = (props: any) => {
     <text
       x={x}
       y={y}
-      fill="#e5e7eb"
+      fill="#374151"
       textAnchor={x > props.cx ? 'start' : 'end'}
       dominantBaseline="central"
       fontSize={11}
@@ -92,14 +92,14 @@ export default function SegmentPieChart({ sales }: Props) {
           {total > 0 && (
             <Legend
               formatter={(value: string) => (
-                <span className="text-gray-200 text-xs">{value}</span>
+                <span className="text-gray-600 text-xs">{value}</span>
               )}
             />
           )}
         </PieChart>
       </ResponsiveContainer>
       {total === 0 && (
-        <p className="text-center text-gray-400 text-sm -mt-4">売上データなし</p>
+        <p className="text-center text-gray-500 text-sm -mt-4">売上データなし</p>
       )}
     </div>
   );

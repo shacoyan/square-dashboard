@@ -24,7 +24,7 @@ const renderLabel = (props: any) => {
     <text
       x={x}
       y={y}
-      fill="#e5e7eb"
+      fill="#374151"
       textAnchor={x > props.cx ? 'start' : 'end'}
       dominantBaseline="central"
       fontSize={11}
@@ -53,7 +53,7 @@ export default function AcquisitionChart({ data }: Props) {
             </Pie>
           </PieChart>
         </ResponsiveContainer>
-        <p className="text-center text-gray-400 text-sm -mt-4">新規客なし</p>
+        <p className="text-center text-gray-500 text-sm -mt-4">新規客なし</p>
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function AcquisitionChart({ data }: Props) {
           />
           <Legend
             formatter={(value: string) => (
-              <span className="text-gray-200 text-xs">{value}</span>
+              <span className="text-gray-600 text-xs">{value}</span>
             )}
           />
         </PieChart>

@@ -40,18 +40,18 @@ export default function SegmentTrendChart({ data }: Props) {
     <div className="w-full h-[260px]">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
-            tick={{ fontSize: 11, fill: '#d1d5db' }}
-            axisLine={{ stroke: '#4b5563' }}
-            tickLine={{ stroke: '#4b5563' }}
+            tick={{ fontSize: 11, fill: '#6b7280' }}
+            axisLine={{ stroke: '#d1d5db' }}
+            tickLine={{ stroke: '#d1d5db' }}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: '#d1d5db' }}
-            axisLine={{ stroke: '#4b5563' }}
-            tickLine={{ stroke: '#4b5563' }}
+            tick={{ fontSize: 11, fill: '#6b7280' }}
+            axisLine={{ stroke: '#d1d5db' }}
+            tickLine={{ stroke: '#d1d5db' }}
             allowDecimals={false}
           />
           <Tooltip
@@ -66,7 +66,7 @@ export default function SegmentTrendChart({ data }: Props) {
           />
           <Legend
             formatter={(value: string) => (
-              <span className="text-gray-200 text-xs">{value}</span>
+              <span className="text-gray-600 text-xs">{value}</span>
             )}
           />
           {SERIES.map((s) => (
@@ -82,14 +82,14 @@ export default function SegmentTrendChart({ data }: Props) {
               connectNulls
             >
               {!isEmpty && (
-                <LabelList dataKey={s.key} position="top" fill="#e5e7eb" fontSize={10} />
+                <LabelList dataKey={s.key} position="top" fill="#374151" fontSize={10} />
               )}
             </Line>
           ))}
         </LineChart>
       </ResponsiveContainer>
       {isEmpty && (
-        <p className="text-center text-gray-400 text-sm -mt-4">推移データなし</p>
+        <p className="text-center text-gray-500 text-sm -mt-4">推移データなし</p>
       )}
     </div>
   );
