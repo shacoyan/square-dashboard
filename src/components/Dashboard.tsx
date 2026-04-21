@@ -217,8 +217,6 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           </div>
         )}
 
-        <OpenOrderList orders={openOrders} loading={openOrdersLoading} error={openOrdersError} />
-
         <SalesSummary
           total={sales?.total_amount ?? 0}
           count={sales?.transaction_count ?? 0}
@@ -234,6 +232,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           period={period}
           onPeriodChange={setPeriod}
         />
+
+        <OpenOrderList orders={openOrders} loading={openOrdersLoading} error={openOrdersError} />
 
         <TransactionList transactions={transactions} loading={loading} />
       </main>

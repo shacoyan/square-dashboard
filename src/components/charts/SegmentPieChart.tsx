@@ -24,9 +24,28 @@ const formatTooltip = (value: number, name: string, props: { payload?: { percent
   return [`¥${value.toLocaleString()}（${(percent * 100).toFixed(1)}%）`, name];
 };
 
+const renderLabel = (props: any) => {
+  const RADIAN = Math.PI / 180;
+  const r = props.outerRadius + 18;
+  const x = props.cx + r * Math.cos(-props.midAngle * RADIAN);
+  const y = props.cy + r * Math.sin(-props.midAngle * RADIAN);
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#e5e7eb"
+      textAnchor={x > props.cx ? 'start' : 'end'}
+      dominantBaseline="central"
+      fontSize={11}
+    >
+      {`${props.payload.name} ¥${props.payload.value.toLocaleString()} (${(props.percent * 100).toFixed(1)}%)`}
+    </text>
+  );
+};
+
 export default function SegmentPieChart({ sales }: Props) {
   const total = sales.new + sales.repeat + sales.regular;
-  
+
   const data = total === 0
     ? [{ name: 'データなし', value: 1, segment: 'new' as const }]
     : (Object.keys(sales) as (keyof SegmentBreakdown)[]).map((segment) => ({
@@ -47,6 +66,8 @@ export default function SegmentPieChart({ sales }: Props) {
             outerRadius={80}
             paddingAngle={total === 0 ? 0 : 2}
             dataKey="value"
+            label={total > 0 ? renderLabel : undefined}
+            labelLine={false}
           >
             {data.map((entry, index) => (
               <Cell
@@ -71,16 +92,15 @@ export default function SegmentPieChart({ sales }: Props) {
           {total > 0 && (
             <Legend
               formatter={(value: string) => (
-                <span className="text-gray-300 text-xs">{value}</span>
+                <span className="text-gray-200 text-xs">{value}</span>
               )}
             />
           )}
         </PieChart>
       </ResponsiveContainer>
       {total === 0 && (
-        <p className="text-center text-gray-500 text-sm -mt-4">売上データなし</p>
+        <p className="text-center text-gray-400 text-sm -mt-4">売上データなし</p>
       )}
     </div>
   );
 }
-

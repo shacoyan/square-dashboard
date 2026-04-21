@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Transaction, CustomerSegmentAnalysis, PeriodPreset, DailySegmentPoint } from '../types';
+import type { Transaction, CustomerSegmentAnalysis, PeriodPreset, DailySegmentPoint, OpenOrder } from '../types';
 import { aggregateSegments, countCustomersByTransaction } from '../lib/customerSegment';
 
 interface Args {
@@ -44,8 +44,7 @@ function calculatePeriodDates(period: PeriodPreset, baseDate: string): string[] 
     const k = y % 100;
     const j = Math.floor(y / 100);
     const h = (bd + Math.floor((13 * (m + 1)) / 5) + k + Math.floor(k / 4) + Math.floor(j / 4) + 5 * j) % 7;
-    // h=0: Saturday, 1: Sunday, 2: Monday, 3: Tuesday, 4: Wednesday, 5: Thursday, 6: Friday
-    const dayOfWeek = (h + 5) % 7; // Map to Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
+    const dayOfWeek = (h + 5) % 7;
     
     startDateObj = new Date(Date.UTC(by, bm - 1, bd - dayOfWeek));
     endDateObj = new Date(Date.UTC(by, bm - 1, bd + (6 - dayOfWeek)));
@@ -71,6 +70,19 @@ function calculatePeriodDates(period: PeriodPreset, baseDate: string): string[] 
   }
 
   return dates;
+}
+
+function openOrderToTransaction(o: OpenOrder): Transaction {
+  return {
+    id: o.id,
+    customer_name: o.customer_name,
+    created_at_jst: o.created_at ?? '',
+    amount: o.total_money,
+    status: 'OPEN',
+    source: 'OPEN_TICKET',
+    line_items: o.line_items,
+    discounts: o.discounts,
+  };
 }
 
 export function useCustomerSegment(args: Args): {
@@ -108,57 +120,85 @@ export function useCustomerSegment(args: Args): {
     };
 
     const allTransactions: Transaction[] = [];
+    let bothFailures = 0;
     let failures = 0;
+    let openFailures = 0;
     let dailySalesTotal = 0;
     let dailyCustomersTotal = 0;
     const dailyTrend: DailySegmentPoint[] = [];
 
-    const fetchPromises = dates.map(date =>
-      fetch(`/api/transactions?date=${date}&location_id=${locationId}&start_hour=${startHour}&end_hour=${endHour}`, {
+    const fetchPromises = dates.map(date => {
+      const txUrl = `/api/transactions?date=${date}&location_id=${locationId}&start_hour=${startHour}&end_hour=${endHour}`;
+      const openUrl = `/api/open-orders?date=${date}&location_id=${locationId}&start_hour=${startHour}&end_hour=${endHour}`;
+
+      const txPromise = fetch(txUrl, {
         headers,
         signal: currentAbortController.signal,
-      })
-        .then(res => {
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-          }
-          return res.json() as Promise<{ transactions: Transaction[] }>;
-        })
-        .then(payload => {
-          const transactions = payload.transactions ?? [];
-          allTransactions.push(...transactions);
+      }).then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<{ transactions: Transaction[] }>;
+      }).then(payload => payload.transactions ?? []);
 
-          let dayNew = 0;
-          let dayRepeat = 0;
-          let dayRegular = 0;
+      const openPromise = fetch(openUrl, {
+        headers,
+        signal: currentAbortController.signal,
+      }).then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<{ orders?: OpenOrder[] }>;
+      }).then(payload => payload.orders ?? []);
 
-          transactions.forEach(tx => {
-            const dayCounts = countCustomersByTransaction(tx);
-            dayNew += dayCounts.new;
-            dayRepeat += dayCounts.repeat;
-            dayRegular += dayCounts.regular;
-          });
+      return Promise.allSettled([txPromise, openPromise]).then(async (results) => {
+        if (currentAbortController.signal.aborted) return;
 
-          dailyTrend.push({
-            date,
-            new: dayNew,
-            repeat: dayRepeat,
-            regular: dayRegular,
-          });
+        const [txResult, openResult] = results;
 
-          const dayTotalCustomers = dayNew + dayRepeat + dayRegular;
-          dailyCustomersTotal += dayTotalCustomers;
-
-          const daySales = transactions.reduce((sum, t) => sum + (t.amount ?? 0), 0);
-          dailySalesTotal += daySales;
-        })
-        .catch(err => {
-          if (err instanceof DOMException && err.name === 'AbortError') {
-            throw err;
-          }
+        if (txResult.status === 'rejected' && openResult.status === 'rejected') {
+          bothFailures++;
           failures++;
-        })
-    );
+          return;
+        }
+
+        if (txResult.status === 'rejected') {
+          failures++;
+        }
+
+        if (openResult.status === 'rejected') {
+          openFailures++;
+        }
+
+        const transactions: Transaction[] = txResult.status === 'fulfilled' ? txResult.value : [];
+        const openOrders: OpenOrder[] = openResult.status === 'fulfilled' ? openResult.value : [];
+
+        const mappedOpenOrders = openOrders.map(openOrderToTransaction);
+        const combinedTransactions = [...transactions, ...mappedOpenOrders];
+        
+        allTransactions.push(...combinedTransactions);
+
+        let dayNew = 0;
+        let dayRepeat = 0;
+        let dayRegular = 0;
+
+        combinedTransactions.forEach(tx => {
+          const dayCounts = countCustomersByTransaction(tx);
+          dayNew += dayCounts.new;
+          dayRepeat += dayCounts.repeat;
+          dayRegular += dayCounts.regular;
+        });
+
+        dailyTrend.push({
+          date,
+          new: dayNew,
+          repeat: dayRepeat,
+          regular: dayRegular,
+        });
+
+        const dayTotalCustomers = dayNew + dayRepeat + dayRegular;
+        dailyCustomersTotal += dayTotalCustomers;
+
+        const daySales = combinedTransactions.reduce((sum, t) => sum + (t.amount ?? 0), 0);
+        dailySalesTotal += daySales;
+      });
+    });
 
     try {
       await Promise.all(fetchPromises);
@@ -167,13 +207,20 @@ export function useCustomerSegment(args: Args): {
         return;
       }
 
-      if (failures === dates.length) {
+      if (bothFailures === dates.length) {
         setData(null);
         setError('期間データ取得失敗');
         return;
       }
 
-      const warning = failures > 0 ? `${failures}日のデータ取得に失敗しました。一部データが欠落しています。` : null;
+      const warningMessages: string[] = [];
+      if (failures > 0) {
+        warningMessages.push(`${failures}日のデータ取得に失敗しました。一部データが欠落しています。`);
+      }
+      if (openFailures > 0) {
+        warningMessages.push(`${openFailures}日のオープンオーダー取得に失敗しました。`);
+      }
+      const warning = warningMessages.length > 0 ? warningMessages.join(' ') : null;
       setError(warning);
 
       const result = aggregateSegments(allTransactions);

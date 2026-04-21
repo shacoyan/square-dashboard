@@ -9,11 +9,30 @@ interface Props {
 
 const CHANNEL_CONFIG: { key: keyof AcquisitionBreakdown; label: string; color: string }[] = [
   { key: 'google', label: 'Google', color: '#6366f1' },      // indigo-500
-  { key: 'review', label: 'クチコミ', color: '#10b981' },    // emerald-500
+  { key: 'review', label: '口コミ', color: '#10b981' },      // emerald-500
   { key: 'signboard', label: '看板', color: '#f59e0b' },     // amber-500
   { key: 'sns', label: 'SNS', color: '#8b5cf6' },            // violet-500
   { key: 'unknown', label: '打ち漏れ', color: '#f87171' },    // red-400
 ];
+
+const renderLabel = (props: any) => {
+  const RADIAN = Math.PI / 180;
+  const r = props.outerRadius + 18;
+  const x = props.cx + r * Math.cos(-props.midAngle * RADIAN);
+  const y = props.cy + r * Math.sin(-props.midAngle * RADIAN);
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#e5e7eb"
+      textAnchor={x > props.cx ? 'start' : 'end'}
+      dominantBaseline="central"
+      fontSize={11}
+    >
+      {`${props.payload.name} ${props.payload.value}人 (${(props.percent * 100).toFixed(1)}%)`}
+    </text>
+  );
+};
 
 export default function AcquisitionChart({ data }: Props) {
   const total = CHANNEL_CONFIG.reduce((sum, ch) => sum + (data[ch.key] ?? 0), 0);
@@ -34,7 +53,7 @@ export default function AcquisitionChart({ data }: Props) {
             </Pie>
           </PieChart>
         </ResponsiveContainer>
-        <p className="text-center text-gray-500 text-sm -mt-4">新規客なし</p>
+        <p className="text-center text-gray-400 text-sm -mt-4">新規客なし</p>
       </div>
     );
   }
@@ -57,6 +76,8 @@ export default function AcquisitionChart({ data }: Props) {
             outerRadius={80}
             paddingAngle={2}
             dataKey="value"
+            label={renderLabel}
+            labelLine={false}
           >
             {chartData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
@@ -77,7 +98,7 @@ export default function AcquisitionChart({ data }: Props) {
           />
           <Legend
             formatter={(value: string) => (
-              <span className="text-gray-300 text-xs">{value}</span>
+              <span className="text-gray-200 text-xs">{value}</span>
             )}
           />
         </PieChart>
@@ -85,4 +106,3 @@ export default function AcquisitionChart({ data }: Props) {
     </div>
   );
 }
-

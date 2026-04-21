@@ -42,7 +42,7 @@ export interface SalesData {
 }
 
 export type CustomerSegment = 'new' | 'repeat' | 'regular';
-export type AcquisitionChannel = 'google' | 'review' | 'signboard' | 'sns' | 'unknown';
+export type AcquisitionChannel = 'google' | 'review' | 'signboard' | 'sns' | 'unknown'; // 'review' は「口コミ」（旧表記「クチコミ」）の内部キー。UI 表示は「口コミ」で統一。
 
 export interface SegmentBreakdown {
   new: number;
@@ -52,7 +52,7 @@ export interface SegmentBreakdown {
 
 export interface AcquisitionBreakdown {
   google: number;
-  review: number;
+  review: number; // 「口コミ」の内部キー。UIでは「口コミ」表記。
   signboard: number;
   sns: number;
   unknown: number; // 打ち漏れ

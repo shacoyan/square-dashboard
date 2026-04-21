@@ -55,7 +55,7 @@ export function detectAcquisitionChannels(tx: Transaction): AcquisitionBreakdown
   for (const item of tx.line_items) {
     const name = item.name;
     if (name.includes('Google')) result.google += 1;
-    if (name.includes('クチコミ')) result.review += 1;
+    if (name.includes('口コミ') || name.includes('クチコミ')) result.review += 1;
     if (name.includes('看板')) result.signboard += 1;
     if (name.includes('SNS')) result.sns += 1;
   }

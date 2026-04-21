@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  LabelList,
 } from 'recharts';
 import type { DailySegmentPoint } from '../../types';
 
@@ -43,12 +44,12 @@ export default function SegmentTrendChart({ data }: Props) {
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            tick={{ fontSize: 11, fill: '#d1d5db' }}
             axisLine={{ stroke: '#4b5563' }}
             tickLine={{ stroke: '#4b5563' }}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            tick={{ fontSize: 11, fill: '#d1d5db' }}
             axisLine={{ stroke: '#4b5563' }}
             tickLine={{ stroke: '#4b5563' }}
             allowDecimals={false}
@@ -65,7 +66,7 @@ export default function SegmentTrendChart({ data }: Props) {
           />
           <Legend
             formatter={(value: string) => (
-              <span className="text-gray-300 text-xs">{value}</span>
+              <span className="text-gray-200 text-xs">{value}</span>
             )}
           />
           {SERIES.map((s) => (
@@ -79,12 +80,16 @@ export default function SegmentTrendChart({ data }: Props) {
               dot={{ r: 3, fill: s.color }}
               activeDot={{ r: 5 }}
               connectNulls
-            />
+            >
+              {!isEmpty && (
+                <LabelList dataKey={s.key} position="top" fill="#e5e7eb" fontSize={10} />
+              )}
+            </Line>
           ))}
         </LineChart>
       </ResponsiveContainer>
       {isEmpty && (
-        <p className="text-center text-gray-500 text-sm -mt-4">推移データなし</p>
+        <p className="text-center text-gray-400 text-sm -mt-4">推移データなし</p>
       )}
     </div>
   );
