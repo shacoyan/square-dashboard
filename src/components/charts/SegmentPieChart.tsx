@@ -8,10 +8,12 @@ interface Props {
 }
 
 const COLORS = {
-  new: '#6366f1',     // indigo-500
-  repeat: '#10b981',  // emerald-500
-  regular: '#f59e0b', // amber-500
+  new: '#3b82f6',
+  repeat: '#eab308',
+  regular: '#ef4444',
 };
+
+const SEGMENT_ORDER: (keyof SegmentBreakdown)[] = ['new', 'repeat', 'regular'];
 
 const LABELS: Record<keyof SegmentBreakdown, string> = {
   new: '新規',
@@ -29,11 +31,7 @@ export default function SegmentPieChart({ sales }: Props) {
 
   const data = total === 0
     ? [{ name: 'データなし', value: 1, segment: 'new' as const }]
-    : (Object.keys(sales) as (keyof SegmentBreakdown)[]).map((segment) => ({
-        name: LABELS[segment],
-        value: sales[segment],
-        segment,
-      }));
+    : SEGMENT_ORDER.map((segment) => ({ name: LABELS[segment], value: sales[segment], segment }));
 
   return (
     <div className="w-full h-[300px]">
@@ -60,12 +58,15 @@ export default function SegmentPieChart({ sales }: Props) {
             <Tooltip
               formatter={formatTooltip}
               contentStyle={{
-                backgroundColor: '#1f2937',
-                border: 'none',
+                backgroundColor: '#ffffff',
+                border: '1px solid #e5e7eb',
                 borderRadius: '8px',
-                color: '#f9fafb',
+                color: '#111827',
                 fontSize: '13px',
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
               }}
+              itemStyle={{ color: '#111827' }}
+              labelStyle={{ color: '#111827' }}
             />
           )}
           {total > 0 && (

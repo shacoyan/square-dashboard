@@ -17,16 +17,10 @@ interface Props {
 }
 
 const SERIES = [
-  { key: 'new' as const, color: '#6366f1', label: '新規' },      // indigo-500
-  { key: 'repeat' as const, color: '#10b981', label: 'リピート' }, // emerald-500
-  { key: 'regular' as const, color: '#f59e0b', label: '常連' },    // amber-500
+  { key: 'new' as const, color: '#3b82f6', label: '新規' },
+  { key: 'repeat' as const, color: '#eab308', label: 'リピート' },
+  { key: 'regular' as const, color: '#ef4444', label: '常連' },
 ];
-
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '--';
-  const d = new Date(dateStr);
-  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-};
 
 export default function SegmentTrendChart({ data }: Props) {
   const isEmpty = !data || data.length === 0;
@@ -42,7 +36,12 @@ export default function SegmentTrendChart({ data }: Props) {
           <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
           <XAxis
             dataKey="date"
-            tickFormatter={formatDate}
+            tickFormatter={(value) => {
+              if (!value) return '--';
+              const parts = String(value).split('-');
+              if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
+              return String(value);
+            }}
             tick={{ fontSize: 11, fill: '#6b7280' }}
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
@@ -55,13 +54,21 @@ export default function SegmentTrendChart({ data }: Props) {
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#1f2937',
-              border: 'none',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e5e7eb',
               borderRadius: '8px',
-              color: '#f9fafb',
+              color: '#111827',
               fontSize: '13px',
+              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
             }}
-            labelFormatter={(label: string) => (label ? formatDate(String(label)) : '')}
+            itemStyle={{ color: '#111827' }}
+            labelStyle={{ color: '#111827' }}
+            labelFormatter={(label) => {
+              if (!label) return '';
+              const parts = String(label).split('-');
+              if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
+              return String(label);
+            }}
           />
           <Legend
             formatter={(value: string) => (

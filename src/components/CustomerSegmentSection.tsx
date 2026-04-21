@@ -1,5 +1,5 @@
 import { formatYen } from '../utils';
-import type { CustomerSegmentAnalysis, PeriodPreset, SegmentBreakdown } from '../types';
+import type { CustomerSegmentAnalysis, PeriodPreset, SegmentBreakdown, AcquisitionBreakdown } from '../types';
 import { SegmentPieChart, SegmentTrendChart, AcquisitionChart } from './charts';
 
 interface Props {
@@ -8,11 +8,14 @@ interface Props {
   error: string | null;
   period: PeriodPreset;
   onPeriodChange: (p: PeriodPreset) => void;
+  weekIndex: number;
+  onWeekIndexChange: (n: number) => void;
+  availableWeeks: number;
 }
 
 const PERIOD_TABS: { key: PeriodPreset; label: string }[] = [
   { key: 'today', label: '今日' },
-  { key: 'week', label: '今週' },
+  { key: 'week', label: '週' },
   { key: 'month', label: '今月' },
 ];
 
@@ -65,18 +68,18 @@ const SEGMENT_LABELS: { key: keyof SegmentBreakdown; label: string }[] = [
 ];
 
 const SALES_COLORS: Record<keyof SegmentBreakdown, string> = {
-  new: '#6366f1',
-  repeat: '#10b981',
-  regular: '#f59e0b'
+  new: '#3b82f6',
+  repeat: '#eab308',
+  regular: '#ef4444'
 };
 
-const ACQUISITION_CONFIG = [
+const ACQUISITION_CONFIG: { key: keyof AcquisitionBreakdown; label: string; color: string }[] = [
   { key: 'google', label: 'Google', color: '#4285f4' },
   { key: 'review', label: '口コミ', color: '#ea4335' },
   { key: 'signboard', label: '看板', color: '#fbbc04' },
-  { key: 'sns', label: 'SNS', color: '#9334ea' },
+  { key: 'sns', label: 'SNS', color: '#34a853' },
   { key: 'unknown', label: '打ち漏れ', color: '#9ca3af' }
-] as const;
+];
 
 export default function CustomerSegmentSection({
   data,
@@ -84,6 +87,9 @@ export default function CustomerSegmentSection({
   error,
   period,
   onPeriodChange,
+  weekIndex,
+  onWeekIndexChange,
+  availableWeeks,
 }: Props) {
   if (loading) {
     return (
@@ -150,6 +156,29 @@ export default function CustomerSegmentSection({
             })}
           </div>
         </div>
+
+        {period === 'week' && availableWeeks > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="週選択">
+            {Array.from({ length: availableWeeks }, (_, i) => i + 1).map((n) => {
+              const isSelected = weekIndex === n;
+              return (
+                <button
+                  key={n}
+                  role="tab"
+                  aria-selected={isSelected}
+                  onClick={() => onWeekIndexChange(n)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
+                    isSelected
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  第{n}週
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">

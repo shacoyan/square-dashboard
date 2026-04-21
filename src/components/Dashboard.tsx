@@ -37,6 +37,18 @@ function getPeriodLabel(date: string, startHour: number, endHour: number): strin
   return `${date} ${String(startHour).padStart(2, '0')}:00 〜 ${endDate} ${String(endHour).padStart(2, '0')}:59`;
 }
 
+function getWeekIndexForDate(dateStr: string): number {
+  const date = new Date(dateStr + 'T12:00:00');
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  const dayOfMonth = date.getDate();
+  const firstMonday = firstDayOfMonth === 0 ? 1 : (8 - firstDayOfMonth) % 7 || 7;
+  const adjustedFirstMonday = firstMonday > 1 ? firstMonday - 7 : firstMonday;
+  const weekIndex = Math.ceil((dayOfMonth - adjustedFirstMonday + 1) / 7);
+  return weekIndex;
+}
+
 export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [startHour, setStartHour] = useState<number>(() => {
     const saved = localStorage.getItem('sq_start_hour');
@@ -53,6 +65,12 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [locationsLoading, setLocationsLoading] = useState(true);
   const [locationsError, setLocationsError] = useState<string | null>(null);
   const [period, setPeriod] = useState<PeriodPreset>('today');
+  
+  const [weekIndex, setWeekIndex] = useState<number>(() => getWeekIndexForDate(getBusinessDate(13)));
+
+  useEffect(() => {
+    setWeekIndex(getWeekIndexForDate(date));
+  }, [date, period]);
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -92,6 +110,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     data: segmentData,
     loading: segmentLoading,
     error: segmentError,
+    availableWeeks: segmentAvailableWeeks,
   } = useCustomerSegment({
     token,
     locationId: selectedLocationId,
@@ -99,6 +118,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     baseDate: date,
     startHour,
     endHour,
+    weekIndex,
   });
 
   const { orders: openOrders, loading: openOrdersLoading, error: openOrdersError } = useOpenOrders({
@@ -231,6 +251,9 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           error={segmentError}
           period={period}
           onPeriodChange={setPeriod}
+          weekIndex={weekIndex}
+          availableWeeks={segmentAvailableWeeks}
+          onWeekIndexChange={setWeekIndex}
         />
 
         <OpenOrderList orders={openOrders} loading={openOrdersLoading} error={openOrdersError} />

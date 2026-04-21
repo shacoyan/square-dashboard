@@ -8,11 +8,11 @@ interface Props {
 }
 
 const CHANNEL_CONFIG: { key: keyof AcquisitionBreakdown; label: string; color: string }[] = [
-  { key: 'google', label: 'Google', color: '#6366f1' },      // indigo-500
-  { key: 'review', label: '口コミ', color: '#10b981' },      // emerald-500
-  { key: 'signboard', label: '看板', color: '#f59e0b' },     // amber-500
-  { key: 'sns', label: 'SNS', color: '#8b5cf6' },            // violet-500
-  { key: 'unknown', label: '打ち漏れ', color: '#f87171' },    // red-400
+  { key: 'google',    label: 'Google',   color: '#4285f4' },
+  { key: 'review',    label: '口コミ',   color: '#ea4335' },
+  { key: 'signboard', label: '看板',     color: '#fbbc04' },
+  { key: 'sns',       label: 'SNS',      color: '#34a853' },
+  { key: 'unknown',   label: '打ち漏れ', color: '#9ca3af' },
 ];
 
 export default function AcquisitionChart({ data }: Props) {
@@ -68,12 +68,15 @@ export default function AcquisitionChart({ data }: Props) {
               return [`${value}人（${(percent * 100).toFixed(1)}%）`, name];
             }}
             contentStyle={{
-              backgroundColor: '#1f2937',
-              border: 'none',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e5e7eb',
               borderRadius: '8px',
-              color: '#f9fafb',
+              color: '#111827',
               fontSize: '13px',
+              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
             }}
+            itemStyle={{ color: '#111827' }}
+            labelStyle={{ color: '#111827' }}
           />
           <Legend
             formatter={(value: string) => (

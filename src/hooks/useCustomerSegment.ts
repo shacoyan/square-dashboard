@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Transaction, CustomerSegmentAnalysis, PeriodPreset, DailySegmentPoint, OpenOrder } from '../types';
 import { aggregateSegments, countCustomersByTransaction } from '../lib/customerSegment';
 
@@ -9,6 +9,7 @@ interface Args {
   baseDate: string;
   startHour: number;
   endHour: number;
+  weekIndex?: number;
 }
 
 function getJSTDateParts(date: Date): { year: number; month: number; day: number } {
@@ -21,7 +22,25 @@ function formatJSTDateString(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-function calculatePeriodDates(period: PeriodPreset, baseDate: string): string[] {
+function getMonOffset(date: Date): number {
+  const d = date.getUTCDay(); // 0=Sun ... 6=Sat
+  return (d + 6) % 7; // Mon=0, Sun=6
+}
+
+function getFirstWeekMonday(year: number, month: number): Date {
+  const first = new Date(Date.UTC(year, month - 1, 1));
+  const offset = getMonOffset(first);
+  return new Date(Date.UTC(year, month - 1, 1 - offset));
+}
+
+function getMonthWeekCount(year: number, month: number): number {
+  const firstMon = getFirstWeekMonday(year, month);
+  const lastDay = new Date(Date.UTC(year, month, 0));
+  const diffDays = Math.floor((lastDay.getTime() - firstMon.getTime()) / 86400000);
+  return Math.floor(diffDays / 7) + 1;
+}
+
+function calculatePeriodDates(period: PeriodPreset, baseDate: string, weekIndex?: number): string[] {
   const [by, bm, bd] = baseDate.split('-').map(Number);
 
   const { year: todayY, month: todayM, day: todayD } = getJSTDateParts(new Date());
@@ -35,19 +54,21 @@ function calculatePeriodDates(period: PeriodPreset, baseDate: string): string[] 
     startDateObj = new Date(Date.UTC(by, bm - 1, bd));
     endDateObj = new Date(Date.UTC(by, bm - 1, bd));
   } else if (period === 'week') {
-    let m = bm;
-    let y = by;
-    if (m < 3) {
-      m += 12;
-      y -= 1;
-    }
-    const k = y % 100;
-    const j = Math.floor(y / 100);
-    const h = (bd + Math.floor((13 * (m + 1)) / 5) + k + Math.floor(k / 4) + Math.floor(j / 4) + 5 * j) % 7;
-    const dayOfWeek = (h + 5) % 7;
+    const firstMon = getFirstWeekMonday(by, bm);
+    const baseDateUTC = Date.UTC(by, bm - 1, bd);
     
-    startDateObj = new Date(Date.UTC(by, bm - 1, bd - dayOfWeek));
-    endDateObj = new Date(Date.UTC(by, bm - 1, bd + (6 - dayOfWeek)));
+    let effectiveIndex: number;
+    if (weekIndex !== undefined) {
+      effectiveIndex = weekIndex;
+    } else {
+      const diff = baseDateUTC - firstMon.getTime();
+      const days = diff / 86400000;
+      effectiveIndex = Math.floor(days / 7) + 1;
+      if (effectiveIndex < 1) effectiveIndex = 1;
+    }
+    
+    startDateObj = new Date(firstMon.getTime() + 7 * (effectiveIndex - 1) * 86400000);
+    endDateObj = new Date(firstMon.getTime() + (7 * (effectiveIndex - 1) + 6) * 86400000);
   } else {
     startDateObj = new Date(Date.UTC(by, bm - 1, 1));
     endDateObj = new Date(Date.UTC(by, bm, 0));
@@ -67,6 +88,11 @@ function calculatePeriodDates(period: PeriodPreset, baseDate: string): string[] 
   while (current.getTime() <= endDateObj.getTime()) {
     dates.push(formatJSTDateString(current.getUTCFullYear(), current.getUTCMonth() + 1, current.getUTCDate()));
     current.setUTCDate(current.getUTCDate() + 1);
+  }
+
+  if (period === 'week') {
+    const prefix = `${by}-${String(bm).padStart(2, '0')}-`;
+    return dates.filter(d => d.startsWith(prefix));
   }
 
   return dates;
@@ -90,14 +116,20 @@ export function useCustomerSegment(args: Args): {
   loading: boolean;
   error: string | null;
   refresh: () => void;
+  availableWeeks: number;
 } {
-  const { token, locationId, period, baseDate, startHour, endHour } = args;
+  const { token, locationId, period, baseDate, startHour, endHour, weekIndex } = args;
 
   const [data, setData] = useState<CustomerSegmentAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const availableWeeks = useMemo(() => {
+    const [by, bm] = baseDate.split('-').map(Number);
+    return getMonthWeekCount(by, bm);
+  }, [baseDate]);
 
   const fetchData = useCallback(async () => {
     if (!locationId) return;
@@ -112,7 +144,7 @@ export function useCustomerSegment(args: Args): {
     setError(null);
     setData(null);
 
-    const dates = calculatePeriodDates(period, baseDate);
+    const dates = calculatePeriodDates(period, baseDate, weekIndex);
 
     const headers: HeadersInit = {
       Authorization: `Bearer ${token}`,
@@ -226,7 +258,7 @@ export function useCustomerSegment(args: Args): {
       const result = aggregateSegments(allTransactions);
 
       const elapsedDays = dates.length;
-      const averageDailySales = period === 'today' ? null : (dates.length > 0 ? dailySalesTotal / elapsedDays : null);
+      const averageDailySales = period === 'today' ? dailySalesTotal : (dates.length > 0 ? dailySalesTotal / elapsedDays : null);
       const overallAveragePerCustomer = dailyCustomersTotal > 0 ? dailySalesTotal / dailyCustomersTotal : null;
 
       setData({
@@ -254,7 +286,7 @@ export function useCustomerSegment(args: Args): {
         setLoading(false);
       }
     }
-  }, [token, locationId, period, baseDate, startHour, endHour]);
+  }, [token, locationId, period, baseDate, startHour, endHour, weekIndex]);
 
   useEffect(() => {
     fetchData();
@@ -272,5 +304,6 @@ export function useCustomerSegment(args: Args): {
     loading,
     error,
     refresh: fetchData,
+    availableWeeks,
   };
 }
