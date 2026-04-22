@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { Location, PeriodPreset, LocationSegmentRow } from '../types';
 import { useMultiLocationSegment } from '../hooks/useMultiLocationSegment';
 import { LocationBarChart, LocationStackChart, LocationTrendChart } from './charts';
@@ -76,10 +75,6 @@ export default function LocationComparisonSection(props: Props) {
     endHour,
   } = props;
 
-  const [expanded, setExpanded] = useState(
-    () => localStorage.getItem('sq_location_compare_expanded') === '1'
-  );
-
   const { data, loading, error } = useMultiLocationSegment({
     token,
     locations,
@@ -88,14 +83,8 @@ export default function LocationComparisonSection(props: Props) {
     startHour,
     endHour,
     weekIndex,
-    enabled: expanded && locations.length > 0,
+    enabled: locations.length > 0,
   });
-
-  const toggleExpanded = () => {
-    const n = !expanded;
-    setExpanded(n);
-    localStorage.setItem('sq_location_compare_expanded', n ? '1' : '0');
-  };
 
   type RowInput = LocationSegmentRow | Omit<LocationSegmentRow, 'locationId' | 'locationName' | 'loadError' | 'partialFailure'>;
   const renderRow = (row: RowInput, isTotal = false) => {
@@ -141,185 +130,170 @@ export default function LocationComparisonSection(props: Props) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow">
-      <button
-        type="button"
-        className="w-full flex items-center justify-between p-6"
-        aria-expanded={expanded}
-        aria-controls="location-compare-body"
-        onClick={toggleExpanded}
-      >
-        <h2 className="text-lg font-bold text-gray-900">全店舗比較</h2>
-        <span className="text-gray-500 transition-transform">
-          {expanded ? '▼' : '▶'}
-        </span>
-      </button>
+    <div className="space-y-6">
+      <h2 className="text-lg font-bold text-gray-900">全店舗比較</h2>
 
-      {expanded && (
-        <div id="location-compare-body" className="p-6 pt-0 space-y-6">
-          <div className="flex space-x-2" role="tablist" aria-label="期間選択">
-            {PERIOD_TABS.map((tab) => {
-              const isSelected = period === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={isSelected}
-                  tabIndex={isSelected ? 0 : -1}
-                  onClick={() => onPeriodChange(tab.key)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
-                    isSelected
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
+      <div className="flex space-x-2" role="tablist" aria-label="期間選択">
+        {PERIOD_TABS.map((tab) => {
+          const isSelected = period === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={isSelected}
+              tabIndex={isSelected ? 0 : -1}
+              onClick={() => onPeriodChange(tab.key)}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
+                isSelected
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {period === 'week' && availableWeeks > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="週選択">
+          {Array.from({ length: availableWeeks }, (_, i) => i + 1).map((n) => {
+            const isSelected = weekIndex === n;
+            return (
+              <button
+                key={n}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                tabIndex={isSelected ? 0 : -1}
+                onClick={() => onWeekIndexChange(n)}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
+                  isSelected
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                第{n}週
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {loading && <SkeletonCompareSection />}
+
+      {error && !data && (
+        <div className="bg-red-50 border border-red-300 text-red-800 px-4 py-3 rounded-lg" role="alert">
+          <p className="font-medium">データの取得に失敗しました</p>
+          <p className="text-sm mt-1">{error}</p>
+        </div>
+      )}
+
+      {error && data && (
+        <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-3 rounded-lg" role="alert">
+          <p className="font-medium">一部の店舗データの取得に失敗しました</p>
+          <p className="text-sm mt-1">{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && !data && (
+        <p className="text-gray-500">店舗データがありません。</p>
+      )}
+
+      {data && (
+        <>
+          <div className="overflow-x-auto -mx-6 px-6">
+            <table className="min-w-[1100px] w-full text-sm">
+              <thead className="bg-gray-100">
+                <tr className="border-b border-gray-200">
+                  <th className="px-3 py-2 text-left whitespace-nowrap">店舗名</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">期間売上</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">平均日売上</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">客単価</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">合計客数</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">新規</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">リピート</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">常連</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">スタッフ</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">記載なし売上</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">Google</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">口コミ</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">看板</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">SNS</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">不明</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.rows.map((row) => renderRow(row))}
+                {renderRow(data.totals, true)}
+              </tbody>
+            </table>
+            {data.rows.some(r => r.partialFailure !== null) && (
+              <p className="text-xs text-amber-700 mt-2">※ 一部日付のデータ取得に失敗した店舗です。平均日売上は全期間日数で按分しているため実績より低く表示されている可能性があります。</p>
+            )}
           </div>
 
-          {period === 'week' && availableWeeks > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="週選択">
-              {Array.from({ length: availableWeeks }, (_, i) => i + 1).map((n) => {
-                const isSelected = weekIndex === n;
-                return (
-                  <button
-                    key={n}
-                    type="button"
-                    role="tab"
-                    aria-selected={isSelected}
-                    tabIndex={isSelected ? 0 : -1}
-                    onClick={() => onWeekIndexChange(n)}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
-                      isSelected
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    第{n}週
-                  </button>
-                );
-              })}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+              <h3 className="text-md font-bold text-gray-900 mb-4">店舗別 売上・客数</h3>
+              <LocationBarChart
+                rows={data.rows.map((r) => ({
+                  locationName: r.locationName,
+                  totalSales: r.totalSales,
+                  totalCustomers: r.totalCustomers,
+                }))}
+              />
             </div>
-          )}
 
-          {loading && <SkeletonCompareSection />}
-
-          {error && !data && (
-            <div className="bg-red-50 border border-red-300 text-red-800 px-4 py-3 rounded-lg" role="alert">
-              <p className="font-medium">データの取得に失敗しました</p>
-              <p className="text-sm mt-1">{error}</p>
+            <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+              <h3 className="text-md font-bold text-gray-900 mb-4">店舗別 セグメント構成（客数）</h3>
+              <LocationStackChart
+                rows={data.rows.map((r) => ({
+                  locationName: r.locationName,
+                  new: r.customersBySegment.new,
+                  repeat: r.customersBySegment.repeat,
+                  regular: r.customersBySegment.regular,
+                  staff: r.customersBySegment.staff,
+                  unlisted: r.customersBySegment.unlisted,
+                }))}
+                series={SEGMENT_SERIES}
+                valueUnit="人"
+                emptyMessage="セグメントデータなし"
+              />
             </div>
-          )}
 
-          {error && data && (
-            <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-3 rounded-lg" role="alert">
-              <p className="font-medium">一部の店舗データの取得に失敗しました</p>
-              <p className="text-sm mt-1">{error}</p>
+            <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+              <h3 className="text-md font-bold text-gray-900 mb-4">店舗別 獲得経路</h3>
+              <LocationStackChart
+                rows={data.rows.map((r) => ({
+                  locationName: r.locationName,
+                  google: r.acquisitionBreakdown.google,
+                  review: r.acquisitionBreakdown.review,
+                  signboard: r.acquisitionBreakdown.signboard,
+                  sns: r.acquisitionBreakdown.sns,
+                  unknown: r.acquisitionBreakdown.unknown,
+                }))}
+                series={ACQUISITION_SERIES}
+                valueUnit="件"
+                emptyMessage="獲得経路データなし"
+              />
             </div>
-          )}
 
-          {!loading && !error && !data && (
-            <p className="text-gray-500">店舗データがありません。</p>
-          )}
-
-          {data && (
-            <>
-              <div className="overflow-x-auto -mx-6 px-6">
-                <table className="min-w-[1100px] w-full text-sm">
-                  <thead className="bg-gray-100">
-                    <tr className="border-b border-gray-200">
-                      <th className="px-3 py-2 text-left whitespace-nowrap">店舗名</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">期間売上</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">平均日売上</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">客単価</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">合計客数</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">新規</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">リピート</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">常連</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">スタッフ</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">記載なし売上</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">Google</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">口コミ</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">看板</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">SNS</th>
-                      <th className="px-3 py-2 text-right whitespace-nowrap">不明</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.rows.map((row) => renderRow(row))}
-                    {renderRow(data.totals, true)}
-                  </tbody>
-                </table>
-                {data.rows.some(r => r.partialFailure !== null) && (
-                  <p className="text-xs text-amber-700 mt-2">※ 一部日付のデータ取得に失敗した店舗です。平均日売上は全期間日数で按分しているため実績より低く表示されている可能性があります。</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
-                  <h3 className="text-md font-bold text-gray-900 mb-4">店舗別 売上・客数</h3>
-                  <LocationBarChart
-                    rows={data.rows.map((r) => ({
-                      locationName: r.locationName,
-                      totalSales: r.totalSales,
-                      totalCustomers: r.totalCustomers,
-                    }))}
-                  />
-                </div>
-
-                <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
-                  <h3 className="text-md font-bold text-gray-900 mb-4">店舗別 セグメント構成（客数）</h3>
-                  <LocationStackChart
-                    rows={data.rows.map((r) => ({
-                      locationName: r.locationName,
-                      new: r.customersBySegment.new,
-                      repeat: r.customersBySegment.repeat,
-                      regular: r.customersBySegment.regular,
-                      staff: r.customersBySegment.staff,
-                      unlisted: r.customersBySegment.unlisted,
-                    }))}
-                    series={SEGMENT_SERIES}
-                    valueUnit="人"
-                    emptyMessage="セグメントデータなし"
-                  />
-                </div>
-
-                <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
-                  <h3 className="text-md font-bold text-gray-900 mb-4">店舗別 獲得経路</h3>
-                  <LocationStackChart
-                    rows={data.rows.map((r) => ({
-                      locationName: r.locationName,
-                      google: r.acquisitionBreakdown.google,
-                      review: r.acquisitionBreakdown.review,
-                      signboard: r.acquisitionBreakdown.signboard,
-                      sns: r.acquisitionBreakdown.sns,
-                      unknown: r.acquisitionBreakdown.unknown,
-                    }))}
-                    series={ACQUISITION_SERIES}
-                    valueUnit="件"
-                    emptyMessage="獲得経路データなし"
-                  />
-                </div>
-
-                <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
-                  <h3 className="text-md font-bold text-gray-900 mb-4">日次推移（客数）</h3>
-                  <LocationTrendChart
-                    locationSeries={data.rows.map((r) => ({
-                      locationId: r.locationId,
-                      locationName: r.locationName,
-                      points: r.dailyTrend,
-                    }))}
-                    totalsSeries={data.totals.dailyTrend}
-                    allDates={data.allDates}
-                  />
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+            <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+              <h3 className="text-md font-bold text-gray-900 mb-4">日次推移（客数）</h3>
+              <LocationTrendChart
+                locationSeries={data.rows.map((r) => ({
+                  locationId: r.locationId,
+                  locationName: r.locationName,
+                  points: r.dailyTrend,
+                }))}
+                totalsSeries={data.totals.dailyTrend}
+                allDates={data.allDates}
+              />
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

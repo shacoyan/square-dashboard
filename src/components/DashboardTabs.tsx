@@ -1,11 +1,12 @@
 interface Props {
-  active: 'daily' | 'segment';
-  onChange: (tab: 'daily' | 'segment') => void;
+  active: 'daily' | 'segment' | 'compare';
+  onChange: (tab: 'daily' | 'segment' | 'compare') => void;
 }
 
-const TABS: { key: 'daily' | 'segment'; label: string }[] = [
+const TABS: { key: 'daily' | 'segment' | 'compare'; label: string }[] = [
   { key: 'daily', label: '当日データ' },
   { key: 'segment', label: '顧客セグメント' },
+  { key: 'compare', label: '全店舗比較' },
 ];
 
 function DashboardTabs({ active, onChange }: Props) {

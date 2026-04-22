@@ -4,12 +4,12 @@ import DatePicker from './DatePicker';
 import DashboardTabs from './DashboardTabs';
 import DailyTabPanel from './tabs/DailyTabPanel';
 import SegmentTabPanel from './tabs/SegmentTabPanel';
+import LocationComparisonSection from './LocationComparisonSection';
 import { useSquareData } from '../hooks/useSquareData';
 import { useOpenOrders } from '../hooks/useOpenOrders';
 import { useCustomerSegment } from '../hooks/useCustomerSegment';
 import type { Location } from '../types';
 import type { PeriodPreset } from '../types';
-import LocationComparisonSection from './LocationComparisonSection';
 
 interface DashboardProps {
   token: string;
@@ -66,10 +66,10 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [locationsError, setLocationsError] = useState<string | null>(null);
   const [period, setPeriod] = useState<PeriodPreset>('month');
 
-  type DashboardTab = 'daily' | 'segment';
+  type DashboardTab = 'daily' | 'segment' | 'compare';
   const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
     const saved = localStorage.getItem('sq_dashboard_tab');
-    return saved === 'segment' ? 'segment' : 'daily';
+    return saved === 'segment' || saved === 'compare' ? saved : 'daily';
   });
   const handleTabChange = (t: DashboardTab) => {
     setActiveTab(t);
@@ -233,19 +233,6 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           </div>
         </div>
 
-        <LocationComparisonSection
-          token={token}
-          locations={locations}
-          period={period}
-          onPeriodChange={setPeriod}
-          weekIndex={weekIndex}
-          onWeekIndexChange={setWeekIndex}
-          availableWeeks={segmentAvailableWeeks}
-          baseDate={date}
-          startHour={startHour}
-          endHour={endHour}
-        />
-
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <p className="text-red-700 text-sm">⚠ {error}</p>
@@ -273,7 +260,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
             openOrdersError={openOrdersError}
             transactions={transactions}
           />
-        ) : (
+        ) : activeTab === 'segment' ? (
           <SegmentTabPanel
             data={segmentData}
             loading={segmentLoading}
@@ -284,7 +271,20 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
             availableWeeks={segmentAvailableWeeks}
             onWeekIndexChange={setWeekIndex}
           />
-        )}
+        ) : activeTab === 'compare' ? (
+          <LocationComparisonSection
+            token={token}
+            locations={locations}
+            period={period}
+            onPeriodChange={setPeriod}
+            weekIndex={weekIndex}
+            onWeekIndexChange={setWeekIndex}
+            availableWeeks={segmentAvailableWeeks}
+            baseDate={date}
+            startHour={startHour}
+            endHour={endHour}
+          />
+        ) : null}
       </main>
     </div>
   );
