@@ -35,12 +35,26 @@ export function allocateSalesByTransaction(tx: Transaction): SegmentBreakdown {
     return { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: tx.amount };
   }
 
-  const newSales = Math.floor((tx.amount * counts.new) / total);
-  const repeatSales = Math.floor((tx.amount * counts.repeat) / total);
-  const staffSales = Math.floor((tx.amount * counts.staff) / total);
-  const regularSales = tx.amount - newSales - repeatSales - staffSales;
+  const baseSales: Pick<SegmentBreakdown, 'new' | 'repeat' | 'regular' | 'staff'> = {
+    new: Math.floor((tx.amount * counts.new) / total),
+    repeat: Math.floor((tx.amount * counts.repeat) / total),
+    regular: Math.floor((tx.amount * counts.regular) / total),
+    staff: Math.floor((tx.amount * counts.staff) / total),
+  };
+  const remainder = tx.amount - baseSales.new - baseSales.repeat - baseSales.regular - baseSales.staff;
 
-  return { new: newSales, repeat: repeatSales, regular: regularSales, staff: staffSales, unlisted: 0 };
+  // 端数の寄せ先: 常連>0なら常連、そうでなければカウント最大のセグメント
+  // 同数タイブレークは new > repeat > staff の優先順
+  let targetKey: 'new' | 'repeat' | 'regular' | 'staff';
+  if (counts.regular > 0) {
+    targetKey = 'regular';
+  } else {
+    const priority: ('new' | 'repeat' | 'staff')[] = ['new', 'repeat', 'staff'];
+    targetKey = priority.reduce((max, k) => (counts[k] > counts[max] ? k : max), priority[0]);
+  }
+  baseSales[targetKey] += remainder;
+
+  return { ...baseSales, unlisted: 0 };
 }
 
 export function detectAcquisitionChannels(tx: Transaction): AcquisitionBreakdown {
