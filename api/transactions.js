@@ -55,6 +55,16 @@ export default async (req, res) => {
     // FAILED/CANCELED などの未成立決済を除外（Square Web のレポートと整合）
     allPayments = allPayments.filter(p => p.status === 'COMPLETED');
 
+    // 全額返金済みの決済を除外（部分返金は残し、amount を返金後金額に調整）
+    allPayments = allPayments.flatMap(p => {
+      const gross = p.amount_money?.amount ?? 0;
+      const refunded = p.refunded_money?.amount ?? 0;
+      if (refunded <= 0) return [p];
+      if (refunded >= gross) return []; // 全額返金 → 除外
+      // 部分返金 → 売上を純額に差し替え
+      return [{ ...p, amount_money: { ...p.amount_money, amount: gross - refunded } }];
+    });
+
     // orders batch-retrieve
     const orderIds = [...new Set(
       allPayments.filter(p => p.order_id).map(p => p.order_id)
