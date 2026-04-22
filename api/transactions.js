@@ -52,6 +52,9 @@ export default async (req, res) => {
       cursor = data.cursor || undefined;
     } while (cursor);
 
+    // FAILED/CANCELED などの未成立決済を除外（Square Web のレポートと整合）
+    allPayments = allPayments.filter(p => p.status === 'COMPLETED');
+
     // orders batch-retrieve
     const orderIds = [...new Set(
       allPayments.filter(p => p.order_id).map(p => p.order_id)
