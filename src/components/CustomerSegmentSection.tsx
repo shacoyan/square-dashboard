@@ -46,12 +46,18 @@ function SkeletonSection() {
   );
 }
 
-function SegmentCustomerCard({ label, count, sales }: { label: string; count: number; sales: number }) {
+function SegmentCustomerCard({ label, count, sales, showCount = true }: { label: string; count: number; sales: number; showCount?: boolean }) {
   return (
     <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
       <p className="text-sm font-medium text-gray-500 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-gray-900">{count.toLocaleString()}人</p>
-      <p className="text-sm text-gray-500 mt-1">売上: {formatYen(sales)}</p>
+      {showCount ? (
+        <>
+          <p className="text-2xl font-bold text-gray-900">{count.toLocaleString()}人</p>
+          <p className="text-sm text-gray-500 mt-1">売上: {formatYen(sales)}</p>
+        </>
+      ) : (
+        <p className="text-2xl font-bold text-gray-900">{formatYen(sales)}</p>
+      )}
     </div>
   );
 }
@@ -61,6 +67,7 @@ const SEGMENT_LABELS: { key: keyof SegmentBreakdown; label: string }[] = [
   { key: 'repeat', label: 'リピート' },
   { key: 'regular', label: '常連' },
   { key: 'staff', label: 'スタッフ' },
+  { key: 'unlisted', label: '記載なし' },
 ];
 
 const SALES_COLORS: Record<keyof SegmentBreakdown, string> = {
@@ -68,6 +75,7 @@ const SALES_COLORS: Record<keyof SegmentBreakdown, string> = {
   repeat: '#eab308',
   regular: '#ef4444',
   staff: '#a855f7',
+  unlisted: '#6b7280',
 };
 
 const ACQUISITION_CONFIG: { key: keyof AcquisitionBreakdown; label: string; color: string }[] = [
@@ -197,15 +205,19 @@ export default function CustomerSegmentSection({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {SEGMENT_LABELS.map(({ key, label }) => (
-                <SegmentCustomerCard
-                  key={key}
-                  label={`${label}客数`}
-                  count={data.customersBySegment[key]}
-                  sales={data.salesBySegment[key]}
-                />
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {SEGMENT_LABELS.map(({ key, label }) => {
+                const isUnlisted = key === 'unlisted';
+                return (
+                  <SegmentCustomerCard
+                    key={key}
+                    label={isUnlisted ? `${label}売上` : `${label}客数`}
+                    count={data.customersBySegment[key]}
+                    sales={data.salesBySegment[key]}
+                    showCount={!isUnlisted}
+                  />
+                );
+              })}
             </div>
           </>
         )}
@@ -243,7 +255,7 @@ export default function CustomerSegmentSection({
               <div className="max-h-[280px] overflow-y-auto space-y-2">
                 {data.dailyTrend.map((day) => (
                   <div key={day.date} className="text-sm text-gray-700">
-                    {day.date}: 合計{day.new + day.repeat + day.regular + day.staff}人（新{day.new}/リ{day.repeat}/常{day.regular}/ス{day.staff}）
+                    {day.date}: 合計{day.new + day.repeat + day.regular + day.staff}人（新{day.new}/リ{day.repeat}/常{day.regular}/ス{day.staff}/記{day.unlisted}）
                   </div>
                 ))}
               </div>

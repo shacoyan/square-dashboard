@@ -1,7 +1,7 @@
 import type { Transaction, SegmentBreakdown, AcquisitionBreakdown } from '../types';
 
 export function countCustomersByTransaction(tx: Transaction): SegmentBreakdown {
-  const initial: SegmentBreakdown = { new: 0, repeat: 0, regular: 0, staff: 0 };
+  const initial: SegmentBreakdown = { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0 };
   const result = tx.line_items.reduce<SegmentBreakdown>((acc, item) => {
     const name = item.name;
     const quantity = Math.round(parseFloat(item.quantity) || 0);
@@ -22,7 +22,7 @@ export function countCustomersByTransaction(tx: Transaction): SegmentBreakdown {
 
   const total = result.new + result.repeat + result.regular + result.staff;
   if (total === 0) {
-    return { new: 0, repeat: 0, regular: 1, staff: 0 };
+    return { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 1 };
   }
   return result;
 }
@@ -32,11 +32,7 @@ export function allocateSalesByTransaction(tx: Transaction): SegmentBreakdown {
   const total = counts.new + counts.repeat + counts.regular + counts.staff;
 
   if (total === 0) {
-    return { new: 0, repeat: 0, regular: tx.amount, staff: 0 };
-  }
-
-  if (counts.new === 0 && counts.repeat === 0 && counts.regular === 1 && counts.staff === 0) {
-    return { new: 0, repeat: 0, regular: tx.amount, staff: 0 };
+    return { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: tx.amount };
   }
 
   const newSales = Math.floor((tx.amount * counts.new) / total);
@@ -44,7 +40,7 @@ export function allocateSalesByTransaction(tx: Transaction): SegmentBreakdown {
   const staffSales = Math.floor((tx.amount * counts.staff) / total);
   const regularSales = tx.amount - newSales - repeatSales - staffSales;
 
-  return { new: newSales, repeat: repeatSales, regular: regularSales, staff: staffSales };
+  return { new: newSales, repeat: repeatSales, regular: regularSales, staff: staffSales, unlisted: 0 };
 }
 
 export function detectAcquisitionChannels(tx: Transaction): AcquisitionBreakdown {
@@ -72,8 +68,8 @@ export function aggregateSegments(transactions: Transaction[]): {
   sales: SegmentBreakdown;
   acquisition: AcquisitionBreakdown;
 } {
-  const customers: SegmentBreakdown = { new: 0, repeat: 0, regular: 0, staff: 0 };
-  const sales: SegmentBreakdown = { new: 0, repeat: 0, regular: 0, staff: 0 };
+  const customers: SegmentBreakdown = { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0 };
+  const sales: SegmentBreakdown = { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0 };
   const acquisition: AcquisitionBreakdown = { google: 0, review: 0, signboard: 0, sns: 0, unknown: 0 };
 
   for (const tx of transactions) {
@@ -82,12 +78,14 @@ export function aggregateSegments(transactions: Transaction[]): {
     customers.repeat += txCustomers.repeat;
     customers.regular += txCustomers.regular;
     customers.staff += txCustomers.staff;
+    customers.unlisted += txCustomers.unlisted;
 
     const txSales = allocateSalesByTransaction(tx);
     sales.new += txSales.new;
     sales.repeat += txSales.repeat;
     sales.regular += txSales.regular;
     sales.staff += txSales.staff;
+    sales.unlisted += txSales.unlisted;
 
     const txAcquisition = detectAcquisitionChannels(tx);
     acquisition.google += txAcquisition.google;

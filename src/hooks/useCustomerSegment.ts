@@ -217,6 +217,7 @@ export function useCustomerSegment(args: Args): {
         let dayRepeat = 0;
         let dayRegular = 0;
         let dayStaff = 0;
+        let dayUnlisted = 0;
 
         combinedTransactions.forEach(tx => {
           const dayCounts = countCustomersByTransaction(tx);
@@ -224,6 +225,7 @@ export function useCustomerSegment(args: Args): {
           dayRepeat += dayCounts.repeat;
           dayRegular += dayCounts.regular;
           dayStaff += dayCounts.staff;
+          dayUnlisted += dayCounts.unlisted;
         });
 
         dailyTrend.push({
@@ -232,6 +234,7 @@ export function useCustomerSegment(args: Args): {
           repeat: dayRepeat,
           regular: dayRegular,
           staff: dayStaff,
+          unlisted: dayUnlisted,
         });
 
         const dayTotalCustomers = dayNew + dayRepeat + dayRegular + dayStaff;

@@ -12,15 +12,17 @@ const COLORS = {
   repeat: '#eab308',
   regular: '#ef4444',
   staff: '#a855f7',
+  unlisted: '#6b7280',
 };
 
-const SEGMENT_ORDER: (keyof SegmentBreakdown)[] = ['new', 'repeat', 'regular', 'staff'];
+const SEGMENT_ORDER: (keyof SegmentBreakdown)[] = ['new', 'repeat', 'regular', 'staff', 'unlisted'];
 
 const LABELS: Record<keyof SegmentBreakdown, string> = {
   new: '新規',
   repeat: 'リピート',
   regular: '常連',
   staff: 'スタッフ',
+  unlisted: '記載なし',
 };
 
 const formatTooltip = (value: number, name: string, props: { payload?: { percent?: number } }) => {
@@ -29,7 +31,7 @@ const formatTooltip = (value: number, name: string, props: { payload?: { percent
 };
 
 export default function SegmentPieChart({ sales }: Props) {
-  const total = sales.new + sales.repeat + sales.regular + sales.staff;
+  const total = sales.new + sales.repeat + sales.regular + sales.staff + sales.unlisted;
 
   const data = total === 0
     ? [{ name: 'データなし', value: 1, segment: 'new' as const }]
