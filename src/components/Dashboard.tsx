@@ -9,6 +9,7 @@ import { useOpenOrders } from '../hooks/useOpenOrders';
 import { useCustomerSegment } from '../hooks/useCustomerSegment';
 import type { Location } from '../types';
 import type { PeriodPreset } from '../types';
+import LocationComparisonSection from './LocationComparisonSection';
 
 interface DashboardProps {
   token: string;
@@ -231,6 +232,19 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
             </div>
           </div>
         </div>
+
+        <LocationComparisonSection
+          token={token}
+          locations={locations}
+          period={period}
+          onPeriodChange={setPeriod}
+          weekIndex={weekIndex}
+          onWeekIndexChange={setWeekIndex}
+          availableWeeks={segmentAvailableWeeks}
+          baseDate={date}
+          startHour={startHour}
+          endHour={endHour}
+        />
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">

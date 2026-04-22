@@ -85,3 +85,30 @@ export interface CustomerSegmentAnalysis {
   acquisitionBreakdown: AcquisitionBreakdown; // 新規客のみ
   dailyTrend: DailySegmentPoint[];
 }
+
+// 全店舗比較 — 店舗 1 行分の集計
+export interface LocationSegmentRow {
+  locationId: string;
+  locationName: string;
+  totalSales: number;
+  averageDailySales: number | null;
+  overallAveragePerCustomer: number | null;
+  totalCustomers: number;
+  customersBySegment: SegmentBreakdown;
+  salesBySegment: SegmentBreakdown;
+  acquisitionBreakdown: AcquisitionBreakdown;
+  dailyTrend: DailySegmentPoint[];
+  loadError: string | null;
+  partialFailure: { failedDays: number; totalDays: number } | null;
+}
+
+// 全店舗比較 — セクション全体のデータ
+export interface LocationComparisonData {
+  period: PeriodPreset;
+  periodStart: string;
+  periodEnd: string;
+  elapsedDays: number;
+  rows: LocationSegmentRow[];
+  totals: Omit<LocationSegmentRow, 'locationId' | 'locationName' | 'loadError' | 'partialFailure'>;
+  allDates: string[];
+}
