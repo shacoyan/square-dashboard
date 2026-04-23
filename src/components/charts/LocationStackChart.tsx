@@ -11,6 +11,7 @@ import {
   Legend,
   LabelList,
 } from 'recharts';
+import type { ReactNode } from 'react';
 
 interface Props {
   rows: Array<{ locationName: string; [key: string]: string | number }>;
@@ -40,10 +41,30 @@ export default function LocationStackChart({ rows, series, valueUnit, emptyMessa
   const chartHeight = Math.max(240, rows.length * 48 + 80);
   const unit = valueUnit ?? '人';
 
-  const tooltipFormatter = (value: number, name: string) => [
-    `${value}${unit}`,
-    <span key={name} className="text-gray-600 text-xs">{name}</span>,
-  ];
+  const tooltipFormatter = (
+    value: number | string,
+    name: string,
+    props: { payload?: Record<string, number | string> }
+  ): [ReactNode, ReactNode] => {
+    const numValue = typeof value === 'number' ? value : Number(value) || 0;
+    const payload = props.payload ?? {};
+    
+    let sum = 0;
+    for (const s of series) {
+      const v = payload[s.key];
+      if (typeof v === 'number') {
+        sum += v;
+      }
+    }
+
+    const pct = sum > 0 ? Math.round((numValue / sum) * 100) : null;
+    const formattedValue = pct !== null ? `${numValue}${unit} (${pct}%)` : `${numValue}${unit}`;
+
+    return [
+      formattedValue,
+      <span key={name} className="text-gray-600 text-xs">{name}</span>,
+    ];
+  };
 
   return (
     <div className="w-full" style={{ height: `${chartHeight}px` }}>

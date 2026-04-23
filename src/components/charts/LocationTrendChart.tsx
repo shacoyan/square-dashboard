@@ -84,24 +84,23 @@ export default function LocationTrendChart({
     return map;
   }, [locationSeries, getValue]);
 
-  // totalsSeries は参照のみ（将来の拡張用）。現状の合計は visible 店舗から再計算している。
-  void totalsSeries;
+  const totalsByDate = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of totalsSeries) m.set(p.date, getValue(p));
+    return m;
+  }, [totalsSeries, getValue]);
 
   const chartData = useMemo(() => {
     return allDates.map((date) => {
       const row: Record<string, string | number> = { date };
-      let visibleTotal = 0;
       for (const loc of locationSeries) {
         const val = locationPointsByDate.get(date)?.get(loc.locationId) ?? 0;
         row[loc.locationId] = val;
-        if (visibility[loc.locationId]) {
-          visibleTotal += val;
-        }
       }
-      row[TOTAL_KEY] = visibleTotal;
+      row[TOTAL_KEY] = totalsByDate.get(date) ?? 0;
       return row;
     });
-  }, [allDates, locationSeries, locationPointsByDate, visibility]);
+  }, [allDates, locationSeries, locationPointsByDate, totalsByDate]);
 
   const allZero = chartData.every((row) => {
     for (const loc of locationSeries) {
@@ -112,11 +111,6 @@ export default function LocationTrendChart({
   });
 
   const isEmpty = allDates.length === 0 || allZero;
-
-  const isAllVisible =
-    locationSeries.length > 0 &&
-    locationSeries.every((loc) => visibility[loc.locationId] !== false);
-  const totalLineName = isAllVisible ? '合計' : '合計（選択中）';
 
   const checkboxItems: SeriesCheckboxItem[] = [
     ...locationSeries.map((loc, i) => ({
@@ -239,7 +233,7 @@ export default function LocationTrendChart({
             <Line
               type="monotone"
               dataKey={TOTAL_KEY}
-              name={totalLineName}
+              name="合計"
               stroke={TOTAL_LINE_COLOR}
               strokeWidth={4}
               dot={{ r: 4, fill: TOTAL_LINE_COLOR }}

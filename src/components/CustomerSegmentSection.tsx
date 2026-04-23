@@ -1,6 +1,7 @@
 import { formatYen } from '../utils';
 import type { CustomerSegmentAnalysis, PeriodPreset, SegmentBreakdown, AcquisitionBreakdown } from '../types';
 import { SegmentPieChart, SegmentTrendChart, AcquisitionChart } from './charts';
+import WeekdayAnalysisSection from './WeekdayAnalysisSection';
 
 interface Props {
   data: CustomerSegmentAnalysis | null;
@@ -260,6 +261,10 @@ export default function CustomerSegmentSection({
                 ))}
               </div>
             </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow p-6">
+            <WeekdayAnalysisSection dailyTrend={data.dailyTrend} />
           </div>
 
           <div className="bg-white rounded-xl shadow p-6">

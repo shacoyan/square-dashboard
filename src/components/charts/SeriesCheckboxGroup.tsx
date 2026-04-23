@@ -28,25 +28,37 @@ export const SeriesCheckboxGroup: React.FC<SeriesCheckboxGroupProps> = ({
   return (
     <div className={`flex justify-between items-center gap-2 flex-wrap ${className}`}>
       <div className="flex flex-wrap gap-x-4 gap-y-2">
-        {items.map((item) => (
-          <label
-            key={item.key}
-            className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-700"
-          >
-            <input
-              type="checkbox"
-              checked={visible[item.key] ?? true}
-              onChange={(e) => onChange(item.key, e.target.checked)}
-              className="w-3.5 h-3.5"
-              style={{ accentColor: item.color }}
-            />
-            <span
-              className="inline-block w-3 h-3 rounded-sm"
-              style={{ backgroundColor: item.color }}
-            />
-            <span>{item.label}</span>
-          </label>
-        ))}
+        {items.map((item) => {
+          const isVisible = visible[item.key] ?? true;
+
+          return (
+            <label
+              key={item.key}
+              className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-700 group"
+            >
+              <input
+                type="checkbox"
+                checked={isVisible}
+                onChange={(e) => onChange(item.key, e.target.checked)}
+                className="sr-only peer"
+              />
+              <span
+                className="relative w-4 h-4 rounded-sm border-2 flex items-center justify-center transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-offset-1 peer-focus-visible:ring-indigo-500"
+                style={{
+                  borderColor: item.color,
+                  backgroundColor: isVisible ? item.color : 'transparent',
+                }}
+              >
+                {isVisible && (
+                  <svg viewBox="0 0 16 16" className="w-3 h-3 text-white" aria-hidden="true">
+                    <path d="M3 8l3 3 7-7" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </span>
+              <span className={isVisible ? '' : 'text-gray-400 line-through'}>{item.label}</span>
+            </label>
+          );
+        })}
       </div>
       {(onAllOn || onAllOff) && (
         <div className="flex gap-2">

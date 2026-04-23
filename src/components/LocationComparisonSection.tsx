@@ -2,6 +2,7 @@ import type { Location, PeriodPreset, LocationSegmentRow } from '../types';
 import { useMultiLocationSegment } from '../hooks/useMultiLocationSegment';
 import { LocationBarChart, LocationStackChart, LocationTrendChart } from './charts';
 import { formatYen } from '../utils';
+import WeekdayAnalysisSection from './WeekdayAnalysisSection';
 
 const PERIOD_TABS: { key: PeriodPreset; label: string }[] = [
   { key: 'today', label: '今日' },
@@ -280,7 +281,7 @@ export default function LocationComparisonSection(props: Props) {
             </div>
 
             <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
-              <h3 className="text-md font-bold text-gray-900 mb-4">店舗別 セグメント構成（客数）</h3>
+              <h3 className="text-md font-bold text-gray-900 mb-4">店舗別 お客様構成</h3>
               <LocationStackChart
                 rows={data.rows.map((r) => ({
                   locationName: r.locationName,
@@ -313,22 +314,22 @@ export default function LocationComparisonSection(props: Props) {
                       return (
                         <tr key={r.locationId} className="border-b border-gray-200">
                           <td className={detailTdNameClassName}>{r.locationName}</td>
-                          <td className={detailTdNumClassName}>{r.customersBySegment.new.toLocaleString()}</td>
-                          <td className={detailTdNumClassName}>{r.customersBySegment.repeat.toLocaleString()}</td>
-                          <td className={detailTdNumClassName}>{r.customersBySegment.regular.toLocaleString()}</td>
-                          <td className={detailTdNumClassName}>{r.customersBySegment.staff.toLocaleString()}</td>
-                          <td className={detailTdNumClassName}>{r.customersBySegment.unlisted.toLocaleString()}</td>
+                          <td className={detailTdNumClassName}>{r.customersBySegment.new.toLocaleString()}{totalSegment !== 0 && <span className="text-gray-500 ml-1 text-[10px]">({Math.round((r.customersBySegment.new / totalSegment) * 100)}%)</span>}</td>
+                          <td className={detailTdNumClassName}>{r.customersBySegment.repeat.toLocaleString()}{totalSegment !== 0 && <span className="text-gray-500 ml-1 text-[10px]">({Math.round((r.customersBySegment.repeat / totalSegment) * 100)}%)</span>}</td>
+                          <td className={detailTdNumClassName}>{r.customersBySegment.regular.toLocaleString()}{totalSegment !== 0 && <span className="text-gray-500 ml-1 text-[10px]">({Math.round((r.customersBySegment.regular / totalSegment) * 100)}%)</span>}</td>
+                          <td className={detailTdNumClassName}>{r.customersBySegment.staff.toLocaleString()}{totalSegment !== 0 && <span className="text-gray-500 ml-1 text-[10px]">({Math.round((r.customersBySegment.staff / totalSegment) * 100)}%)</span>}</td>
+                          <td className={detailTdNumClassName}>{r.customersBySegment.unlisted.toLocaleString()}{totalSegment !== 0 && <span className="text-gray-500 ml-1 text-[10px]">({Math.round((r.customersBySegment.unlisted / totalSegment) * 100)}%)</span>}</td>
                           <td className={detailTdNumClassName}>{totalSegment.toLocaleString()}</td>
                         </tr>
                       );
                     })}
                     <tr className="bg-gray-100 font-bold">
                       <td className={detailTdNameClassName}>合計</td>
-                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.new.toLocaleString()}</td>
-                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.repeat.toLocaleString()}</td>
-                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.regular.toLocaleString()}</td>
-                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.staff.toLocaleString()}</td>
-                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.unlisted.toLocaleString()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.new.toLocaleString()}{(() => { const total = data.totals.customersBySegment.new + data.totals.customersBySegment.repeat + data.totals.customersBySegment.regular + data.totals.customersBySegment.staff + data.totals.customersBySegment.unlisted; return total !== 0 ? <span className="text-gray-500 ml-1 text-[10px]">({Math.round((data.totals.customersBySegment.new / total) * 100)}%)</span> : null; })()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.repeat.toLocaleString()}{(() => { const total = data.totals.customersBySegment.new + data.totals.customersBySegment.repeat + data.totals.customersBySegment.regular + data.totals.customersBySegment.staff + data.totals.customersBySegment.unlisted; return total !== 0 ? <span className="text-gray-500 ml-1 text-[10px]">({Math.round((data.totals.customersBySegment.repeat / total) * 100)}%)</span> : null; })()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.regular.toLocaleString()}{(() => { const total = data.totals.customersBySegment.new + data.totals.customersBySegment.repeat + data.totals.customersBySegment.regular + data.totals.customersBySegment.staff + data.totals.customersBySegment.unlisted; return total !== 0 ? <span className="text-gray-500 ml-1 text-[10px]">({Math.round((data.totals.customersBySegment.regular / total) * 100)}%)</span> : null; })()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.staff.toLocaleString()}{(() => { const total = data.totals.customersBySegment.new + data.totals.customersBySegment.repeat + data.totals.customersBySegment.regular + data.totals.customersBySegment.staff + data.totals.customersBySegment.unlisted; return total !== 0 ? <span className="text-gray-500 ml-1 text-[10px]">({Math.round((data.totals.customersBySegment.staff / total) * 100)}%)</span> : null; })()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.unlisted.toLocaleString()}{(() => { const total = data.totals.customersBySegment.new + data.totals.customersBySegment.repeat + data.totals.customersBySegment.regular + data.totals.customersBySegment.staff + data.totals.customersBySegment.unlisted; return total !== 0 ? <span className="text-gray-500 ml-1 text-[10px]">({Math.round((data.totals.customersBySegment.unlisted / total) * 100)}%)</span> : null; })()}</td>
                       <td className={detailTdNumClassName}>{(data.totals.customersBySegment.new + data.totals.customersBySegment.repeat + data.totals.customersBySegment.regular + data.totals.customersBySegment.staff + data.totals.customersBySegment.unlisted).toLocaleString()}</td>
                     </tr>
                   </tbody>
@@ -419,6 +420,10 @@ export default function LocationComparisonSection(props: Props) {
                 allDates={data.allDates}
                 metric="sales"
               />
+            </div>
+
+            <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+              <WeekdayAnalysisSection dailyTrend={data.totals.dailyTrend} />
             </div>
           </div>
         </>
