@@ -2,18 +2,18 @@
  * Location color palette and utilities for assigning colors to locations.
  */
 
-/** 10-color palette (Tailwind 500 shades: indigo, amber, emerald, rose, cyan, purple, lime, orange, sky, fuchsia) */
+/** High-contrast 10-color palette (red/blue/green/amber/purple/teal/orange/pink/lime/gray-800) */
 export const LOCATION_COLOR_PALETTE: readonly string[] = [
-  '#6366f1',
+  '#e11d48',
+  '#2563eb',
+  '#16a34a',
   '#f59e0b',
-  '#10b981',
-  '#f43f5e',
-  '#06b6d4',
-  '#a855f7',
-  '#84cc16',
-  '#f97316',
-  '#0ea5e9',
-  '#d946ef',
+  '#9333ea',
+  '#0891b2',
+  '#ea580c',
+  '#db2777',
+  '#65a30d',
+  '#1f2937',
 ] as const;
 
 /** Color for total/aggregate lines (gray-900) */

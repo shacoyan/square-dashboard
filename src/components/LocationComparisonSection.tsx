@@ -1,8 +1,10 @@
+import React from 'react';
 import type { Location, PeriodPreset, LocationSegmentRow } from '../types';
 import { useMultiLocationSegment } from '../hooks/useMultiLocationSegment';
 import { LocationBarChart, LocationStackChart, LocationTrendChart } from './charts';
 import { formatYen } from '../utils';
 import WeekdayAnalysisSection from './WeekdayAnalysisSection';
+import { getLocationColors } from '../lib/locationColors';
 
 const PERIOD_TABS: { key: PeriodPreset; label: string }[] = [
   { key: 'today', label: '今日' },
@@ -86,6 +88,11 @@ export default function LocationComparisonSection(props: Props) {
     weekIndex,
     enabled: locations.length > 0,
   });
+
+  const barColorsMap = React.useMemo(
+    () => getLocationColors(data ? data.rows.map(r => r.locationId) : []),
+    [data]
+  );
 
   type RowInput = LocationSegmentRow | Omit<LocationSegmentRow, 'locationId' | 'locationName' | 'loadError' | 'partialFailure'>;
   const renderRow = (row: RowInput, isTotal = false) => {
@@ -247,7 +254,12 @@ export default function LocationComparisonSection(props: Props) {
                 rows={data.rows.map((r) => ({
                   locationName: r.locationName,
                   totalSales: r.totalSales,
-                  totalCustomers: r.totalCustomers,
+                  totalCustomers:
+                    r.customersBySegment.new +
+                    r.customersBySegment.repeat +
+                    r.customersBySegment.regular +
+                    r.customersBySegment.staff,
+                  color: barColorsMap[r.locationId] ?? '#6b7280',
                 }))}
               />
               <div className="mt-4 overflow-x-auto">
