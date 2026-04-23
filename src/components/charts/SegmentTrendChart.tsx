@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -36,6 +37,8 @@ const SERIES: SeriesDef[] = [
   { key: 'unlisted', salesKey: 'unlistedSales', color: '#6b7280', label: '記載なし' },
 ];
 
+const COUNT_KEYS: ReadonlySet<string> = new Set<string>(SERIES.map(s => s.key));
+
 function formatDateLabel(label: string | number | undefined): string {
   if (label === undefined || label === null || label === '') return '';
   const parts = String(label).split('-');
@@ -43,21 +46,26 @@ function formatDateLabel(label: string | number | undefined): string {
   return String(label);
 }
 
-function CustomTooltip(props: TooltipProps<number, string>) {
-  const { active, payload, label } = props;
+interface CustomTooltipProps extends TooltipProps<number, string> {
+  visibleKeys: Record<CountKey, boolean>;
+}
+
+function CustomTooltip(props: CustomTooltipProps) {
+  const { active, payload, label, visibleKeys } = props;
   if (!active || !payload || payload.length === 0) return null;
 
-  // payload[0].payload は DailySegmentPoint
   const point = payload[0]?.payload as DailySegmentPoint | undefined;
   if (!point) return null;
 
-  // 合計人数: unlisted を含めた全体
-  const totalCustomers =
-    (point.new || 0) + (point.repeat || 0) + (point.regular || 0) + (point.staff || 0) + (point.unlisted || 0);
+  const totalCustomers = SERIES.reduce((sum, s) => {
+    if (!visibleKeys[s.key]) return sum;
+    return sum + ((point[s.key] as number) ?? 0);
+  }, 0);
 
-  // 合計売上: unlisted 除外（セグメント特定済みのみ）
-  const totalSalesExcludingUnlisted =
-    (point.newSales || 0) + (point.repeatSales || 0) + (point.regularSales || 0) + (point.staffSales || 0);
+  const totalSalesExcludingUnlisted = SERIES.reduce((sum, s) => {
+    if (!visibleKeys[s.key] || s.key === 'unlisted') return sum;
+    return sum + ((point[s.salesKey] as number) ?? 0);
+  }, 0);
 
   return (
     <div
@@ -73,7 +81,7 @@ function CustomTooltip(props: TooltipProps<number, string>) {
       }}
     >
       <div style={{ fontWeight: 600, marginBottom: 6 }}>{formatDateLabel(label)}</div>
-      {SERIES.map(s => {
+      {SERIES.filter(s => visibleKeys[s.key]).map(s => {
         const count = (point[s.key] as number) ?? 0;
         const sales = (point[s.salesKey] as number) ?? 0;
         return (
@@ -111,7 +119,22 @@ function CustomTooltip(props: TooltipProps<number, string>) {
   );
 }
 
+const INITIAL_VISIBLE_KEYS: Record<CountKey, boolean> = {
+  new: true,
+  repeat: true,
+  regular: true,
+  staff: true,
+  unlisted: true,
+};
+
+interface LegendClickPayload {
+  dataKey?: string | number;
+  [k: string]: unknown;
+}
+
 export default function SegmentTrendChart({ data }: Props) {
+  const [visibleKeys, setVisibleKeys] = useState<Record<CountKey, boolean>>(INITIAL_VISIBLE_KEYS);
+
   const isEmpty = !data || data.length === 0;
 
   const chartData: DailySegmentPoint[] = isEmpty
@@ -121,6 +144,13 @@ export default function SegmentTrendChart({ data }: Props) {
         newSales: 0, repeatSales: 0, regularSales: 0, staffSales: 0, unlistedSales: 0,
       }]
     : data;
+
+  const handleLegendClick = (payload: LegendClickPayload) => {
+    if (typeof payload.dataKey === 'string' && COUNT_KEYS.has(payload.dataKey)) {
+      const key = payload.dataKey as CountKey;
+      setVisibleKeys(prev => ({ ...prev, [key]: !prev[key] }));
+    }
+  };
 
   return (
     <div className="w-full h-[300px]">
@@ -145,8 +175,13 @@ export default function SegmentTrendChart({ data }: Props) {
             tickLine={{ stroke: '#d1d5db' }}
             allowDecimals={false}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip
+            content={(tipProps: TooltipProps<number, string>) => (
+              <CustomTooltip {...tipProps} visibleKeys={visibleKeys} />
+            )}
+          />
           <Legend
+            onClick={(payload) => handleLegendClick(payload as unknown as LegendClickPayload)}
             formatter={(value: string) => (
               <span className="text-gray-600 text-xs">{value}</span>
             )}
@@ -162,6 +197,7 @@ export default function SegmentTrendChart({ data }: Props) {
               dot={{ r: 3, fill: s.color }}
               activeDot={{ r: 5 }}
               connectNulls
+              hide={!visibleKeys[s.key]}
             />
           ))}
         </LineChart>

@@ -403,6 +403,21 @@ export default function LocationComparisonSection(props: Props) {
                 }))}
                 totalsSeries={data.totals.dailyTrend}
                 allDates={data.allDates}
+                metric="customers"
+              />
+            </div>
+
+            <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+              <h3 className="text-md font-bold text-gray-900 mb-4">日次推移（売上）</h3>
+              <LocationTrendChart
+                locationSeries={data.rows.map((r) => ({
+                  locationId: r.locationId,
+                  locationName: r.locationName,
+                  points: r.dailyTrend,
+                }))}
+                totalsSeries={data.totals.dailyTrend}
+                allDates={data.allDates}
+                metric="sales"
               />
             </div>
           </div>
