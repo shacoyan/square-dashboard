@@ -112,6 +112,14 @@ export interface UseMultiLocationSegmentResult {
   refresh: () => void;
 }
 
+type RangeFetchResult = {
+  locationId: string;
+  txByDate: Record<string, { transactions: Transaction[] }> | null;
+  openByDate: Record<string, { orders: OpenOrder[] }> | null;
+  txFailed: boolean;
+  openFailed: boolean;
+};
+
 export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseMultiLocationSegmentResult {
   const { token, locations, period, baseDate, startHour, endHour, weekIndex, enabled } = args;
 
@@ -150,49 +158,47 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
         'Content-Type': 'application/json',
       };
 
-      type FetchResult = {
-        locationId: string;
-        date: string;
-        transactions: Transaction[];
-        openOrders: OpenOrder[];
-        failed: boolean;
-      };
+      const start_date = dates[0];
+      const end_date = dates[dates.length - 1];
 
-      const tasks: Promise<FetchResult>[] = [];
+      const tasks: Promise<RangeFetchResult>[] = [];
 
       for (const loc of locations) {
-        for (const date of dates) {
-          const txUrl = `/api/transactions?date=${date}&location_id=${loc.id}&start_hour=${startHour}&end_hour=${endHour}`;
-          const openUrl = `/api/open-orders?date=${date}&location_id=${loc.id}&start_hour=${startHour}&end_hour=${endHour}`;
+        const txUrl = `/api/transactions-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(loc.id)}&start_hour=${startHour}&end_hour=${endHour}`;
+        const openUrl = `/api/open-orders-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(loc.id)}&start_hour=${startHour}&end_hour=${endHour}`;
 
-          const txPromise = fetch(txUrl, { signal: controller.signal, headers })
-            .then(res => {
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
-              return res.json() as Promise<{ transactions: Transaction[] }>;
-            })
-            .then(payload => payload.transactions ?? []);
+        const txPromise = fetch(txUrl, { signal: controller.signal, headers });
+        const openPromise = fetch(openUrl, { signal: controller.signal, headers });
+        
+        const locationId = loc.id;
 
-          const openPromise = fetch(openUrl, { signal: controller.signal, headers })
-            .then(res => {
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
-              return res.json() as Promise<{ orders?: OpenOrder[] }>;
-            })
-            .then(payload => payload.orders ?? []);
+        const task = Promise.allSettled([txPromise, openPromise]).then(async (results): Promise<RangeFetchResult> => {
+          const txResult = results[0];
+          const openResult = results[1];
 
-          const locationId = loc.id;
-          const taskDate = date;
+          let txByDate: Record<string, { transactions: Transaction[] }> | null = null;
+          let openByDate: Record<string, { orders: OpenOrder[] }> | null = null;
+          let txFailed = false;
+          let openFailed = false;
 
-          const task = Promise.allSettled([txPromise, openPromise]).then((results): FetchResult => {
-            const txResult = results[0];
-            const openResult = results[1];
-            const failed = txResult.status === 'rejected' && openResult.status === 'rejected';
-            const transactions = txResult.status === 'fulfilled' ? txResult.value : [];
-            const openOrders = openResult.status === 'fulfilled' ? openResult.value : [];
-            return { locationId, date: taskDate, transactions, openOrders, failed };
-          });
+          if (txResult.status === 'fulfilled' && txResult.value.ok) {
+            const data = await txResult.value.json();
+            txByDate = data.byDate ?? {};
+          } else {
+            txFailed = true;
+          }
 
-          tasks.push(task);
-        }
+          if (openResult.status === 'fulfilled' && openResult.value.ok) {
+            const data = await openResult.value.json();
+            openByDate = data.byDate ?? {};
+          } else {
+            openFailed = true;
+          }
+
+          return { locationId, txByDate, openByDate, txFailed, openFailed };
+        });
+
+        tasks.push(task);
       }
 
       const allResults = await Promise.all(tasks);
@@ -203,40 +209,35 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
 
       let totalFailedPairs = 0;
 
-      for (const r of allResults) {
-        const entry = locMap.get(r.locationId);
+      for (const { locationId, txByDate, openByDate, txFailed, openFailed } of allResults) {
+        const entry = locMap.get(locationId);
         if (!entry) continue;
-        if (r.failed) {
-          entry.failedDays++;
-          totalFailedPairs++;
+        if (txFailed && openFailed) {
+          entry.failedDays = dates.length;
+          totalFailedPairs += dates.length;
           continue;
         }
-        const mappedOpen = r.openOrders.map(openOrderToTransaction);
-        const combined = [...r.transactions, ...mappedOpen];
-        entry.transactions.push(...combined);
+        for (const date of dates) {
+          const transactions = txByDate?.[date]?.transactions ?? [];
+          const openOrders = openByDate?.[date]?.orders ?? [];
+          const mappedOpen = openOrders.map(openOrderToTransaction);
+          const combined = [...transactions, ...mappedOpen];
+          entry.transactions.push(...combined);
 
-        let n = 0, rp = 0, rg = 0, st = 0, ul = 0;
-        let nS = 0, rpS = 0, rgS = 0, stS = 0, ulS = 0;
-        for (const tx of combined) {
-          const c = countCustomersByTransaction(tx);
-          n += c.new;
-          rp += c.repeat;
-          rg += c.regular;
-          st += c.staff;
-          ul += c.unlisted;
-
-          const s = allocateSalesByTransaction(tx);
-          nS += s.new;
-          rpS += s.repeat;
-          rgS += s.regular;
-          stS += s.staff;
-          ulS += s.unlisted;
+          let n = 0, rp = 0, rg = 0, st = 0, ul = 0;
+          let nS = 0, rpS = 0, rgS = 0, stS = 0, ulS = 0;
+          for (const tx of combined) {
+            const c = countCustomersByTransaction(tx);
+            n += c.new; rp += c.repeat; rg += c.regular; st += c.staff; ul += c.unlisted;
+            const s = allocateSalesByTransaction(tx);
+            nS += s.new; rpS += s.repeat; rgS += s.regular; stS += s.staff; ulS += s.unlisted;
+          }
+          entry.dailyTrend.push({
+            date,
+            new: n, repeat: rp, regular: rg, staff: st, unlisted: ul,
+            newSales: nS, repeatSales: rpS, regularSales: rgS, staffSales: stS, unlistedSales: ulS,
+          });
         }
-        entry.dailyTrend.push({
-          date: r.date,
-          new: n, repeat: rp, regular: rg, staff: st, unlisted: ul,
-          newSales: nS, repeatSales: rpS, regularSales: rgS, staffSales: stS, unlistedSales: ulS,
-        });
       }
 
       const elapsedDays = dates.length;

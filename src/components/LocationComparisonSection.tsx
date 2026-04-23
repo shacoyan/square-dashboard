@@ -62,6 +62,7 @@ interface Props {
   baseDate: string;
   startHour: number;
   endHour: number;
+  enabled: boolean;
 }
 
 export default function LocationComparisonSection(props: Props) {
@@ -76,6 +77,7 @@ export default function LocationComparisonSection(props: Props) {
     baseDate,
     startHour,
     endHour,
+    enabled,
   } = props;
 
   const { data, loading, error } = useMultiLocationSegment({
@@ -86,7 +88,7 @@ export default function LocationComparisonSection(props: Props) {
     startHour,
     endHour,
     weekIndex,
-    enabled: locations.length > 0,
+    enabled: enabled && locations.length > 0,
   });
 
   const barColorsMap = React.useMemo(

@@ -10,6 +10,7 @@ interface Args {
   startHour: number;
   endHour: number;
   weekIndex?: number;
+  enabled: boolean;
 }
 
 function getJSTDateParts(date: Date): { year: number; month: number; day: number } {
@@ -118,7 +119,7 @@ export function useCustomerSegment(args: Args): {
   refresh: () => void;
   availableWeeks: number;
 } {
-  const { token, locationId, period, baseDate, startHour, endHour, weekIndex } = args;
+  const { token, locationId, period, baseDate, startHour, endHour, weekIndex, enabled } = args;
 
   const [data, setData] = useState<CustomerSegmentAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -132,6 +133,8 @@ export function useCustomerSegment(args: Args): {
   }, [baseDate]);
 
   const fetchData = useCallback(async () => {
+    if (!enabled) return;
+
     if (!locationId) return;
 
     if (abortControllerRef.current) {
@@ -158,55 +161,62 @@ export function useCustomerSegment(args: Args): {
       'Content-Type': 'application/json',
     };
 
-    const allTransactions: Transaction[] = [];
-    let bothFailures = 0;
-    let failures = 0;
-    let openFailures = 0;
-    let dailySalesTotal = 0;
-    let dailyCustomersTotal = 0;
-    const dailyTrend: DailySegmentPoint[] = [];
+    const start_date = dates[0];
+    const end_date = dates[dates.length - 1];
 
-    const fetchPromises = dates.map(date => {
-      const txUrl = `/api/transactions?date=${date}&location_id=${locationId}&start_hour=${startHour}&end_hour=${endHour}`;
-      const openUrl = `/api/open-orders?date=${date}&location_id=${locationId}&start_hour=${startHour}&end_hour=${endHour}`;
+    const txUrl = `/api/transactions-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(locationId)}&start_hour=${startHour}&end_hour=${endHour}`;
+    const openUrl = `/api/open-orders-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(locationId)}&start_hour=${startHour}&end_hour=${endHour}`;
 
-      const txPromise = fetch(txUrl, {
-        headers,
-        signal: currentAbortController.signal,
-      }).then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<{ transactions: Transaction[] }>;
-      }).then(payload => payload.transactions ?? []);
+    const txPromise = fetch(txUrl, {
+      headers,
+      signal: currentAbortController.signal,
+    }).then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<{ byDate: Record<string, { transactions?: Transaction[] }> }>;
+    });
 
-      const openPromise = fetch(openUrl, {
-        headers,
-        signal: currentAbortController.signal,
-      }).then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<{ orders?: OpenOrder[] }>;
-      }).then(payload => payload.orders ?? []);
+    const openPromise = fetch(openUrl, {
+      headers,
+      signal: currentAbortController.signal,
+    }).then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<{ byDate: Record<string, { orders?: OpenOrder[] }> }>;
+    });
 
-      return Promise.allSettled([txPromise, openPromise]).then(async (results) => {
-        if (currentAbortController.signal.aborted) return;
+    try {
+      const [txResult, openResult] = await Promise.allSettled([txPromise, openPromise]);
 
-        const [txResult, openResult] = results;
+      if (currentAbortController.signal.aborted) return;
 
-        if (txResult.status === 'rejected' && openResult.status === 'rejected') {
-          bothFailures++;
-          failures++;
-          return;
-        }
+      const isTxFailure = txResult.status === 'rejected';
+      const isOpenFailure = openResult.status === 'rejected';
 
-        if (txResult.status === 'rejected') {
-          failures++;
-        }
+      if (isTxFailure && isOpenFailure) {
+        setError('期間データ取得失敗');
+        setData(null);
+        setLoading(false);
+        return;
+      }
 
-        if (openResult.status === 'rejected') {
-          openFailures++;
-        }
+      const txByDate = !isTxFailure ? txResult.value.byDate : {};
+      const openByDate = !isOpenFailure ? openResult.value.byDate : {};
 
-        const transactions: Transaction[] = txResult.status === 'fulfilled' ? txResult.value : [];
-        const openOrders: OpenOrder[] = openResult.status === 'fulfilled' ? openResult.value : [];
+      const allTransactions: Transaction[] = [];
+      let dailySalesTotal = 0;
+      let dailyCustomersTotal = 0;
+      const dailyTrend: DailySegmentPoint[] = [];
+      const warningMessages: string[] = [];
+
+      if (isTxFailure) {
+        warningMessages.push(`${dates.length}日のデータ取得に失敗しました。一部データが欠落しています。`);
+      }
+      if (isOpenFailure) {
+        warningMessages.push(`${dates.length}日のオープンオーダー取得に失敗しました。`);
+      }
+
+      dates.forEach(date => {
+        const transactions = txByDate[date]?.transactions ?? [];
+        const openOrders = openByDate[date]?.orders ?? [];
 
         const mappedOpenOrders = openOrders.map(openOrderToTransaction);
         const combinedTransactions = [...transactions, ...mappedOpenOrders];
@@ -260,28 +270,7 @@ export function useCustomerSegment(args: Args): {
         const daySales = combinedTransactions.reduce((sum, t) => sum + (t.amount ?? 0), 0);
         dailySalesTotal += daySales;
       });
-    });
 
-    try {
-      await Promise.all(fetchPromises);
-
-      if (currentAbortController.signal.aborted) {
-        return;
-      }
-
-      if (bothFailures === dates.length) {
-        setData(null);
-        setError('期間データ取得失敗');
-        return;
-      }
-
-      const warningMessages: string[] = [];
-      if (failures > 0) {
-        warningMessages.push(`${failures}日のデータ取得に失敗しました。一部データが欠落しています。`);
-      }
-      if (openFailures > 0) {
-        warningMessages.push(`${openFailures}日のオープンオーダー取得に失敗しました。`);
-      }
       const warning = warningMessages.length > 0 ? warningMessages.join(' ') : null;
       setError(warning);
 
@@ -305,6 +294,7 @@ export function useCustomerSegment(args: Args): {
         acquisitionBreakdown: result.acquisition,
         dailyTrend: dailyTrend.sort((a, b) => a.date.localeCompare(b.date)),
       });
+
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         return;
@@ -316,7 +306,7 @@ export function useCustomerSegment(args: Args): {
         setLoading(false);
       }
     }
-  }, [token, locationId, period, baseDate, startHour, endHour, weekIndex]);
+  }, [token, locationId, period, baseDate, startHour, endHour, weekIndex, enabled]);
 
   useEffect(() => {
     fetchData();

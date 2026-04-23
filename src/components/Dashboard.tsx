@@ -71,6 +71,14 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     const saved = localStorage.getItem('sq_dashboard_tab');
     return saved === 'segment' || saved === 'compare' ? saved : 'daily';
   });
+  const [hasSegmentBeenActive, setHasSegmentBeenActive] = useState(() => activeTab === 'segment');
+  const [hasCompareBeenActive, setHasCompareBeenActive] = useState(() => activeTab === 'compare');
+
+  useEffect(() => {
+    if (activeTab === 'segment' && !hasSegmentBeenActive) setHasSegmentBeenActive(true);
+    if (activeTab === 'compare' && !hasCompareBeenActive) setHasCompareBeenActive(true);
+  }, [activeTab, hasSegmentBeenActive, hasCompareBeenActive]);
+
   const handleTabChange = (t: DashboardTab) => {
     setActiveTab(t);
     localStorage.setItem('sq_dashboard_tab', t);
@@ -129,6 +137,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     startHour,
     endHour,
     weekIndex,
+    enabled: hasSegmentBeenActive,
   });
 
   const { orders: openOrders, loading: openOrdersLoading, error: openOrdersError } = useOpenOrders({
@@ -283,6 +292,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
             baseDate={date}
             startHour={startHour}
             endHour={endHour}
+            enabled={hasCompareBeenActive}
           />
         ) : null}
       </main>
