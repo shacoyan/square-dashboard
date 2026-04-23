@@ -3,7 +3,7 @@ import type { Location, PeriodPreset, LocationSegmentRow } from '../types';
 import { useMultiLocationSegment } from '../hooks/useMultiLocationSegment';
 import { LocationBarChart, LocationStackChart, LocationTrendChart } from './charts';
 import { formatYen } from '../utils';
-import WeekdayAnalysisSection from './WeekdayAnalysisSection';
+import WeekdayLocationAnalysisSection from './WeekdayLocationAnalysisSection';
 import { getLocationColors } from '../lib/locationColors';
 
 const PERIOD_TABS: { key: PeriodPreset; label: string }[] = [
@@ -417,6 +417,7 @@ export default function LocationComparisonSection(props: Props) {
                 totalsSeries={data.totals.dailyTrend}
                 allDates={data.allDates}
                 metric="customers"
+                colorMap={barColorsMap}
               />
             </div>
 
@@ -431,11 +432,19 @@ export default function LocationComparisonSection(props: Props) {
                 totalsSeries={data.totals.dailyTrend}
                 allDates={data.allDates}
                 metric="sales"
+                colorMap={barColorsMap}
               />
             </div>
 
             <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
-              <WeekdayAnalysisSection dailyTrend={data.totals.dailyTrend} />
+              <WeekdayLocationAnalysisSection
+                locationSeries={data.rows.map((r) => ({
+                  locationId: r.locationId,
+                  locationName: r.locationName,
+                  dailyTrend: r.dailyTrend,
+                }))}
+                colorMap={barColorsMap}
+              />
             </div>
           </div>
         </>

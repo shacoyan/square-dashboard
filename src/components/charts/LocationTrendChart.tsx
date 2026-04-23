@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 import type { DailySegmentPoint } from '../../types';
 import { formatYen } from '../../utils';
-import { getLocationColor, TOTAL_LINE_COLOR } from '../../lib/locationColors';
+import { TOTAL_LINE_COLOR } from '../../lib/locationColors';
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
 
 const TOTAL_KEY = '__total__';
@@ -38,6 +38,7 @@ interface Props {
   totalsSeries: DailySegmentPoint[];
   allDates: string[];
   metric?: 'customers' | 'sales';
+  colorMap: Record<string, string>;
 }
 
 export default function LocationTrendChart({
@@ -45,6 +46,7 @@ export default function LocationTrendChart({
   totalsSeries,
   allDates,
   metric = 'customers',
+  colorMap,
 }: Props) {
   const getValue = metric === 'sales' ? getTotalSales : getTotalCount;
 
@@ -113,10 +115,10 @@ export default function LocationTrendChart({
   const isEmpty = allDates.length === 0 || allZero;
 
   const checkboxItems: SeriesCheckboxItem[] = [
-    ...locationSeries.map((loc, i) => ({
+    ...locationSeries.map((loc) => ({
       key: loc.locationId,
       label: loc.locationName,
-      color: getLocationColor(loc.locationId, i),
+      color: colorMap[loc.locationId] ?? '#6b7280',
     })),
     { key: TOTAL_KEY, label: '合計', color: TOTAL_LINE_COLOR },
   ];
@@ -213,8 +215,8 @@ export default function LocationTrendChart({
                 <span className="text-gray-600 text-xs">{value}</span>
               )}
             />
-            {locationSeries.map((loc, i) => {
-              const color = getLocationColor(loc.locationId, i);
+            {locationSeries.map((loc) => {
+              const color = colorMap[loc.locationId] ?? '#6b7280';
               return (
                 <Line
                   key={loc.locationId}
