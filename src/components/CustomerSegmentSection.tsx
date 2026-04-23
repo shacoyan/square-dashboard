@@ -108,7 +108,7 @@ export default function CustomerSegmentSection({
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-2 sm:mb-0">顧客セグメント分析</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-2 sm:mb-0">店舗データ分析</h2>
 
           <div className="flex space-x-2" role="tablist" aria-label="期間選択">
             {PERIOD_TABS.map((tab) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Transaction, OpenOrder, Location, PeriodPreset, DailySegmentPoint, SegmentBreakdown, AcquisitionBreakdown, LocationSegmentRow, LocationComparisonData } from '../types';
-import { aggregateSegments, countCustomersByTransaction } from '../lib/customerSegment';
+import { aggregateSegments, allocateSalesByTransaction, countCustomersByTransaction } from '../lib/customerSegment';
 
 function getJSTDateParts(date: Date): { year: number; month: number; day: number } {
   const jstString = date.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -216,6 +216,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
         entry.transactions.push(...combined);
 
         let n = 0, rp = 0, rg = 0, st = 0, ul = 0;
+        let nS = 0, rpS = 0, rgS = 0, stS = 0, ulS = 0;
         for (const tx of combined) {
           const c = countCustomersByTransaction(tx);
           n += c.new;
@@ -223,8 +224,19 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
           rg += c.regular;
           st += c.staff;
           ul += c.unlisted;
+
+          const s = allocateSalesByTransaction(tx);
+          nS += s.new;
+          rpS += s.repeat;
+          rgS += s.regular;
+          stS += s.staff;
+          ulS += s.unlisted;
         }
-        entry.dailyTrend.push({ date: r.date, new: n, repeat: rp, regular: rg, staff: st, unlisted: ul });
+        entry.dailyTrend.push({
+          date: r.date,
+          new: n, repeat: rp, regular: rg, staff: st, unlisted: ul,
+          newSales: nS, repeatSales: rpS, regularSales: rgS, staffSales: stS, unlistedSales: ulS,
+        });
       }
 
       const elapsedDays = dates.length;
@@ -299,12 +311,21 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
       const trendMap = new Map<string, DailySegmentPoint>();
       for (const r of rows) {
         for (const p of r.dailyTrend) {
-          const e = trendMap.get(p.date) ?? { date: p.date, new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0 };
+          const e = trendMap.get(p.date) ?? {
+            date: p.date,
+            new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0,
+            newSales: 0, repeatSales: 0, regularSales: 0, staffSales: 0, unlistedSales: 0,
+          };
           e.new += p.new;
           e.repeat += p.repeat;
           e.regular += p.regular;
           e.staff += p.staff;
           e.unlisted += p.unlisted;
+          e.newSales += p.newSales;
+          e.repeatSales += p.repeatSales;
+          e.regularSales += p.regularSales;
+          e.staffSales += p.staffSales;
+          e.unlistedSales += p.unlistedSales;
           trendMap.set(p.date, e);
         }
       }

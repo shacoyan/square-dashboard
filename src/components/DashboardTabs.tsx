@@ -5,7 +5,7 @@ interface Props {
 
 const TABS: { key: 'daily' | 'segment' | 'compare'; label: string }[] = [
   { key: 'daily', label: '当日データ' },
-  { key: 'segment', label: '顧客セグメント' },
+  { key: 'segment', label: '店舗データ分析' },
   { key: 'compare', label: '全店舗比較' },
 ];
 

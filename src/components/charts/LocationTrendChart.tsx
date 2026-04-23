@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  LabelList,
 } from 'recharts';
 import type { DailySegmentPoint } from '../../types';
 
@@ -70,7 +71,7 @@ export default function LocationTrendChart({ locationSeries, totalsSeries, allDa
   return (
     <div className="w-full h-[320px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+        <LineChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
           <XAxis
             dataKey="date"
@@ -135,7 +136,15 @@ export default function LocationTrendChart({ locationSeries, totalsSeries, allDa
             dot={{ r: 4, fill: '#111827' }}
             activeDot={{ r: 6 }}
             connectNulls
-          />
+          >
+            <LabelList
+              dataKey="__total__"
+              position="top"
+              fontSize={10}
+              fill="#111827"
+              formatter={(v: number) => (typeof v === 'number' && v > 0 ? String(v) : '')}
+            />
+          </Line>
         </LineChart>
       </ResponsiveContainer>
     </div>

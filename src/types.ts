@@ -62,11 +62,18 @@ export interface AcquisitionBreakdown {
 
 export interface DailySegmentPoint {
   date: string; // YYYY-MM-DD (JST)
+  // 人数
   new: number;
   repeat: number;
   regular: number;
   staff: number;
   unlisted: number;
+  // 売上（Round 14 追加）
+  newSales: number;
+  repeatSales: number;
+  regularSales: number;
+  staffSales: number;
+  unlistedSales: number;
 }
 
 export type PeriodPreset = 'today' | 'week' | 'month';

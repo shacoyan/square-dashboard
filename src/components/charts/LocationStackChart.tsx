@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  LabelList,
 } from 'recharts';
 
 interface Props {
@@ -87,7 +88,15 @@ export default function LocationStackChart({ rows, series, valueUnit, emptyMessa
               name={s.label}
               stackId="a"
               fill={s.color}
-            />
+            >
+              <LabelList
+                dataKey={s.key}
+                position="insideRight"
+                fill="#fff"
+                fontSize={10}
+                formatter={(v: number) => (typeof v === 'number' && v > 0 ? String(v) : '')}
+              />
+            </Bar>
           ))}
         </BarChart>
       </ResponsiveContainer>

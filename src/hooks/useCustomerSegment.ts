@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Transaction, CustomerSegmentAnalysis, PeriodPreset, DailySegmentPoint, OpenOrder } from '../types';
-import { aggregateSegments, countCustomersByTransaction } from '../lib/customerSegment';
+import { aggregateSegments, allocateSalesByTransaction, countCustomersByTransaction } from '../lib/customerSegment';
 
 interface Args {
   token: string;
@@ -218,6 +218,11 @@ export function useCustomerSegment(args: Args): {
         let dayRegular = 0;
         let dayStaff = 0;
         let dayUnlisted = 0;
+        let dayNewSales = 0;
+        let dayRepeatSales = 0;
+        let dayRegularSales = 0;
+        let dayStaffSales = 0;
+        let dayUnlistedSales = 0;
 
         combinedTransactions.forEach(tx => {
           const dayCounts = countCustomersByTransaction(tx);
@@ -226,6 +231,13 @@ export function useCustomerSegment(args: Args): {
           dayRegular += dayCounts.regular;
           dayStaff += dayCounts.staff;
           dayUnlisted += dayCounts.unlisted;
+
+          const daySales = allocateSalesByTransaction(tx);
+          dayNewSales += daySales.new;
+          dayRepeatSales += daySales.repeat;
+          dayRegularSales += daySales.regular;
+          dayStaffSales += daySales.staff;
+          dayUnlistedSales += daySales.unlisted;
         });
 
         dailyTrend.push({
@@ -235,6 +247,11 @@ export function useCustomerSegment(args: Args): {
           regular: dayRegular,
           staff: dayStaff,
           unlisted: dayUnlisted,
+          newSales: dayNewSales,
+          repeatSales: dayRepeatSales,
+          regularSales: dayRegularSales,
+          staffSales: dayStaffSales,
+          unlistedSales: dayUnlistedSales,
         });
 
         const dayTotalCustomers = dayNew + dayRepeat + dayRegular + dayStaff;

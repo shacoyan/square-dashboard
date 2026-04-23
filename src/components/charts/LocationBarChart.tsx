@@ -10,6 +10,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  LabelList,
 } from 'recharts';
 import type { TooltipProps } from 'recharts';
 import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
@@ -75,7 +76,7 @@ const LocationBarChart: React.FC<Props> = ({ rows }) => {
 
   return (
     <ResponsiveContainer width="100%" height={320}>
-      <ComposedChart data={rows} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+      <ComposedChart data={rows} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
           dataKey="locationName"
@@ -104,14 +105,28 @@ const LocationBarChart: React.FC<Props> = ({ rows }) => {
           name="totalSales"
           fill="#6366f1"
           barSize={20}
-        />
+        >
+          <LabelList
+            position="top"
+            fontSize={10}
+            fill="#111827"
+            formatter={(v: number) => (typeof v === 'number' && v > 0 ? formatYen(v) : '')}
+          />
+        </Bar>
         <Bar
           yAxisId="right"
           dataKey="totalCustomers"
           name="totalCustomers"
           fill="#f59e0b"
           barSize={20}
-        />
+        >
+          <LabelList
+            position="top"
+            fontSize={10}
+            fill="#111827"
+            formatter={(v: number) => (typeof v === 'number' && v > 0 ? `${v}人` : '')}
+          />
+        </Bar>
       </ComposedChart>
     </ResponsiveContainer>
   );

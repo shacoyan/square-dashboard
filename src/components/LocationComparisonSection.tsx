@@ -129,6 +129,11 @@ export default function LocationComparisonSection(props: Props) {
     );
   };
 
+  const detailThClassName = "px-2 py-1 text-right tabular-nums bg-gray-50 font-medium text-gray-700";
+  const detailThNameClassName = "px-2 py-1 text-left bg-gray-50 font-medium text-gray-700";
+  const detailTdNumClassName = "px-2 py-1 text-right tabular-nums";
+  const detailTdNameClassName = "px-2 py-1 text-left whitespace-nowrap";
+
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-bold text-gray-900">全店舗比較</h2>
@@ -203,9 +208,9 @@ export default function LocationComparisonSection(props: Props) {
 
       {data && (
         <>
-          <div className="overflow-x-auto -mx-6 px-6">
+          <div className="overflow-auto -mx-6 px-6 max-h-[70vh]">
             <table className="min-w-[1100px] w-full text-sm">
-              <thead className="bg-gray-100">
+              <thead className="bg-gray-100 sticky top-0 z-20">
                 <tr className="border-b border-gray-200">
                   <th className="px-3 py-2 text-left whitespace-nowrap">店舗名</th>
                   <th className="px-3 py-2 text-right whitespace-nowrap">期間売上</th>
@@ -234,7 +239,7 @@ export default function LocationComparisonSection(props: Props) {
             )}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
               <h3 className="text-md font-bold text-gray-900 mb-4">店舗別 売上・客数</h3>
               <LocationBarChart
@@ -244,6 +249,34 @@ export default function LocationComparisonSection(props: Props) {
                   totalCustomers: r.totalCustomers,
                 }))}
               />
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr>
+                      <th className={detailThNameClassName}>店舗名</th>
+                      <th className={detailThClassName}>売上</th>
+                      <th className={detailThClassName}>客数</th>
+                      <th className={detailThClassName}>客単価</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.rows.map((r) => (
+                      <tr key={r.locationId} className="border-b border-gray-200">
+                        <td className={detailTdNameClassName}>{r.locationName}</td>
+                        <td className={detailTdNumClassName}>{formatYen(r.totalSales)}</td>
+                        <td className={detailTdNumClassName}>{r.totalCustomers.toLocaleString()}</td>
+                        <td className={detailTdNumClassName}>{r.overallAveragePerCustomer !== null ? formatYen(Math.round(r.overallAveragePerCustomer)) : '--'}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-100 font-bold">
+                      <td className={detailTdNameClassName}>合計</td>
+                      <td className={detailTdNumClassName}>{formatYen(data.totals.totalSales)}</td>
+                      <td className={detailTdNumClassName}>{data.totals.totalCustomers.toLocaleString()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.overallAveragePerCustomer !== null ? formatYen(Math.round(data.totals.overallAveragePerCustomer)) : '--'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
@@ -261,10 +294,50 @@ export default function LocationComparisonSection(props: Props) {
                 valueUnit="人"
                 emptyMessage="セグメントデータなし"
               />
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr>
+                      <th className={detailThNameClassName}>店舗名</th>
+                      <th className={detailThClassName}>新規</th>
+                      <th className={detailThClassName}>リピート</th>
+                      <th className={detailThClassName}>常連</th>
+                      <th className={detailThClassName}>スタッフ</th>
+                      <th className={detailThClassName}>記載なし</th>
+                      <th className={detailThClassName}>合計</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.rows.map((r) => {
+                      const totalSegment = r.customersBySegment.new + r.customersBySegment.repeat + r.customersBySegment.regular + r.customersBySegment.staff + r.customersBySegment.unlisted;
+                      return (
+                        <tr key={r.locationId} className="border-b border-gray-200">
+                          <td className={detailTdNameClassName}>{r.locationName}</td>
+                          <td className={detailTdNumClassName}>{r.customersBySegment.new.toLocaleString()}</td>
+                          <td className={detailTdNumClassName}>{r.customersBySegment.repeat.toLocaleString()}</td>
+                          <td className={detailTdNumClassName}>{r.customersBySegment.regular.toLocaleString()}</td>
+                          <td className={detailTdNumClassName}>{r.customersBySegment.staff.toLocaleString()}</td>
+                          <td className={detailTdNumClassName}>{r.customersBySegment.unlisted.toLocaleString()}</td>
+                          <td className={detailTdNumClassName}>{totalSegment.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="bg-gray-100 font-bold">
+                      <td className={detailTdNameClassName}>合計</td>
+                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.new.toLocaleString()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.repeat.toLocaleString()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.regular.toLocaleString()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.staff.toLocaleString()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.customersBySegment.unlisted.toLocaleString()}</td>
+                      <td className={detailTdNumClassName}>{(data.totals.customersBySegment.new + data.totals.customersBySegment.repeat + data.totals.customersBySegment.regular + data.totals.customersBySegment.staff + data.totals.customersBySegment.unlisted).toLocaleString()}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
-              <h3 className="text-md font-bold text-gray-900 mb-4">店舗別 獲得経路</h3>
+              <h3 className="text-md font-bold text-gray-900 mb-4">店舗別 新規獲得経路</h3>
               <LocationStackChart
                 rows={data.rows.map((r) => ({
                   locationName: r.locationName,
@@ -278,6 +351,46 @@ export default function LocationComparisonSection(props: Props) {
                 valueUnit="件"
                 emptyMessage="獲得経路データなし"
               />
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr>
+                      <th className={detailThNameClassName}>店舗名</th>
+                      <th className={detailThClassName}>Google</th>
+                      <th className={detailThClassName}>口コミ</th>
+                      <th className={detailThClassName}>看板</th>
+                      <th className={detailThClassName}>SNS</th>
+                      <th className={detailThClassName}>不明</th>
+                      <th className={detailThClassName}>合計新規</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.rows.map((r) => {
+                      const totalNew = r.acquisitionBreakdown.google + r.acquisitionBreakdown.review + r.acquisitionBreakdown.signboard + r.acquisitionBreakdown.sns + r.acquisitionBreakdown.unknown;
+                      return (
+                        <tr key={r.locationId} className="border-b border-gray-200">
+                          <td className={detailTdNameClassName}>{r.locationName}</td>
+                          <td className={detailTdNumClassName}>{r.acquisitionBreakdown.google.toLocaleString()}</td>
+                          <td className={detailTdNumClassName}>{r.acquisitionBreakdown.review.toLocaleString()}</td>
+                          <td className={detailTdNumClassName}>{r.acquisitionBreakdown.signboard.toLocaleString()}</td>
+                          <td className={detailTdNumClassName}>{r.acquisitionBreakdown.sns.toLocaleString()}</td>
+                          <td className={detailTdNumClassName}>{r.acquisitionBreakdown.unknown.toLocaleString()}</td>
+                          <td className={detailTdNumClassName}>{totalNew.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="bg-gray-100 font-bold">
+                      <td className={detailTdNameClassName}>合計</td>
+                      <td className={detailTdNumClassName}>{data.totals.acquisitionBreakdown.google.toLocaleString()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.acquisitionBreakdown.review.toLocaleString()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.acquisitionBreakdown.signboard.toLocaleString()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.acquisitionBreakdown.sns.toLocaleString()}</td>
+                      <td className={detailTdNumClassName}>{data.totals.acquisitionBreakdown.unknown.toLocaleString()}</td>
+                      <td className={detailTdNumClassName}>{(data.totals.acquisitionBreakdown.google + data.totals.acquisitionBreakdown.review + data.totals.acquisitionBreakdown.signboard + data.totals.acquisitionBreakdown.sns + data.totals.acquisitionBreakdown.unknown).toLocaleString()}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
