@@ -4,3 +4,4 @@ export { default as AcquisitionChart } from './AcquisitionChart';
 export { default as LocationBarChart } from './LocationBarChart';
 export { default as LocationStackChart } from './LocationStackChart';
 export { default as LocationTrendChart } from './LocationTrendChart';
+export { default as SeriesCheckboxGroup } from './SeriesCheckboxGroup';

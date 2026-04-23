@@ -14,6 +14,7 @@ import {
 import type { TooltipProps } from 'recharts';
 import type { DailySegmentPoint } from '../../types';
 import { formatYen } from '../../utils';
+import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
 
 interface Props {
   data: DailySegmentPoint[];
@@ -127,10 +128,21 @@ const INITIAL_VISIBLE_KEYS: Record<CountKey, boolean> = {
   unlisted: true,
 };
 
-interface LegendClickPayload {
-  dataKey?: string | number;
-  [k: string]: unknown;
-}
+const ALL_ON_VISIBLE_KEYS: Record<CountKey, boolean> = {
+  new: true,
+  repeat: true,
+  regular: true,
+  staff: true,
+  unlisted: true,
+};
+
+const ALL_OFF_VISIBLE_KEYS: Record<CountKey, boolean> = {
+  new: false,
+  repeat: false,
+  regular: false,
+  staff: false,
+  unlisted: false,
+};
 
 export default function SegmentTrendChart({ data }: Props) {
   const [visibleKeys, setVisibleKeys] = useState<Record<CountKey, boolean>>(INITIAL_VISIBLE_KEYS);
@@ -145,66 +157,84 @@ export default function SegmentTrendChart({ data }: Props) {
       }]
     : data;
 
-  const handleLegendClick = (payload: LegendClickPayload) => {
-    if (typeof payload.dataKey === 'string' && COUNT_KEYS.has(payload.dataKey)) {
-      const key = payload.dataKey as CountKey;
-      setVisibleKeys(prev => ({ ...prev, [key]: !prev[key] }));
+  const checkboxItems: SeriesCheckboxItem[] = SERIES.map(s => ({
+    key: s.key,
+    label: s.label,
+    color: s.color,
+  }));
+
+  const handleVisibleChange = (key: string, next: boolean) => {
+    if (COUNT_KEYS.has(key)) {
+      const k = key as CountKey;
+      setVisibleKeys(prev => ({ ...prev, [k]: next }));
     }
   };
 
+  const handleAllOn = () => setVisibleKeys(ALL_ON_VISIBLE_KEYS);
+  const handleAllOff = () => setVisibleKeys(ALL_OFF_VISIBLE_KEYS);
+
   return (
-    <div className="w-full h-[300px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
-          <XAxis
-            dataKey="date"
-            tickFormatter={(value) => {
-              if (!value) return '--';
-              const parts = String(value).split('-');
-              if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
-              return String(value);
-            }}
-            tick={{ fontSize: 11, fill: '#6b7280' }}
-            axisLine={{ stroke: '#d1d5db' }}
-            tickLine={{ stroke: '#d1d5db' }}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: '#6b7280' }}
-            axisLine={{ stroke: '#d1d5db' }}
-            tickLine={{ stroke: '#d1d5db' }}
-            allowDecimals={false}
-          />
-          <Tooltip
-            content={(tipProps: TooltipProps<number, string>) => (
-              <CustomTooltip {...tipProps} visibleKeys={visibleKeys} />
-            )}
-          />
-          <Legend
-            onClick={(payload) => handleLegendClick(payload as unknown as LegendClickPayload)}
-            formatter={(value: string) => (
-              <span className="text-gray-600 text-xs">{value}</span>
-            )}
-          />
-          {SERIES.map((s) => (
-            <Line
-              key={s.key}
-              type="monotone"
-              dataKey={s.key}
-              name={s.label}
-              stroke={s.color}
-              strokeWidth={2}
-              dot={{ r: 3, fill: s.color }}
-              activeDot={{ r: 5 }}
-              connectNulls
-              hide={!visibleKeys[s.key]}
+    <div className="w-full">
+      <SeriesCheckboxGroup
+        items={checkboxItems}
+        visible={visibleKeys as Record<string, boolean>}
+        onChange={handleVisibleChange}
+        onAllOn={handleAllOn}
+        onAllOff={handleAllOff}
+        className="mb-2"
+      />
+      <div className="w-full h-[300px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
+            <XAxis
+              dataKey="date"
+              tickFormatter={(value) => {
+                if (!value) return '--';
+                const parts = String(value).split('-');
+                if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
+                return String(value);
+              }}
+              tick={{ fontSize: 11, fill: '#6b7280' }}
+              axisLine={{ stroke: '#d1d5db' }}
+              tickLine={{ stroke: '#d1d5db' }}
             />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
-      {isEmpty && (
-        <p className="text-center text-gray-500 text-sm -mt-4">推移データなし</p>
-      )}
+            <YAxis
+              tick={{ fontSize: 11, fill: '#6b7280' }}
+              axisLine={{ stroke: '#d1d5db' }}
+              tickLine={{ stroke: '#d1d5db' }}
+              allowDecimals={false}
+            />
+            <Tooltip
+              content={(tipProps: TooltipProps<number, string>) => (
+                <CustomTooltip {...tipProps} visibleKeys={visibleKeys} />
+              )}
+            />
+            <Legend
+              formatter={(value: string) => (
+                <span className="text-gray-600 text-xs">{value}</span>
+              )}
+            />
+            {SERIES.map((s) => (
+              <Line
+                key={s.key}
+                type="monotone"
+                dataKey={s.key}
+                name={s.label}
+                stroke={s.color}
+                strokeWidth={2}
+                dot={{ r: 3, fill: s.color }}
+                activeDot={{ r: 5 }}
+                connectNulls
+                hide={!visibleKeys[s.key]}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+        {isEmpty && (
+          <p className="text-center text-gray-500 text-sm -mt-4">推移データなし</p>
+        )}
+      </div>
     </div>
   );
 }

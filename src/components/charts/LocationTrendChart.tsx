@@ -14,8 +14,10 @@ import {
 } from 'recharts';
 import type { DailySegmentPoint } from '../../types';
 import { formatYen } from '../../utils';
+import { getLocationColor, TOTAL_LINE_COLOR } from '../../lib/locationColors';
+import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
 
-const LOCATION_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#14b8a6', '#8b5cf6'];
+const TOTAL_KEY = '__total__';
 
 function getTotalCount(point: DailySegmentPoint): number {
   return (point.new ?? 0) + (point.repeat ?? 0) + (point.regular ?? 0) + (point.staff ?? 0);
@@ -38,11 +40,6 @@ interface Props {
   metric?: 'customers' | 'sales';
 }
 
-interface LegendClickPayload {
-  dataKey?: string | number;
-  [k: string]: unknown;
-}
-
 export default function LocationTrendChart({
   locationSeries,
   totalsSeries,
@@ -51,19 +48,20 @@ export default function LocationTrendChart({
 }: Props) {
   const getValue = metric === 'sales' ? getTotalSales : getTotalCount;
 
-  const [visibleLocations, setVisibleLocations] = useState<Record<string, boolean>>(() => {
-    const initial: Record<string, boolean> = {};
+  const [visibility, setVisibility] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = { [TOTAL_KEY]: true };
     for (const loc of locationSeries) {
       initial[loc.locationId] = true;
     }
     return initial;
   });
-  const [totalVisible, setTotalVisible] = useState(true);
 
   const locationIdsKey = locationSeries.map((l) => l.locationId).join(',');
   useEffect(() => {
-    setVisibleLocations((prev) => {
-      const next: Record<string, boolean> = {};
+    setVisibility((prev) => {
+      const next: Record<string, boolean> = {
+        [TOTAL_KEY]: prev[TOTAL_KEY] ?? true,
+      };
       for (const loc of locationSeries) {
         next[loc.locationId] = prev[loc.locationId] ?? true;
       }
@@ -96,20 +94,20 @@ export default function LocationTrendChart({
       for (const loc of locationSeries) {
         const val = locationPointsByDate.get(date)?.get(loc.locationId) ?? 0;
         row[loc.locationId] = val;
-        if (visibleLocations[loc.locationId]) {
+        if (visibility[loc.locationId]) {
           visibleTotal += val;
         }
       }
-      row['__total__'] = visibleTotal;
+      row[TOTAL_KEY] = visibleTotal;
       return row;
     });
-  }, [allDates, locationSeries, locationPointsByDate, visibleLocations]);
+  }, [allDates, locationSeries, locationPointsByDate, visibility]);
 
   const allZero = chartData.every((row) => {
     for (const loc of locationSeries) {
       if ((row[loc.locationId] as number) > 0) return false;
     }
-    if ((row['__total__'] as number) > 0) return false;
+    if ((row[TOTAL_KEY] as number) > 0) return false;
     return true;
   });
 
@@ -117,115 +115,151 @@ export default function LocationTrendChart({
 
   const isAllVisible =
     locationSeries.length > 0 &&
-    locationSeries.every((loc) => visibleLocations[loc.locationId] !== false);
+    locationSeries.every((loc) => visibility[loc.locationId] !== false);
   const totalLineName = isAllVisible ? '合計' : '合計（選択中）';
+
+  const checkboxItems: SeriesCheckboxItem[] = [
+    ...locationSeries.map((loc, i) => ({
+      key: loc.locationId,
+      label: loc.locationName,
+      color: getLocationColor(loc.locationId, i),
+    })),
+    { key: TOTAL_KEY, label: '合計', color: TOTAL_LINE_COLOR },
+  ];
+
+  const handleVisibleChange = (key: string, next: boolean) => {
+    setVisibility((prev) => ({ ...prev, [key]: next }));
+  };
+
+  const handleAllOn = () => {
+    const next: Record<string, boolean> = { [TOTAL_KEY]: true };
+    for (const loc of locationSeries) next[loc.locationId] = true;
+    setVisibility(next);
+  };
+
+  const handleAllOff = () => {
+    const next: Record<string, boolean> = { [TOTAL_KEY]: false };
+    for (const loc of locationSeries) next[loc.locationId] = false;
+    setVisibility(next);
+  };
 
   if (isEmpty) {
     return (
-      <div className="w-full h-[320px] flex items-center justify-center">
-        <p className="text-gray-500 text-sm">推移データなし</p>
+      <div className="w-full">
+        <SeriesCheckboxGroup
+          items={checkboxItems}
+          visible={visibility}
+          onChange={handleVisibleChange}
+          onAllOn={handleAllOn}
+          onAllOff={handleAllOff}
+          className="mb-2"
+        />
+        <div className="w-full h-[320px] flex items-center justify-center">
+          <p className="text-gray-500 text-sm">推移データなし</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-[320px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
-          <XAxis
-            dataKey="date"
-            tickFormatter={(value) => {
-              if (!value) return '--';
-              const parts = String(value).split('-');
-              if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
-              return String(value);
-            }}
-            tick={{ fontSize: 11, fill: '#6b7280' }}
-            axisLine={{ stroke: '#d1d5db' }}
-            tickLine={{ stroke: '#d1d5db' }}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: '#6b7280' }}
-            axisLine={{ stroke: '#d1d5db' }}
-            tickLine={{ stroke: '#d1d5db' }}
-            allowDecimals={false}
-          />
-          <Tooltip
-            formatter={(value: number, name: string) =>
-              metric === 'sales' ? [formatYen(value), name] : [value, name]
-            }
-            contentStyle={{
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              color: '#111827',
-              fontSize: '13px',
-              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-            }}
-            itemStyle={{ color: '#111827' }}
-            labelStyle={{ color: '#111827' }}
-            labelFormatter={(label) => {
-              if (!label) return '';
-              const parts = String(label).split('-');
-              if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
-              return String(label);
-            }}
-          />
-          <Legend
-            formatter={(value: string) => (
-              <span className="text-gray-600 text-xs">{value}</span>
-            )}
-            onClick={(payload) => {
-              const p = payload as unknown as LegendClickPayload;
-              const key = p.dataKey;
-              if (key === '__total__') {
-                setTotalVisible((prev) => !prev);
-              } else if (typeof key === 'string') {
-                setVisibleLocations((prev) => ({
-                  ...prev,
-                  [key]: !prev[key],
-                }));
-              }
-            }}
-          />
-          {locationSeries.map((loc, i) => (
-            <Line
-              key={loc.locationId}
-              type="monotone"
-              dataKey={loc.locationId}
-              name={loc.locationName}
-              stroke={LOCATION_COLORS[i % 6]}
-              strokeWidth={2}
-              dot={{ r: 3, fill: LOCATION_COLORS[i % 6] }}
-              activeDot={{ r: 5 }}
-              connectNulls
-              hide={!visibleLocations[loc.locationId]}
+    <div className="w-full">
+      <SeriesCheckboxGroup
+        items={checkboxItems}
+        visible={visibility}
+        onChange={handleVisibleChange}
+        onAllOn={handleAllOn}
+        onAllOff={handleAllOff}
+        className="mb-2"
+      />
+      <div className="w-full h-[320px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
+            <XAxis
+              dataKey="date"
+              tickFormatter={(value) => {
+                if (!value) return '--';
+                const parts = String(value).split('-');
+                if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
+                return String(value);
+              }}
+              tick={{ fontSize: 11, fill: '#6b7280' }}
+              axisLine={{ stroke: '#d1d5db' }}
+              tickLine={{ stroke: '#d1d5db' }}
             />
-          ))}
-          <Line
-            type="monotone"
-            dataKey="__total__"
-            name={totalLineName}
-            stroke="#111827"
-            strokeWidth={4}
-            dot={{ r: 4, fill: '#111827' }}
-            activeDot={{ r: 6 }}
-            connectNulls
-            hide={!totalVisible}
-          >
-            {metric !== 'sales' && (
-              <LabelList
-                dataKey="__total__"
-                position="top"
-                fontSize={10}
-                fill="#111827"
-                formatter={(v: number) => (typeof v === 'number' && v > 0 ? String(v) : '')}
-              />
-            )}
-          </Line>
-        </LineChart>
-      </ResponsiveContainer>
+            <YAxis
+              tick={{ fontSize: 11, fill: '#6b7280' }}
+              axisLine={{ stroke: '#d1d5db' }}
+              tickLine={{ stroke: '#d1d5db' }}
+              allowDecimals={false}
+            />
+            <Tooltip
+              formatter={(value: number, name: string) =>
+                metric === 'sales' ? [formatYen(value), name] : [value, name]
+              }
+              contentStyle={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                color: '#111827',
+                fontSize: '13px',
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+              }}
+              itemStyle={{ color: '#111827' }}
+              labelStyle={{ color: '#111827' }}
+              labelFormatter={(label) => {
+                if (!label) return '';
+                const parts = String(label).split('-');
+                if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
+                return String(label);
+              }}
+            />
+            <Legend
+              formatter={(value: string) => (
+                <span className="text-gray-600 text-xs">{value}</span>
+              )}
+            />
+            {locationSeries.map((loc, i) => {
+              const color = getLocationColor(loc.locationId, i);
+              return (
+                <Line
+                  key={loc.locationId}
+                  type="monotone"
+                  dataKey={loc.locationId}
+                  name={loc.locationName}
+                  stroke={color}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: color }}
+                  activeDot={{ r: 5 }}
+                  connectNulls
+                  hide={!visibility[loc.locationId]}
+                />
+              );
+            })}
+            <Line
+              type="monotone"
+              dataKey={TOTAL_KEY}
+              name={totalLineName}
+              stroke={TOTAL_LINE_COLOR}
+              strokeWidth={4}
+              dot={{ r: 4, fill: TOTAL_LINE_COLOR }}
+              activeDot={{ r: 6 }}
+              connectNulls
+              hide={!visibility[TOTAL_KEY]}
+            >
+              {metric !== 'sales' && (
+                <LabelList
+                  dataKey={TOTAL_KEY}
+                  position="top"
+                  fontSize={10}
+                  fill={TOTAL_LINE_COLOR}
+                  formatter={(v: number) => (typeof v === 'number' && v > 0 ? String(v) : '')}
+                />
+              )}
+            </Line>
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
