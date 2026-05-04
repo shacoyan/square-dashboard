@@ -258,6 +258,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
             dailyTrend: [],
             loadError: '期間データ取得失敗',
             partialFailure: null,
+            transactions: [],
           };
         }
         const agg = aggregateSegments(entry.transactions);
@@ -279,6 +280,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
           dailyTrend,
           loadError: null,
           partialFailure: entry.failedDays > 0 ? { failedDays: entry.failedDays, totalDays: entry.totalDays } : null,
+          transactions: entry.transactions,
         };
       });
 

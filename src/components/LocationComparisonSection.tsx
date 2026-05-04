@@ -6,6 +6,7 @@ import { formatYen } from '../utils';
 import WeekdayLocationAnalysisSection from './WeekdayLocationAnalysisSection';
 import { getLocationColors } from '../lib/locationColors';
 
+import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
 const PERIOD_TABS: { key: PeriodPreset; label: string }[] = [
   { key: 'today', label: '今日' },
   { key: 'week', label: '週' },
@@ -96,7 +97,7 @@ export default function LocationComparisonSection(props: Props) {
     [data]
   );
 
-  type RowInput = LocationSegmentRow | Omit<LocationSegmentRow, 'locationId' | 'locationName' | 'loadError' | 'partialFailure'>;
+  type RowInput = LocationSegmentRow | Omit<LocationSegmentRow, 'locationId' | 'locationName' | 'loadError' | 'partialFailure' | 'transactions'>;
   const renderRow = (row: RowInput, isTotal = false) => {
     const rowTyped = row as LocationSegmentRow;
     const hasError = !isTotal && rowTyped.loadError;
@@ -447,6 +448,10 @@ export default function LocationComparisonSection(props: Props) {
                 }))}
                 colorMap={barColorsMap}
               />
+            </div>
+
+            <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+              <OccupancyAnalysisSection rows={data.rows} />
             </div>
           </div>
         </>

@@ -108,6 +108,8 @@ export interface LocationSegmentRow {
   dailyTrend: DailySegmentPoint[];
   loadError: string | null;
   partialFailure: { failedDays: number; totalDays: number } | null;
+  // 時間帯別混雑分析（2026-05-05）: 同時滞在組数算出のため raw transactions を露出
+  transactions: Transaction[];
 }
 
 // 全店舗比較 — セクション全体のデータ
@@ -117,6 +119,6 @@ export interface LocationComparisonData {
   periodEnd: string;
   elapsedDays: number;
   rows: LocationSegmentRow[];
-  totals: Omit<LocationSegmentRow, 'locationId' | 'locationName' | 'loadError' | 'partialFailure'>;
+  totals: Omit<LocationSegmentRow, 'locationId' | 'locationName' | 'loadError' | 'partialFailure' | 'transactions'>;
   allDates: string[];
 }
