@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 interface Transaction {
   id: string;
   created_at_jst: string;
+  order_created_at_jst: string | null;
   amount: number;
   status: string;
   source: string;

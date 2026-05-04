@@ -11,6 +11,8 @@ interface Transaction {
   id: string;
   customer_name: string | null;
   created_at_jst: string;
+  /** 伝票開始時刻 (order.created_at). 紐付く order が無い payment では null. */
+  order_created_at_jst: string | null;
   amount: number;
   status: string;
   source: string;
@@ -167,7 +169,7 @@ export default function TransactionList({
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-3 font-medium text-gray-500">時刻</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-500 whitespace-nowrap">時刻</th>
               <th className="text-right px-4 py-3 font-medium text-gray-500">金額</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">支払い方法</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">顧客</th>
@@ -181,15 +183,24 @@ export default function TransactionList({
                   className={`border-b border-gray-100 last:border-0 hover:bg-gray-50 transition ${tx.line_items.length > 0 ? 'cursor-pointer' : ''}`}
                   onClick={() => tx.line_items.length > 0 && toggleExpand(tx.id)}
                 >
-                  <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1">
+                  <td className="px-4 py-3 text-gray-700 whitespace-nowrap align-top">
+                    <div className="inline-flex items-start gap-1">
                       {tx.line_items.length > 0 && (
-                        <span className="text-gray-400">
-                          {expandedIds.has(tx.id) ? '▼' : '▶'}
-                        </span>
+                        <span className="text-gray-400 leading-6">{expandedIds.has(tx.id) ? '▼' : '▶'}</span>
                       )}
-                      {tx.created_at_jst ? new Date(tx.created_at_jst).toLocaleTimeString('ja-JP') : '-'}
-                    </span>
+                      <div className="flex flex-col leading-tight">
+                        {/* 上段: 開始時刻 */}
+                        <span className="text-xs text-gray-400 tabular-nums">
+                          <span className="mr-1">開始</span>
+                          {tx.order_created_at_jst ? new Date(tx.order_created_at_jst).toLocaleTimeString('ja-JP') : '-'}
+                        </span>
+                        {/* 下段: 決済時刻 (既存と同サイズ) */}
+                        <span className="text-sm text-gray-700 tabular-nums font-medium">
+                          <span className="mr-1 text-xs text-gray-400 font-normal">決済</span>
+                          {tx.created_at_jst ? new Date(tx.created_at_jst).toLocaleTimeString('ja-JP') : '-'}
+                        </span>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-gray-900 font-semibold text-right whitespace-nowrap">
                     {formatYen(tx.amount)}
