@@ -239,7 +239,6 @@ export default async (req, res) => {
       return {
         id: payment.id,
         created_at_jst: payment.created_at ? toJSTString(payment.created_at) : null,
-        order_created_at_jst: order?.created_at ?? null,
         amount: payment.amount_money?.amount ?? 0,
         status: payment.status,
         source: payment.source_type ?? 'CARD',
