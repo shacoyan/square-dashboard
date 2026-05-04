@@ -1,10 +1,12 @@
 import { formatYen } from '../utils';
-import type { CustomerSegmentAnalysis, PeriodPreset, SegmentBreakdown, AcquisitionBreakdown } from '../types';
+import type { CustomerSegmentAnalysis, PeriodPreset, SegmentBreakdown, AcquisitionBreakdown, Transaction } from '../types';
 import { SegmentPieChart, SegmentTrendChart, AcquisitionChart } from './charts';
 import WeekdayAnalysisSection from './WeekdayAnalysisSection';
+import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
 
 interface Props {
   data: CustomerSegmentAnalysis | null;
+  transactions: Transaction[];
   loading: boolean;
   error: string | null;
   period: PeriodPreset;
@@ -89,6 +91,7 @@ const ACQUISITION_CONFIG: { key: keyof AcquisitionBreakdown; label: string; colo
 
 export default function CustomerSegmentSection({
   data,
+  transactions,
   loading,
   error,
   period,
@@ -265,6 +268,10 @@ export default function CustomerSegmentSection({
 
           <div className="bg-white rounded-xl shadow p-6">
             <WeekdayAnalysisSection dailyTrend={data.dailyTrend} />
+          </div>
+
+          <div className="bg-white rounded-xl shadow p-6">
+            <OccupancyAnalysisSection transactions={transactions} />
           </div>
 
           <div className="bg-white rounded-xl shadow p-6">

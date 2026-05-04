@@ -1,28 +1,23 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { LocationSegmentRow } from '../../types';
+import type { Transaction } from '../../types';
 import { buildOccupancyMatrix } from '../../lib/occupancyAggregation';
 import OccupancyHeatmap from '../charts/OccupancyHeatmap';
 import OccupancyLineChart from '../charts/OccupancyLineChart';
 
 interface Props {
-  rows: LocationSegmentRow[];
+  transactions: Transaction[];
 }
 
 /**
  * 時間帯別混雑分析セクション。
- * 全店舗の transactions を flat に concat し、`buildOccupancyMatrix` で 7×48 集計。
+ * 呼び出し側で flat 化済みの transactions を受け取り `buildOccupancyMatrix` で 7×48 集計。
  * - ヒートマップ: 平均同時滞在組数（曜日 × 時間帯）
  * - 折れ線: 平均/合計トグル + 曜日フィルタ
  */
-export default function OccupancyAnalysisSection({ rows }: Props) {
-  const allTransactions = useMemo(
-    () => rows.flatMap((r) => r.transactions ?? []),
-    [rows],
-  );
-
-  const matrix = useMemo(() => buildOccupancyMatrix(allTransactions), [allTransactions]);
+export default function OccupancyAnalysisSection({ transactions }: Props) {
+  const matrix = useMemo(() => buildOccupancyMatrix(transactions), [transactions]);
 
   const hasAnyData = matrix.totalSpans > 0;
 

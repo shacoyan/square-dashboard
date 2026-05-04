@@ -114,6 +114,7 @@ function openOrderToTransaction(o: OpenOrder): Transaction {
 
 export function useCustomerSegment(args: Args): {
   data: CustomerSegmentAnalysis | null;
+  transactions: Transaction[];
   loading: boolean;
   error: string | null;
   refresh: () => void;
@@ -122,6 +123,7 @@ export function useCustomerSegment(args: Args): {
   const { token, locationId, period, baseDate, startHour, endHour, weekIndex, enabled } = args;
 
   const [data, setData] = useState<CustomerSegmentAnalysis | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,12 +148,14 @@ export function useCustomerSegment(args: Args): {
     setLoading(true);
     setError(null);
     setData(null);
+    setTransactions([]);
 
     const dates = calculatePeriodDates(period, baseDate, weekIndex);
 
     if (dates.length === 0) {
       setLoading(false);
       setData(null);
+      setTransactions([]);
       setError('この週はまだ経過していません');
       return;
     }
@@ -194,6 +198,7 @@ export function useCustomerSegment(args: Args): {
       if (isTxFailure && isOpenFailure) {
         setError('期間データ取得失敗');
         setData(null);
+        setTransactions([]);
         setLoading(false);
         return;
       }
@@ -294,6 +299,7 @@ export function useCustomerSegment(args: Args): {
         acquisitionBreakdown: result.acquisition,
         dailyTrend: dailyTrend.sort((a, b) => a.date.localeCompare(b.date)),
       });
+      setTransactions(allTransactions);
 
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
@@ -301,6 +307,7 @@ export function useCustomerSegment(args: Args): {
       }
       setError(err instanceof Error ? err.message : 'データの取得に失敗しました');
       setData(null);
+      setTransactions([]);
     } finally {
       if (!currentAbortController.signal.aborted) {
         setLoading(false);
@@ -321,6 +328,7 @@ export function useCustomerSegment(args: Args): {
 
   return {
     data,
+    transactions,
     loading,
     error,
     refresh: fetchData,

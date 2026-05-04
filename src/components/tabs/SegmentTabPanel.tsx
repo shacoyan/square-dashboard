@@ -1,8 +1,9 @@
 import CustomerSegmentSection from '../CustomerSegmentSection';
-import type { CustomerSegmentAnalysis, PeriodPreset } from '../../types';
+import type { CustomerSegmentAnalysis, PeriodPreset, Transaction } from '../../types';
 
 interface Props {
   data: CustomerSegmentAnalysis | null;
+  transactions: Transaction[];
   loading: boolean;
   error: string | null;
   period: PeriodPreset;

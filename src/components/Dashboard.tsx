@@ -126,6 +126,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
 
   const {
     data: segmentData,
+    transactions: segmentTransactions,
     loading: segmentLoading,
     error: segmentError,
     availableWeeks: segmentAvailableWeeks,
@@ -272,6 +273,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         ) : activeTab === 'segment' ? (
           <SegmentTabPanel
             data={segmentData}
+            transactions={segmentTransactions}
             loading={segmentLoading}
             error={segmentError}
             period={period}
