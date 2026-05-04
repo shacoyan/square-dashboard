@@ -19,6 +19,7 @@ export interface Transaction {
   id: string;
   customer_name: string | null;
   created_at_jst: string;
+  order_created_at_jst?: string | null;
   amount: number;
   status: string;
   source: string;

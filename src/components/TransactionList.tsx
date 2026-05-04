@@ -23,6 +23,11 @@ function normalizeName(name: string): string {
     .toLowerCase();
 }
 
+function formatHHMM(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 function mergeLineItems(items: LineItem[]): LineItem[] {
   const map = new Map<string, { quantity: number; amount: number; originalName: string; merged: boolean }>();
 
@@ -168,13 +173,23 @@ export default function TransactionList({
                   onClick={() => tx.line_items.length > 0 && toggleExpand(tx.id)}
                 >
                   <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1">
+                    <span className="inline-flex items-start gap-1">
                       {tx.line_items.length > 0 && (
-                        <span className="text-gray-400">
+                        <span className="text-gray-400 mt-0.5">
                           {expandedIds.has(tx.id) ? '▼' : '▶'}
                         </span>
                       )}
-                      {tx.created_at_jst ? new Date(tx.created_at_jst).toLocaleTimeString('ja-JP') : '-'}
+                      <span className="flex flex-col leading-tight">
+                        {tx.order_created_at_jst &&
+                          formatHHMM(tx.order_created_at_jst) !== formatHHMM(tx.created_at_jst) && (
+                          <span className="text-[10px] text-gray-400">
+                            開始 {formatHHMM(tx.order_created_at_jst)}
+                          </span>
+                        )}
+                        <span>
+                          {tx.created_at_jst ? new Date(tx.created_at_jst).toLocaleTimeString('ja-JP') : '-'}
+                        </span>
+                      </span>
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-900 font-semibold text-right whitespace-nowrap">
