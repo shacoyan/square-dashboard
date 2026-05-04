@@ -1,13 +1,23 @@
 // src/hooks/useSquareData.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
 
+interface LineItem {
+  name: string;
+  quantity: string;
+  amount: number;
+  category?: string | null;
+}
+
 interface Transaction {
   id: string;
+  customer_name: string | null;
   created_at_jst: string;
+  /** 伝票開始時刻 (order.created_at). 紐付く order が無い payment では null. */
   order_created_at_jst: string | null;
   amount: number;
   status: string;
   source: string;
+  line_items: LineItem[];
 }
 
 interface SalesData {
