@@ -51,6 +51,15 @@ export default {
             700: '#c2410c',
             900: '#7c2d12',
           },
+          // L14 追加: 顧客セグメント識別 palette（colorblind-aware、隣接色相差 ≥ 30°）
+          segment: {
+            new:      '#2563eb',
+            repeat:   '#0d9488',
+            regular:  '#dc2626',
+            staff:    '#7c3aed',
+            unlisted: '#6b7280',
+            empty:    '#d1d5db',
+          },
         },
       },
       boxShadow: {

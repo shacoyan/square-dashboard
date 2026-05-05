@@ -4,18 +4,11 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import type { SegmentBreakdown } from '../../types';
 import { ChartLegend, ChartTooltip } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
+import { segmentColors, segmentEmptyColor } from '../../lib/segmentColors';
 
 interface Props {
   sales: SegmentBreakdown;
 }
-
-const COLORS = {
-  new: '#3b82f6',
-  repeat: '#eab308',
-  regular: '#ef4444',
-  staff: '#a855f7',
-  unlisted: '#6b7280',
-};
 
 const SEGMENT_ORDER: (keyof SegmentBreakdown)[] = ['new', 'repeat', 'regular', 'staff', 'unlisted'];
 
@@ -34,7 +27,7 @@ export default function SegmentPieChart({ sales }: Props) {
     ? [{ name: 'データなし', value: 1, segment: 'new' as const }]
     : SEGMENT_ORDER.map((segment) => ({ name: LABELS[segment], value: sales[segment], segment }));
 
-  const legendItems = SEGMENT_ORDER.map(s => ({ id: s, label: LABELS[s], color: COLORS[s] }));
+  const legendItems = SEGMENT_ORDER.map(s => ({ id: s, label: LABELS[s], color: segmentColors[s] }));
 
   return (
     <div className="w-full min-w-0 space-y-3">
@@ -53,7 +46,7 @@ export default function SegmentPieChart({ sales }: Props) {
               {data.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
-                  fill={total === 0 ? '#d1d5db' : COLORS[entry.segment]}
+                  fill={total === 0 ? segmentEmptyColor : segmentColors[entry.segment]}
                   stroke="none"
                 />
               ))}

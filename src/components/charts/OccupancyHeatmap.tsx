@@ -12,6 +12,26 @@ import {
 
 const OCCUPANCY_HEATMAP_FULL_PERSONS = 10;
 
+const HEATMAP_BUCKET_CLASSES = [
+  'bg-surface-subtle border border-border', // 0
+  'bg-accent-heat-50', // 1
+  'bg-accent-heat-100', // 2
+  'bg-accent-heat-300', // 3
+  'bg-accent-heat-500', // 4
+  'bg-accent-heat-700', // 5
+  'bg-accent-heat-900', // 6
+] as const;
+
+function getHeatBucket(persons: number): number {
+  if (persons <= 0) return 0;
+  if (persons <= OCCUPANCY_HEATMAP_FULL_PERSONS * 0.15) return 1;
+  if (persons <= OCCUPANCY_HEATMAP_FULL_PERSONS * 0.30) return 2;
+  if (persons <= OCCUPANCY_HEATMAP_FULL_PERSONS * 0.50) return 3;
+  if (persons <= OCCUPANCY_HEATMAP_FULL_PERSONS * 0.75) return 4;
+  if (persons < OCCUPANCY_HEATMAP_FULL_PERSONS) return 5;
+  return 6;
+}
+
 interface Props {
   matrix: OccupancyMatrix;
   activeSlots: number[];
@@ -19,9 +39,9 @@ interface Props {
 
 /**
  * 7 行（曜日）× 48 列（30min slot）ヒートマップ。
- * - 濃淡は「平均同時滞在人数」固定（要件）。tooltip は組数+人数を両方表示。
+ * - 濃淡は「平均同時滞在人数」を 6 段階バケットで表現（getHeatBucket）。
+ * - bucket 0 は zero セル。凡例は bucket 1–6 の 6 stop を flex-1 で並べる。
  * - 列ヘッダは 3h 刻みの 8 本のみ（slot % 6 === 0）表示。
- * - 0 値: bg-gray-100 / 値あり: bg-blue-500 + opacity (= persons / 10（10 人で最濃、超過は clamp）)。
  */
 export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
   const { avgGroups, avgPersons, maxPersons } = useMemo(() => {
@@ -35,7 +55,6 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
         aP[w][s] = persons;
       }
     }
-    // maxPersons は表示対象 (activeSlots) のマスのみで算出。画面外ピークで薄まるのを回避。
     for (const s of activeSlots) {
       for (let w = 0; w < WEEKDAY_COUNT; w++) {
         if (aP[w][s] > mP) mP = aP[w][s];
@@ -78,14 +97,12 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
               {activeSlots.map((s, i) => {
                 const g = avgGroups[w][s];
                 const p = avgPersons[w][s];
-                const isZero = p <= 0;
-                const opacity = hasData && !isZero ? Math.min(1, Math.max(0.08, p / OCCUPANCY_HEATMAP_FULL_PERSONS)) : 0;
+                const bucket = getHeatBucket(p);
                 const titleText = `${WEEKDAY_LABELS[w]}曜 ${SLOT_LABELS[s]}: 組 ${g.toFixed(1)} 組 / 人 ${p.toFixed(1)} 人`;
                 return (
                   <div
                     key={`c-${w}-${i}-${s}`}
-                    className={`min-h-[20px] border-r border-white ${isZero ? 'bg-gray-100' : 'bg-blue-500'}`}
-                    style={{ opacity: isZero ? 1 : opacity }}
+                    className={`min-h-[20px] border-r border-white ${HEATMAP_BUCKET_CLASSES[bucket]}`}
                     title={titleText}
                   />
                 );
@@ -97,11 +114,10 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
           <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-500">
             <span>少</span>
             <div className="flex h-2 w-32">
-              {Array.from({ length: 10 }, (_, i) => (
+              {HEATMAP_BUCKET_CLASSES.slice(1).map((cls, i) => (
                 <div
                   key={`legend-${i}`}
-                  className="flex-1 bg-blue-500"
-                  style={{ opacity: Math.max(0.08, (i + 1) / 10) }}
+                  className={`flex-1 ${cls}`}
                 />
               ))}
             </div>
