@@ -2,7 +2,7 @@
 
 import type { WeekdayAggregate } from '../../lib/weekdayAggregation';
 import { formatYen } from '../../utils';
-import { ChartLegend, ChartTooltip, type ChartLegendItem } from '../ui';
+import { ChartLegend, ChartTooltip, type ChartLegendItem, EmptyState } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 import {
   ResponsiveContainer,
@@ -74,9 +74,7 @@ export default function WeekdayBarChart({ data, metric, stacked = true }: Props)
 
   if (!hasData) {
     return (
-      <div className="flex items-center justify-center h-[240px] text-gray-400">
-        曜日データなし
-      </div>
+      <EmptyState title="曜日データなし" minHeight={chartTheme.heightPreset.compact} />
     );
   }
 

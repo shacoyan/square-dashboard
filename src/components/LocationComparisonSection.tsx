@@ -2,7 +2,7 @@ import React from 'react';
 import type { Location, PeriodPreset, LocationSegmentRow } from '../types';
 import { useMultiLocationSegment } from '../hooks/useMultiLocationSegment';
 import { LocationBarChart, LocationStackChart, LocationTrendChart } from './charts';
-import { PeriodSelector, Card, TableSkeleton, ChartSkeleton } from './ui';
+import { PeriodSelector, Card, TableSkeleton, ChartSkeleton, EmptyState, ErrorState } from './ui';
 import { formatYen } from '../utils';
 import WeekdayLocationAnalysisSection from './WeekdayLocationAnalysisSection';
 import { getLocationColors } from '../lib/locationColors';
@@ -144,21 +144,15 @@ export default function LocationComparisonSection(props: Props) {
         )}
 
         {error && !data && (
-          <div className="bg-red-50 border border-red-300 text-red-800 px-4 py-3 rounded-lg" role="alert">
-            <p className="font-medium">データの取得に失敗しました</p>
-            <p className="text-sm mt-1">{error}</p>
-          </div>
+          <ErrorState variant="inline" tone="danger" title="データの取得に失敗しました" description={error} />
         )}
 
         {error && data && (
-          <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-3 rounded-lg" role="alert">
-            <p className="font-medium">一部の店舗データの取得に失敗しました</p>
-            <p className="text-sm mt-1">{error}</p>
-          </div>
+          <ErrorState variant="inline" tone="warning" title="一部の店舗データの取得に失敗しました" description={error} />
         )}
 
         {!loading && !error && !data && (
-          <p className="text-gray-500">店舗データがありません。</p>
+          <EmptyState title="店舗データがありません" />
         )}
 
         {data && (

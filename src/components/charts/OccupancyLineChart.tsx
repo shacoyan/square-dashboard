@@ -17,7 +17,7 @@ import {
   getLineChartData,
   type OccupancyMatrix,
 } from '../../lib/occupancyAggregation';
-import { ChartLegend, ChartTooltip, type ChartLegendItem, type ChartTooltipPayloadItem } from '../ui';
+import { ChartLegend, ChartTooltip, EmptyState, type ChartLegendItem, type ChartTooltipPayloadItem } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 
 interface Props {
@@ -127,9 +127,10 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
 
       {/* chart */}
       {!hasAnyChecked || !hasNonZero ? (
-        <div className="flex items-center justify-center h-[240px] text-gray-400 text-sm">
-          {hasAnyChecked ? 'データがありません' : '曜日を 1 つ以上選択してください'}
-        </div>
+        <EmptyState
+          title={hasAnyChecked ? 'データがありません' : '曜日を 1 つ以上選択してください'}
+          minHeight={chartTheme.heightPreset.compact}
+        />
       ) : (
         <div className="w-full min-w-0">
           <ResponsiveContainer width="100%" height={chartTheme.heightPreset.compact}>

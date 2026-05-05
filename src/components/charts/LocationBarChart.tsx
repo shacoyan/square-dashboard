@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 import { formatYen } from '../../utils';
 import { chartTheme } from '../../lib/chartTheme';
-import { ChartTooltip } from '../ui';
+import { ChartTooltip, EmptyState } from '../ui';
 
 interface RowData {
   locationName: string;
@@ -29,19 +29,7 @@ interface Props {
 
 const LocationBarChart: React.FC<Props> = ({ rows }) => {
   if (rows.length === 0) {
-    return (
-      <div
-        style={{
-          height: chartTheme.heightPreset.standard,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          color: '#6b7280',
-        }}
-      >
-        店舗データなし
-      </div>
-    );
+    return <EmptyState title="店舗データなし" minHeight={chartTheme.heightPreset.standard} />;
   }
 
   return (

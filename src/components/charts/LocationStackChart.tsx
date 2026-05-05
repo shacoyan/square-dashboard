@@ -10,7 +10,7 @@ import {
   Tooltip,
   LabelList,
 } from 'recharts';
-import { ChartLegend, ChartTooltip, type ChartLegendItem } from '../ui';
+import { ChartLegend, ChartTooltip, type ChartLegendItem, EmptyState } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 
 interface Props {
@@ -32,12 +32,7 @@ export default function LocationStackChart({ rows, series, valueUnit, emptyMessa
 
   if (isEmpty) {
     return (
-      <div
-        className="flex items-center justify-center w-full"
-        style={{ height: `${chartTheme.heightPreset.compact}px` }}
-      >
-        <p className="text-gray-500 text-sm">{emptyMessage ?? 'データなし'}</p>
-      </div>
+      <EmptyState title={emptyMessage ?? 'データなし'} minHeight={chartTheme.heightPreset.compact} />
     );
   }
 

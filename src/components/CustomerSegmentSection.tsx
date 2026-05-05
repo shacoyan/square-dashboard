@@ -1,7 +1,7 @@
 import { formatYen } from '../utils';
 import type { CustomerSegmentAnalysis, PeriodPreset, SegmentBreakdown, AcquisitionBreakdown, Transaction } from '../types';
 import { SegmentPieChart, SegmentTrendChart, AcquisitionChart } from './charts';
-import { PeriodSelector, Card, KpiSkeleton } from './ui';
+import { PeriodSelector, Card, KpiSkeleton, EmptyState, ErrorState } from './ui';
 import WeekdayAnalysisSection from './WeekdayAnalysisSection';
 import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
 
@@ -110,14 +110,11 @@ export default function CustomerSegmentSection({
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-300 text-red-800 px-4 py-3 rounded-lg" role="alert">
-            <p className="font-medium">データの取得に失敗しました</p>
-            <p className="text-sm mt-1">{error}</p>
-          </div>
+          <ErrorState variant="inline" tone="danger" title="データの取得に失敗しました" description={error} />
         )}
 
         {!loading && !error && !data && (
-          <p className="text-gray-500">データがありません。</p>
+          <EmptyState title="データがありません" />
         )}
 
         {!loading && !error && data && (

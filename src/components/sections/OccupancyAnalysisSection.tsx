@@ -5,7 +5,7 @@ import type { Transaction } from '../../types';
 import { buildOccupancyMatrix, getActiveSlots } from '../../lib/occupancyAggregation';
 import OccupancyHeatmap from '../charts/OccupancyHeatmap';
 import OccupancyLineChart from '../charts/OccupancyLineChart';
-import { Card } from '../ui';
+import { Card, EmptyState } from '../ui';
 
 interface Props {
   transactions: Transaction[];
@@ -32,9 +32,7 @@ export default function OccupancyAnalysisSection({ transactions, startHour, endH
     >
       <div className="space-y-4">
         {!hasAnyData ? (
-          <div className="flex items-center justify-center h-[160px] text-gray-400 text-sm border border-dashed border-gray-200 rounded-md bg-white">
-            データがありません
-          </div>
+          <EmptyState title="データがありません" minHeight={160} />
         ) : (
           <>
             <div className="bg-white rounded-md border border-gray-200 p-3">

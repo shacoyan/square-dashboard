@@ -26,10 +26,17 @@ export default {
         danger: {
           DEFAULT: '#dc2626',
           subtle: '#fef2f2',
+          50: '#fef2f2',
+          300: '#fca5a5',
+          800: '#991b1b',
         },
         warning: {
           DEFAULT: '#d97706',
           subtle: '#fffbeb',
+          50: '#fffbeb',
+          200: '#fde68a',
+          300: '#fcd34d',
+          800: '#92400e',
         },
         success: {
           DEFAULT: '#16a34a',

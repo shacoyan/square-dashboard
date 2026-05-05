@@ -15,7 +15,7 @@ import type { DailySegmentPoint } from '../../types';
 import { formatYen } from '../../utils';
 import { TOTAL_LINE_COLOR } from '../../lib/locationColors';
 import { chartTheme } from '../../lib/chartTheme';
-import { ChartTooltip, type ChartTooltipPayloadItem } from '../ui';
+import { ChartTooltip, type ChartTooltipPayloadItem, EmptyState } from '../ui';
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
 
 const TOTAL_KEY = '__total__';
@@ -181,12 +181,7 @@ export default function LocationTrendChart({
           onAllOff={handleAllOff}
           className="mb-2"
         />
-        <div
-          className="w-full min-w-0 flex items-center justify-center"
-          style={{ height: `${chartTheme.heightPreset.detail}px` }}
-        >
-          <p className="text-gray-500 text-sm">推移データなし</p>
-        </div>
+        <EmptyState title="推移データなし" minHeight={chartTheme.heightPreset.detail} />
       </div>
     );
   }

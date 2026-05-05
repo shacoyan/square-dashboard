@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import AppShell from './layout/AppShell';
 import TopBar from './layout/TopBar';
 import ControlBar from './layout/ControlBar';
-import { Container, Stack } from './ui';
+import { Container, Stack, EmptyState, ErrorState } from './ui';
 import DashboardTabs from './DashboardTabs';
 import DailyTabPanel from './tabs/DailyTabPanel';
 import SegmentTabPanel from './tabs/SegmentTabPanel';
@@ -178,17 +178,11 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           />
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-700 text-sm">⚠ {error}</p>
-            </div>
+            <ErrorState variant="inline" tone="danger" title="エラーが発生しました" description={error} />
           )}
 
           {!selectedLocationId && !locationsLoading && locations.length === 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-yellow-700 text-sm">
-                店舗が登録されていません。Square Developerダッシュボードで店舗を確認してください。
-              </p>
-            </div>
+            <EmptyState variant="inline" tone="warning" title="店舗が登録されていません" description="Square Developer ダッシュボードで店舗を確認してください。" />
           )}
 
           <DashboardTabs active={activeTab} onChange={handleTabChange} />
