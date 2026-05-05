@@ -1,6 +1,7 @@
 import { useState, Fragment } from 'react';
 import type { LineItem, Transaction, Discount } from '../types';
 import { formatYen } from '../utils';
+import { Card, EmptyState, Skeleton } from './ui';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -138,51 +139,55 @@ export default function TransactionList({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow p-6 text-center text-gray-400">
-        読み込み中...
-      </div>
+      <Card title="決済済み伝票" padded={false}>
+        <div className="p-4 space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} width="100%" height={20} />
+          ))}
+        </div>
+      </Card>
     );
   }
 
   if (transactions.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow p-6 text-center text-gray-400">
-        取引がありません
-      </div>
+      <Card title="決済済み伝票" padded={false}>
+        <EmptyState title="決済済み伝票はありません" />
+      </Card>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow overflow-hidden">
+    <Card title="決済済み伝票" padded={false}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-3 font-medium text-gray-500">時刻</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-500">金額</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">支払い方法</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">顧客</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">ステータス</th>
+          <thead className="hidden md:table-header-group bg-surface-muted border-b border-border">
+            <tr>
+              <th scope="col" className="text-left px-4 py-3 font-medium text-text-muted">時刻</th>
+              <th scope="col" className="text-right px-4 py-3 font-medium text-text-muted">金額</th>
+              <th scope="col" className="text-left px-4 py-3 font-medium text-text-muted">支払い方法</th>
+              <th scope="col" className="text-left px-4 py-3 font-medium text-text-muted">顧客</th>
+              <th scope="col" className="text-left px-4 py-3 font-medium text-text-muted">ステータス</th>
             </tr>
           </thead>
           <tbody>
             {transactions.map((tx) => (
               <Fragment key={tx.id}>
                 <tr
-                  className={`border-b border-gray-100 last:border-0 hover:bg-gray-50 transition ${tx.line_items.length > 0 ? 'cursor-pointer' : ''}`}
+                  className={`block md:table-row border-b border-border md:border-t-0 md:border-b last:border-0 even:bg-surface-muted hover:bg-primary-subtle/50 transition-colors ${tx.line_items.length > 0 ? 'cursor-pointer' : ''}`}
                   onClick={() => tx.line_items.length > 0 && toggleExpand(tx.id)}
                 >
-                  <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                  <td className="block md:table-cell px-2 py-1 md:px-4 md:py-3 text-text-subtle whitespace-nowrap">
                     <span className="inline-flex items-start gap-1">
                       {tx.line_items.length > 0 && (
-                        <span className="text-gray-400 mt-0.5">
+                        <span className="text-text-muted mt-0.5">
                           {expandedIds.has(tx.id) ? '▼' : '▶'}
                         </span>
                       )}
                       <span className="flex flex-col leading-tight">
                         {tx.order_created_at_jst &&
                           formatHHMM(tx.order_created_at_jst) !== formatHHMM(tx.created_at_jst) && (
-                          <span className="text-[10px] text-gray-400">
+                          <span className="text-[10px] text-text-muted">
                             開始 {formatHHMM(tx.order_created_at_jst)}
                           </span>
                         )}
@@ -192,29 +197,29 @@ export default function TransactionList({
                       </span>
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-900 font-semibold text-right whitespace-nowrap">
+                  <td className="block md:table-cell px-2 py-1 md:px-4 md:py-3 text-text font-semibold md:text-right whitespace-nowrap tabular-nums">
                     {formatYen(tx.amount)}
                   </td>
-                  <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                  <td className="block md:table-cell px-2 py-1 md:px-4 md:py-3 text-text-subtle whitespace-nowrap">
                     {tx.source}
                   </td>
-                  <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                  <td className="block md:table-cell px-2 py-1 md:px-4 md:py-3 text-text-subtle whitespace-nowrap">
                     {tx.customer_name ?? '-'}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="block md:table-cell px-2 py-1 md:px-4 md:py-3 whitespace-nowrap">
                     <StatusBadge status={tx.status} />
                   </td>
                 </tr>
                 {expandedIds.has(tx.id) && tx.line_items.length > 0 && (
-                  <tr className="bg-indigo-50">
-                    <td colSpan={5} className="px-6 py-2">
+                  <tr className="block md:table-row bg-primary-subtle/40 border-b border-border last:border-0">
+                    <td colSpan={5} className="block md:table-cell px-6 py-2 border-border">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <ul className="space-y-1">
                             {mergeLineItems(tx.line_items)
                               .sort((a, b) => getCategoryRank(a.category) - getCategoryRank(b.category))
                               .map((item, i) => (
-                              <li key={i} className="flex justify-between text-xs text-gray-700">
+                              <li key={i} className="flex justify-between text-xs text-text-subtle">
                                 <span className="flex items-center gap-1.5">
                                   <span>{stripBrackets(item.name)} × {item.quantity}</span>
                                 </span>
@@ -223,9 +228,9 @@ export default function TransactionList({
                             ))}
                           </ul>
                           {tx.discounts && tx.discounts.length > 0 && (
-                            <div className="border-t border-gray-200 mt-1 pt-1 space-y-1">
+                            <div className="border-t border-border mt-1 pt-1 space-y-1">
                               {tx.discounts.map((d, i) => (
-                                <div key={i} className="flex justify-between text-xs text-red-500">
+                                <div key={i} className="flex justify-between text-xs text-danger">
                                   <span>{d.name}</span>
                                   <span>-{formatYen(Math.abs(d.amount))}</span>
                                 </div>
@@ -235,7 +240,7 @@ export default function TransactionList({
                         </div>
                         <button
                           onClick={(e) => handleCopy(e, tx)}
-                          className="ml-4 text-xs text-gray-400 hover:text-gray-600 whitespace-nowrap"
+                          className="ml-4 text-xs text-text-subtle hover:text-text whitespace-nowrap"
                         >
                           {copiedId === tx.id ? '✓ コピー済' : 'コピー'}
                         </button>
@@ -248,6 +253,6 @@ export default function TransactionList({
           </tbody>
         </table>
       </div>
-    </div>
+    </Card>
   );
 }

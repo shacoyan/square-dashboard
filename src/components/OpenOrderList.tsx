@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import type { OpenOrder, LineItem, Discount } from '../types';
 import { formatYen } from '../utils';
+import { Card, Badge, EmptyState, ErrorState, Skeleton } from './ui';
 
 interface Props {
   orders: OpenOrder[];
@@ -95,111 +96,116 @@ export default function OpenOrderList({ orders, loading, error }: Props) {
     }
   };
 
+  const cardActions = !loading && !error ? <Badge tone="warning">{orders.length}件</Badge> : undefined;
+
   return (
-    <div className="bg-white rounded-xl shadow overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-        <h2 className="font-semibold text-gray-800">現在の未決済テーブル</h2>
-        {!loading && (
-          <span className="bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">
-            {orders.length}件
-          </span>
-        )}
-      </div>
-
+    <Card title="未会計伝票" padded={false} actions={cardActions}>
       {loading && (
-        <div className="p-6 text-center text-gray-400 text-sm">読み込み中...</div>
-      )}
-
-      {error && (
-        <div className="p-4 text-red-600 text-sm">⚠ {error}</div>
-      )}
-
-      {!loading && !error && orders.length === 0 && (
-        <div className="p-6 text-center text-gray-400 text-sm">
-          現在未決済の注文はありません
+        <div className="p-4 space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} width="100%" height={20} />
+          ))}
         </div>
       )}
 
-      {!loading && orders.length > 0 && (
-        <ul className="divide-y divide-gray-100">
-          {orders.map((order) => (
-            <li
-              key={order.id}
-              className="px-4 py-3 cursor-pointer hover:bg-amber-50 transition"
-              onClick={() => toggle(order.id)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-gray-700">
-                  <span className="text-gray-400 text-xs">
-                    {expandedIds.has(order.id) ? '▼' : '▶'}
-                  </span>
-                  <span>
-                    {order.created_at
-                      ? new Date(order.created_at).toLocaleString('ja-JP', {
-                          month: 'numeric',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                      : '--/-- --:--'}{' '}
-                    開始
-                  </span>
-                  {order.customer_name && (
-                    <span className="text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
-                      {order.customer_name}
-                    </span>
-                  )}
-                </div>
-                <span className="font-semibold text-gray-900">
-                  {formatYen(order.total_money)}
-                </span>
-              </div>
-
-              {expandedIds.has(order.id) && order.line_items.length > 0 && (
-                <div className="mt-2 flex items-start gap-2">
-                  <div className="flex-1 pl-5">
-                    <ul className="space-y-1">
-                      {order.line_items.map((item, i) => (
-                        <li
-                          key={i}
-                          className="flex justify-between text-xs text-gray-600"
-                        >
-                          <span>
-                            {item.name} × {item.quantity}
-                          </span>
-                          <span>
-                            {item.amount > 0 ? formatYen(item.amount) : '¥0'}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                    {order.discounts && order.discounts.length > 0 && (
-                      <div className="border-t border-gray-200 mt-1 pt-1 space-y-1">
-                        {order.discounts.map((d, i) => (
-                          <div key={i} className="flex justify-between text-xs text-red-500">
-                            <span>{d.name}</span>
-                            <span>-{formatYen(Math.abs(d.amount))}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={(e) => handleCopy(e, order)}
-                    className={`text-xs px-2 py-1 rounded border whitespace-nowrap transition-colors flex-shrink-0 ${
-                      copiedId === order.id
-                        ? 'border-green-400 text-green-600 bg-green-50'
-                        : 'border-gray-300 text-gray-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50'
-                    }`}
-                  >
-                    {copiedId === order.id ? '✓ コピー済' : '📋 コピー'}
-                  </button>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
+      {error && (
+        <ErrorState title="エラーが発生しました" description={error} />
       )}
-    </div>
+
+      {!loading && !error && orders.length === 0 && (
+        <EmptyState title="未会計の伝票はありません" description="営業時間中の未会計データはここに表示されます" />
+      )}
+
+      {!loading && !error && orders.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="hidden md:table-header-group bg-surface-muted border-b border-border">
+              <tr>
+                <th scope="col" className="px-4 py-3 text-left text-text-muted">時刻</th>
+                <th scope="col" className="px-4 py-3 text-left text-text-muted">顧客</th>
+                <th scope="col" className="px-4 py-3 text-right text-text-muted">金額</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <Fragment key={order.id}>
+                  <tr
+                    className="block md:table-row border-b border-border last:border-0 even:bg-surface-muted hover:bg-primary-subtle/50 transition-colors cursor-pointer"
+                    onClick={() => toggle(order.id)}
+                  >
+                    <td className="block md:table-cell px-2 py-1 md:px-4 md:py-3">
+                      <span className="text-text-muted text-xs mr-1">
+                        {expandedIds.has(order.id) ? '▼' : '▶'}
+                      </span>
+                      <span>
+                        {order.created_at
+                          ? new Date(order.created_at).toLocaleString('ja-JP', {
+                              month: 'numeric',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '--/-- --:--'}{' '}
+                        開始
+                      </span>
+                    </td>
+                    <td className="block md:table-cell px-2 py-1 md:px-4 md:py-3">
+                      {order.customer_name ? (
+                        <Badge tone="warning">{order.customer_name}</Badge>
+                      ) : (
+                        <span className="text-text-muted">-</span>
+                      )}
+                    </td>
+                    <td className="block md:table-cell px-2 py-1 md:px-4 md:py-3 md:text-right tabular-nums whitespace-nowrap font-semibold text-text">
+                      {formatYen(order.total_money)}
+                    </td>
+                  </tr>
+
+                  {expandedIds.has(order.id) && order.line_items.length > 0 && (
+                    <tr className="bg-primary-subtle/40 block md:table-row">
+                      <td colSpan={3} className="block md:table-cell px-4 py-2">
+                        <div className="space-y-1">
+                          {order.line_items.map((item, i) => (
+                            <div
+                              key={i}
+                              className="flex justify-between text-xs text-text-muted"
+                            >
+                              <span>
+                                {item.name} × {item.quantity}
+                              </span>
+                              <span>
+                                {item.amount > 0 ? formatYen(item.amount) : '¥0'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        {order.discounts && order.discounts.length > 0 && (
+                          <div className="border-t border-border mt-1 pt-1 space-y-1">
+                            {order.discounts.map((d, i) => (
+                              <div key={i} className="flex justify-between text-xs text-danger">
+                                <span>{d.name}</span>
+                                <span>-{formatYen(Math.abs(d.amount))}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="mt-2 text-right">
+                          <button
+                            onClick={(e) => handleCopy(e, order)}
+                            className="text-xs text-text-subtle hover:text-text whitespace-nowrap"
+                          >
+                            {copiedId === order.id ? 'コピー済' : 'コピー'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }
