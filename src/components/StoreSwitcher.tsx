@@ -1,5 +1,6 @@
-// src/components/StoreSwitcher.tsx
+import { useRef } from 'react';
 import type { Location } from '../types';
+import { getLocationColor } from '../lib/locationColors';
 
 interface StoreSwitcherProps {
   locations: Location[];
@@ -8,21 +9,90 @@ interface StoreSwitcherProps {
 }
 
 export default function StoreSwitcher({ locations, selectedId, onChange }: StoreSwitcherProps) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {locations.map((loc) => (
-        <button
-          key={loc.id}
-          onClick={() => onChange(loc.id)}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            selectedId === loc.id
-              ? 'bg-indigo-600 text-white shadow-sm'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
+  const pillRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  if (locations.length >= 6) {
+    return (
+      <div className="inline-flex items-center gap-2">
+        <label htmlFor="store-switcher-select" className="text-sm text-text-muted">
+          店舗
+        </label>
+        <select
+          id="store-switcher-select"
+          value={selectedId}
+          onChange={(e) => onChange(e.target.value)}
+          className="bg-surface border border-border rounded-lg px-3 py-1.5 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none"
         >
-          {loc.name}
-        </button>
-      ))}
+          {locations.map((loc) => (
+            <option key={loc.id} value={loc.id}>
+              {loc.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    let nextIndex = index;
+
+    switch (e.key) {
+      case 'ArrowRight':
+        e.preventDefault();
+        nextIndex = (index + 1) % locations.length;
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        nextIndex = (index - 1 + locations.length) % locations.length;
+        break;
+      case 'Home':
+        e.preventDefault();
+        nextIndex = 0;
+        break;
+      case 'End':
+        e.preventDefault();
+        nextIndex = locations.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    onChange(locations[nextIndex].id);
+    pillRefs.current[nextIndex]?.focus();
+  };
+
+  return (
+    <div role="radiogroup" aria-label="店舗切替" className="flex flex-wrap gap-2">
+      {locations.map((loc, index) => {
+        const isActive = selectedId === loc.id;
+
+        return (
+          <button
+            key={loc.id}
+            ref={(el) => {
+              pillRefs.current[index] = el;
+            }}
+            type="button"
+            role="radio"
+            aria-checked={isActive}
+            tabIndex={isActive ? 0 : -1}
+            onClick={() => onChange(loc.id)}
+            onKeyDown={(e) => handleKeyDown(e, index)}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none ${
+              isActive
+                ? 'bg-primary text-white'
+                : 'bg-surface-subtle text-text hover:bg-surface-muted border border-border'
+            }`}
+          >
+            <span
+              className="inline-block w-2 h-2 rounded-full"
+              style={{ backgroundColor: getLocationColor(loc.id) }}
+              aria-hidden="true"
+            />
+            {loc.name}
+          </button>
+        );
+      })}
     </div>
   );
 }
