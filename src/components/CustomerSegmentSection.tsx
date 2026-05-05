@@ -1,7 +1,7 @@
 import { formatYen } from '../utils';
 import type { CustomerSegmentAnalysis, PeriodPreset, SegmentBreakdown, AcquisitionBreakdown, Transaction } from '../types';
 import { SegmentPieChart, SegmentTrendChart, AcquisitionChart } from './charts';
-import { PeriodSelector } from './ui';
+import { PeriodSelector, Card } from './ui';
 import WeekdayAnalysisSection from './WeekdayAnalysisSection';
 import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
 
@@ -109,10 +109,9 @@ export default function CustomerSegmentSection({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-2 sm:mb-0">店舗データ分析</h2>
-
+      <Card
+        title="店舗データ分析"
+        actions={
           <PeriodSelector
             period={period}
             onPeriodChange={onPeriodChange}
@@ -120,8 +119,8 @@ export default function CustomerSegmentSection({
             onWeekIndexChange={onWeekIndexChange}
             availableWeeks={availableWeeks}
           />
-        </div>
-
+        }
+      >
         {loading && <SkeletonSection />}
 
         {error && (
@@ -187,12 +186,11 @@ export default function CustomerSegmentSection({
             </div>
           </>
         )}
-      </div>
+      </Card>
 
       {!loading && !error && data && (
         <>
-          <div className="bg-white rounded-xl shadow p-6">
-            <h3 className="text-md font-bold text-gray-900 mb-4">売上構成</h3>
+          <Card title="売上構成">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
               <div className="md:col-span-2">
                 <SegmentPieChart sales={data.salesBySegment} />
@@ -210,10 +208,9 @@ export default function CustomerSegmentSection({
                 })}
               </div>
             </div>
-          </div>
+          </Card>
 
-          <div className="bg-white rounded-xl shadow p-6">
-            <h3 className="text-md font-bold text-gray-900 mb-4">日次推移</h3>
+          <Card title="日次推移">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
               <div className="md:col-span-2">
                 <SegmentTrendChart data={data.dailyTrend} />
@@ -226,18 +223,13 @@ export default function CustomerSegmentSection({
                 ))}
               </div>
             </div>
-          </div>
+          </Card>
 
-          <div className="bg-white rounded-xl shadow p-6">
-            <WeekdayAnalysisSection dailyTrend={data.dailyTrend} />
-          </div>
+          <WeekdayAnalysisSection dailyTrend={data.dailyTrend} />
 
-          <div className="bg-white rounded-xl shadow p-3 md:p-6">
-            <OccupancyAnalysisSection transactions={transactions} startHour={startHour} endHour={endHour} />
-          </div>
+          <OccupancyAnalysisSection transactions={transactions} startHour={startHour} endHour={endHour} />
 
-          <div className="bg-white rounded-xl shadow p-6">
-            <h3 className="text-md font-bold text-gray-900 mb-4">新規獲得経路</h3>
+          <Card title="新規獲得経路">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
               <div className="md:col-span-2">
                 <AcquisitionChart data={data.acquisitionBreakdown} />
@@ -255,7 +247,7 @@ export default function CustomerSegmentSection({
                 })}
               </div>
             </div>
-          </div>
+          </Card>
         </>
       )}
     </div>

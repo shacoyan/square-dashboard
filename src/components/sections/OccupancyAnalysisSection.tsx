@@ -5,6 +5,7 @@ import type { Transaction } from '../../types';
 import { buildOccupancyMatrix, getActiveSlots } from '../../lib/occupancyAggregation';
 import OccupancyHeatmap from '../charts/OccupancyHeatmap';
 import OccupancyLineChart from '../charts/OccupancyLineChart';
+import { Card } from '../ui';
 
 interface Props {
   transactions: Transaction[];
@@ -25,41 +26,39 @@ export default function OccupancyAnalysisSection({ transactions, startHour, endH
   const hasAnyData = matrix.totalSpans > 0;
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-md font-bold text-gray-900">時間帯別混雑分析</h3>
-        <p className="text-xs text-gray-500 mt-1">
-          同時滞在人数・組数（注文開始 〜 決済完了の重なり）を 30 分刻みで集計。
-        </p>
+    <Card
+      title="時間帯別混雑分析"
+      description="同時滞在人数・組数（注文開始 〜 決済完了の重なり）を 30 分刻みで集計。"
+    >
+      <div className="space-y-4">
+        {!hasAnyData ? (
+          <div className="flex items-center justify-center h-[160px] text-gray-400 text-sm border border-dashed border-gray-200 rounded-md bg-white">
+            データがありません
+          </div>
+        ) : (
+          <>
+            <div className="bg-white rounded-md border border-gray-200 p-3">
+              <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                曜日 × 時間帯ヒートマップ（平均）
+              </h4>
+              <OccupancyHeatmap matrix={matrix} activeSlots={activeSlots} />
+            </div>
+
+            <div className="bg-white rounded-md border border-gray-200 p-1.5 md:p-3">
+              <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                時間帯別推移（折れ線）
+              </h4>
+              <OccupancyLineChart matrix={matrix} activeSlots={activeSlots} />
+            </div>
+          </>
+        )}
+
+        {matrix.skippedCount > 0 && (
+          <div className="text-xs text-gray-500">
+            ※ 開始時刻不明 {matrix.skippedCount.toLocaleString()} 件をスキップ
+          </div>
+        )}
       </div>
-
-      {!hasAnyData ? (
-        <div className="flex items-center justify-center h-[160px] text-gray-400 text-sm border border-dashed border-gray-200 rounded-md bg-white">
-          データがありません
-        </div>
-      ) : (
-        <>
-          <div className="bg-white rounded-md border border-gray-200 p-3">
-            <h4 className="text-sm font-semibold text-gray-700 mb-2">
-              曜日 × 時間帯ヒートマップ（平均）
-            </h4>
-            <OccupancyHeatmap matrix={matrix} activeSlots={activeSlots} />
-          </div>
-
-          <div className="bg-white rounded-md border border-gray-200 p-1.5 md:p-3">
-            <h4 className="text-sm font-semibold text-gray-700 mb-2">
-              時間帯別推移（折れ線）
-            </h4>
-            <OccupancyLineChart matrix={matrix} activeSlots={activeSlots} />
-          </div>
-        </>
-      )}
-
-      {matrix.skippedCount > 0 && (
-        <div className="text-xs text-gray-500">
-          ※ 開始時刻不明 {matrix.skippedCount.toLocaleString()} 件をスキップ
-        </div>
-      )}
-    </div>
+    </Card>
   );
 }
