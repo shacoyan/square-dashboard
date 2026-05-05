@@ -15,3 +15,10 @@ export { ChartLegend } from './ChartLegend';
 export type { ChartLegendItem, ChartLegendProps } from './ChartLegend';
 export { ChartTooltip } from './ChartTooltip';
 export type { ChartTooltipProps, ChartTooltipPayloadItem } from './ChartTooltip';
+export { KpiSkeleton, ChartSkeleton, ListSkeleton, TableSkeleton } from './skeletons';
+export type {
+  KpiSkeletonProps,
+  ChartSkeletonProps,
+  ListSkeletonProps,
+  TableSkeletonProps,
+} from './skeletons';

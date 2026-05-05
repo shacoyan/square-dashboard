@@ -2,7 +2,7 @@ import React from 'react';
 import type { Location, PeriodPreset, LocationSegmentRow } from '../types';
 import { useMultiLocationSegment } from '../hooks/useMultiLocationSegment';
 import { LocationBarChart, LocationStackChart, LocationTrendChart } from './charts';
-import { PeriodSelector, Card } from './ui';
+import { PeriodSelector, Card, TableSkeleton, ChartSkeleton } from './ui';
 import { formatYen } from '../utils';
 import WeekdayLocationAnalysisSection from './WeekdayLocationAnalysisSection';
 import { getLocationColors } from '../lib/locationColors';
@@ -27,26 +27,6 @@ const ACQUISITION_SERIES = [
 
 const TD_NUM = 'px-3 py-2 text-right tabular-nums whitespace-nowrap';
 const TD_NAME = 'px-3 py-2 text-left whitespace-nowrap sticky left-0';
-
-function SkeletonCompareSection() {
-  return (
-    <div className="space-y-4">
-      <div className="space-y-3 animate-pulse">
-        <div className="h-8 bg-gray-200 rounded" />
-        <div className="h-8 bg-gray-200 rounded" />
-        <div className="h-8 bg-gray-200 rounded" />
-        <div className="h-8 bg-gray-200 rounded" />
-        <div className="h-8 bg-gray-200 rounded" />
-        <div className="h-8 bg-gray-200 rounded" />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="h-64 bg-gray-200 rounded-xl animate-pulse" />
-        <div className="h-64 bg-gray-200 rounded-xl animate-pulse" />
-        <div className="h-64 bg-gray-200 rounded-xl animate-pulse" />
-      </div>
-    </div>
-  );
-}
 
 interface Props {
   token: string;
@@ -152,7 +132,16 @@ export default function LocationComparisonSection(props: Props) {
       />
     }>
       <div className="space-y-6">
-        {loading && <SkeletonCompareSection />}
+        {loading && (
+          <div className="space-y-4">
+            <TableSkeleton rows={6} rowHeight={32} />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card padded={false} className="p-4"><ChartSkeleton heightPreset="compact" /></Card>
+              <Card padded={false} className="p-4"><ChartSkeleton heightPreset="compact" /></Card>
+              <Card padded={false} className="p-4"><ChartSkeleton heightPreset="compact" /></Card>
+            </div>
+          </div>
+        )}
 
         {error && !data && (
           <div className="bg-red-50 border border-red-300 text-red-800 px-4 py-3 rounded-lg" role="alert">

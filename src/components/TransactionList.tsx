@@ -1,7 +1,7 @@
 import { useState, Fragment } from 'react';
 import type { LineItem, Transaction, Discount } from '../types';
 import { formatYen } from '../utils';
-import { Card, EmptyState, Skeleton } from './ui';
+import { Card, EmptyState, ListSkeleton } from './ui';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -140,10 +140,8 @@ export default function TransactionList({
   if (loading) {
     return (
       <Card title="決済済み伝票" padded={false}>
-        <div className="p-4 space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} width="100%" height={20} />
-          ))}
+        <div className="p-4">
+          <ListSkeleton rows={5} rowHeight={20} />
         </div>
       </Card>
     );
@@ -256,3 +254,4 @@ export default function TransactionList({
     </Card>
   );
 }
+

@@ -1,7 +1,7 @@
 import { formatYen } from '../utils';
 import type { CustomerSegmentAnalysis, PeriodPreset, SegmentBreakdown, AcquisitionBreakdown, Transaction } from '../types';
 import { SegmentPieChart, SegmentTrendChart, AcquisitionChart } from './charts';
-import { PeriodSelector, Card } from './ui';
+import { PeriodSelector, Card, KpiSkeleton } from './ui';
 import WeekdayAnalysisSection from './WeekdayAnalysisSection';
 import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
 
@@ -17,33 +17,6 @@ interface Props {
   availableWeeks: number;
   startHour?: number;
   endHour?: number;
-}
-
-function SkeletonCard() {
-  return (
-    <div className="bg-white rounded-xl shadow p-6 animate-pulse">
-      <div className="h-4 bg-gray-200 rounded w-24 mb-3" />
-      <div className="h-8 bg-gray-200 rounded w-32" />
-    </div>
-  );
-}
-
-function SkeletonSection() {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-      </div>
-    </div>
-  );
 }
 
 function SegmentCustomerCard({ label, count, sales, showCount = true }: { label: string; count: number; sales: number; showCount?: boolean }) {
@@ -121,7 +94,20 @@ export default function CustomerSegmentSection({
           />
         }
       >
-        {loading && <SkeletonSection />}
+        {loading && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i}><KpiSkeleton /></Card>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i}><KpiSkeleton /></Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-300 text-red-800 px-4 py-3 rounded-lg" role="alert">

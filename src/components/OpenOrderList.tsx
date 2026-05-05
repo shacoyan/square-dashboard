@@ -1,7 +1,7 @@
 import { useState, Fragment } from 'react';
 import type { OpenOrder, LineItem, Discount } from '../types';
 import { formatYen } from '../utils';
-import { Card, Badge, EmptyState, ErrorState, Skeleton } from './ui';
+import { Card, Badge, EmptyState, ErrorState, ListSkeleton } from './ui';
 
 interface Props {
   orders: OpenOrder[];
@@ -101,10 +101,8 @@ export default function OpenOrderList({ orders, loading, error }: Props) {
   return (
     <Card title="未会計伝票" padded={false} actions={cardActions}>
       {loading && (
-        <div className="p-4 space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} width="100%" height={20} />
-          ))}
+        <div className="p-4">
+          <ListSkeleton rows={5} rowHeight={20} />
         </div>
       )}
 
