@@ -46,7 +46,7 @@ export default function OccupancyAnalysisSection({ transactions, startHour, endH
             <OccupancyHeatmap matrix={matrix} activeSlots={activeSlots} />
           </div>
 
-          <div className="bg-white rounded-md border border-gray-200 p-3">
+          <div className="bg-white rounded-md border border-gray-200 p-1.5 md:p-3">
             <h4 className="text-sm font-semibold text-gray-700 mb-2">
               時間帯別推移（折れ線）
             </h4>

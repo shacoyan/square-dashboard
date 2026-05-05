@@ -274,7 +274,7 @@ export default function CustomerSegmentSection({
             <WeekdayAnalysisSection dailyTrend={data.dailyTrend} />
           </div>
 
-          <div className="bg-white rounded-xl shadow p-6">
+          <div className="bg-white rounded-xl shadow p-3 md:p-6">
             <OccupancyAnalysisSection transactions={transactions} startHour={startHour} endHour={endHour} />
           </div>
 
