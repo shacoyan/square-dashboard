@@ -25,7 +25,6 @@ interface Props {
 }
 
 type Mode = 'average' | 'sum';
-type Metric = 'groups' | 'persons';
 
 function formatVal(v: number | undefined, mode: Mode): string {
   const n = typeof v === 'number' ? v : Number(v ?? 0);
@@ -37,25 +36,23 @@ function CustomTooltip({
   payload,
   label,
   mode,
-  metric,
-}: TooltipProps<number, string> & { mode: Mode; metric: Metric }) {
+}: TooltipProps<number, string> & { mode: Mode }) {
   if (!active || !payload || payload.length === 0) return null;
   const row = payload[0]?.payload as { groups?: number; persons?: number } | undefined;
   const g = row?.groups ?? 0;
   const p = row?.persons ?? 0;
-  const groupsBold = metric === 'groups';
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-lg text-xs">
       <p className="font-bold text-gray-800 mb-1">{label}</p>
       <div className="flex justify-between gap-4">
         <span className="text-gray-600">組数</span>
-        <span className={groupsBold ? 'font-bold' : 'font-normal text-gray-700'}>
+        <span className="font-normal text-gray-700">
           {formatVal(g, mode)} 組
         </span>
       </div>
       <div className="flex justify-between gap-4">
         <span className="text-gray-600">人数</span>
-        <span className={!groupsBold ? 'font-bold' : 'font-normal text-gray-700'}>
+        <span className="font-bold">
           {formatVal(p, mode)} 人
         </span>
       </div>
@@ -65,7 +62,6 @@ function CustomTooltip({
 
 export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
   const [mode, setMode] = useState<Mode>('average');
-  const [metric, setMetric] = useState<Metric>('groups');
   const [weekdayFilter, setWeekdayFilter] = useState<boolean[]>(
     () => Array.from({ length: WEEKDAY_COUNT }, () => true),
   );
@@ -82,9 +78,12 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
     setWeekdayFilter((prev) => prev.map((b, i) => (i === w ? !b : b)));
   };
 
-  const unit = metric === 'groups' ? '組' : '人';
-  const metricLabel = metric === 'groups' ? '同時滞在組数' : '同時滞在人数';
+  const unit = '人';
+  const metricLabel = '同時滞在人数';
   const modeLabel = mode === 'average' ? '平均' : '合計';
+
+  const dataMaxPersons = useMemo(() => data.reduce((m,d) => (d.persons > m ? d.persons : m), 0), [data]);
+  const yDomain: [number, number] = mode === 'average' ? [0, Math.max(10, dataMaxPersons)] : [0, dataMaxPersons];
 
   return (
     <div className="w-full">
@@ -105,24 +104,6 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
             className={`px-3 py-1 text-sm ${mode === 'sum' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
           >
             合計
-          </button>
-        </div>
-
-        {/* metric toggle */}
-        <div className="inline-flex rounded-md overflow-hidden border border-gray-300">
-          <button
-            type="button"
-            onClick={() => setMetric('groups')}
-            className={`px-3 py-1 text-sm ${metric === 'groups' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-          >
-            組数
-          </button>
-          <button
-            type="button"
-            onClick={() => setMetric('persons')}
-            className={`px-3 py-1 text-sm ${metric === 'persons' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-          >
-            人数
           </button>
         </div>
 
@@ -161,10 +142,11 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
               tick={{ fill: '#6b7280', fontSize: 11 }}
               axisLine={{ stroke: '#d1d5db' }}
               allowDecimals={mode === 'average'}
+              domain={yDomain}
             />
             <Tooltip
               content={(props: TooltipProps<number, string>) => (
-                <CustomTooltip {...props} mode={mode} metric={metric} />
+                <CustomTooltip {...props} mode={mode} />
               )}
             />
             <Legend
@@ -177,7 +159,7 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
             />
             <Line
               type="monotone"
-              dataKey={metric}
+              dataKey="persons"
               stroke="#3b82f6"
               strokeWidth={2}
               dot={false}

@@ -10,6 +10,8 @@ import {
   type OccupancyMatrix,
 } from '../../lib/occupancyAggregation';
 
+const OCCUPANCY_HEATMAP_FULL_PERSONS = 10;
+
 interface Props {
   matrix: OccupancyMatrix;
   activeSlots: number[];
@@ -19,7 +21,7 @@ interface Props {
  * 7 行（曜日）× 48 列（30min slot）ヒートマップ。
  * - 濃淡は「平均同時滞在人数」固定（要件）。tooltip は組数+人数を両方表示。
  * - 列ヘッダは 3h 刻みの 8 本のみ（slot % 6 === 0）表示。
- * - 0 値: bg-gray-100 / 値あり: bg-blue-500 + opacity (= persons / maxPersons)。
+ * - 0 値: bg-gray-100 / 値あり: bg-blue-500 + opacity (= persons / 10（10 人で最濃、超過は clamp）)。
  */
 export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
   const { avgGroups, avgPersons, maxPersons } = useMemo(() => {
@@ -77,7 +79,7 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
                 const g = avgGroups[w][s];
                 const p = avgPersons[w][s];
                 const isZero = p <= 0;
-                const opacity = hasData && !isZero ? Math.max(0.08, p / maxPersons) : 0;
+                const opacity = hasData && !isZero ? Math.min(1, Math.max(0.08, p / OCCUPANCY_HEATMAP_FULL_PERSONS)) : 0;
                 const titleText = `${WEEKDAY_LABELS[w]}曜 ${SLOT_LABELS[s]}: 組 ${g.toFixed(1)} 組 / 人 ${p.toFixed(1)} 人`;
                 return (
                   <div
@@ -105,7 +107,7 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
             </div>
             <span>多</span>
             {hasData ? (
-              <span className="ml-2">最大: {maxPersons.toFixed(1)} 人（平均）</span>
+              <span className="ml-2">最濃 10 人 / 実測ピーク {maxPersons.toFixed(1)} 人（平均）</span>
             ) : (
               <span className="ml-2 text-gray-400">データなし</span>
             )}
