@@ -10,6 +10,7 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  ReferenceLine,
 } from 'recharts';
 import type { TooltipProps } from 'recharts';
 import {
@@ -25,6 +26,10 @@ interface Props {
 }
 
 type Mode = 'average' | 'sum';
+
+const THRESHOLD_PERSONS = 8;
+const COLOR_NORMAL = '#3b82f6';   // blue-500
+const COLOR_ALERT  = '#ef4444';   // red-500
 
 function formatVal(v: number | undefined, mode: Mode): string {
   const n = typeof v === 'number' ? v : Number(v ?? 0);
@@ -70,6 +75,21 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
     () => getLineChartData(matrix, weekdayFilter, mode, activeSlots),
     [matrix, weekdayFilter, mode, activeSlots],
   );
+
+  const splitData = useMemo(() => {
+    if (mode !== 'average') {
+      return data.map((d) => ({ ...d, personsNormal: d.persons, personsAlert: null as number | null }));
+    }
+    const flagged = data.map((d) => d.persons >= THRESHOLD_PERSONS);
+    const expanded = flagged.map((f, i) =>
+      f || flagged[i - 1] || flagged[i + 1]
+    );
+    return data.map((d, i) => ({
+      ...d,
+      personsNormal: expanded[i] ? null : d.persons,
+      personsAlert:  expanded[i] ? d.persons : null,
+    }));
+  }, [data, mode]);
 
   const hasAnyChecked = weekdayFilter.some((b) => b);
   const hasNonZero = data.some((d) => d.groups > 0 || d.persons > 0);
@@ -130,7 +150,7 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+          <LineChart data={splitData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis
               dataKey="label"
@@ -149,22 +169,58 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
                 <CustomTooltip {...props} mode={mode} />
               )}
             />
-            <Legend
-              content={() => (
-                <div className="flex justify-center gap-2 text-gray-600 text-xs mt-2">
-                  <span className="inline-block w-3 h-3 rounded-sm bg-blue-500" />
-                  <span>{modeLabel}{metricLabel}（{unit}）</span>
-                </div>
-              )}
-            />
+            {mode === 'average' && (
+              <ReferenceLine
+                y={THRESHOLD_PERSONS}
+                stroke={COLOR_ALERT}
+                strokeDasharray="4 4"
+                strokeWidth={1}
+                label={{
+                  value: `${THRESHOLD_PERSONS}人`,
+                  position: 'right',
+                  fill: COLOR_ALERT,
+                  fontSize: 11,
+                }}
+                ifOverflow="extendDomain"
+              />
+            )}
             <Line
               type="monotone"
-              dataKey="persons"
-              stroke="#3b82f6"
+              dataKey="personsNormal"
+              stroke={COLOR_NORMAL}
               strokeWidth={2}
               dot={false}
               isAnimationActive={false}
               name={`${modeLabel}${metricLabel}`}
+              connectNulls={false}
+            />
+            {mode === 'average' && (
+              <Line
+                type="monotone"
+                dataKey="personsAlert"
+                stroke={COLOR_ALERT}
+                strokeWidth={2}
+                dot={false}
+                isAnimationActive={false}
+                name={`${THRESHOLD_PERSONS}人以上`}
+                connectNulls={false}
+              />
+            )}
+            <Legend
+              content={() => (
+                <div className="flex justify-center items-center gap-4 text-gray-600 text-xs mt-2">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="inline-block w-3 h-3 rounded-sm" style={{ background: COLOR_NORMAL }} />
+                    <span>{modeLabel}{metricLabel}（{unit}）</span>
+                  </span>
+                  {mode === 'average' && (
+                    <span className="inline-flex items-center gap-1">
+                      <span className="inline-block w-3 h-3 rounded-sm" style={{ background: COLOR_ALERT }} />
+                      <span>{THRESHOLD_PERSONS}人以上</span>
+                    </span>
+                  )}
+                </div>
+              )}
             />
           </LineChart>
         </ResponsiveContainer>
