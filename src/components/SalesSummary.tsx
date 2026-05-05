@@ -1,4 +1,4 @@
-// src/components/SalesSummary.tsx
+import { Card, Skeleton } from './ui';
 import { formatYen } from '../utils';
 
 interface SalesSummaryProps {
@@ -9,15 +9,6 @@ interface SalesSummaryProps {
   openCount: number;
 }
 
-function SkeletonCard() {
-  return (
-    <div className="bg-white rounded-xl shadow p-6 animate-pulse">
-      <div className="h-4 bg-gray-200 rounded w-24 mb-3" />
-      <div className="h-8 bg-gray-200 rounded w-32" />
-    </div>
-  );
-}
-
 export default function SalesSummary({
   total,
   count,
@@ -25,35 +16,47 @@ export default function SalesSummary({
   openTotal,
   openCount,
 }: SalesSummaryProps) {
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-      </div>
-    );
-  }
-
-  const grandTotal = total + openTotal;
-
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div className="bg-white rounded-xl shadow p-6">
-        <p className="text-sm font-medium text-gray-500 mb-1">合計売上（未決済含む）</p>
-        <p className="text-2xl font-bold text-gray-900">{formatYen(grandTotal)}</p>
-      </div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <Card dense>
+        <p className="text-xs text-text-muted font-medium tracking-wide uppercase">決済済み売上</p>
+        {loading ? (
+          <Skeleton width="100%" height={32} />
+        ) : (
+          <p className="text-2xl sm:text-3xl font-bold text-text tabular-nums mt-1">{formatYen(total)}</p>
+        )}
+      </Card>
 
-      <div className="bg-white rounded-xl shadow p-6">
-        <p className="text-sm font-medium text-gray-500 mb-1">決済済み（{count}件）</p>
-        <p className="text-2xl font-bold text-gray-900">{formatYen(total)}</p>
-      </div>
+      <Card dense>
+        <p className="text-xs text-text-muted font-medium tracking-wide uppercase">決済済み件数</p>
+        {loading ? (
+          <Skeleton width="100%" height={32} />
+        ) : (
+          <p className="text-2xl sm:text-3xl font-bold text-text tabular-nums mt-1">
+            <span className="tabular-nums">{count}</span> 件
+          </p>
+        )}
+      </Card>
 
-      <div className="bg-white rounded-xl shadow p-6">
-        <p className="text-sm font-medium text-gray-500 mb-1">未決済（{openCount}件）</p>
-        <p className="text-2xl font-bold text-amber-600">{formatYen(openTotal)}</p>
-      </div>
+      <Card dense>
+        <p className="text-xs text-text-muted font-medium tracking-wide uppercase">未会計合計</p>
+        {loading ? (
+          <Skeleton width="100%" height={32} />
+        ) : (
+          <p className="text-2xl sm:text-3xl font-bold text-warning tabular-nums mt-1">{formatYen(openTotal)}</p>
+        )}
+      </Card>
+
+      <Card dense>
+        <p className="text-xs text-text-muted font-medium tracking-wide uppercase">未会計件数</p>
+        {loading ? (
+          <Skeleton width="100%" height={32} />
+        ) : (
+          <p className="text-2xl sm:text-3xl font-bold text-text tabular-nums mt-1">
+            <span className="tabular-nums">{openCount}</span> 件
+          </p>
+        )}
+      </Card>
     </div>
   );
 }
-
