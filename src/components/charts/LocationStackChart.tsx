@@ -11,7 +11,7 @@ import {
   LabelList,
 } from 'recharts';
 import type { ReactNode } from 'react';
-import { ChartLegend, type ChartLegendItem } from '../ui/ChartLegend';
+import { ChartLegend, type ChartLegendItem } from '../ui';
 
 interface Props {
   rows: Array<{ locationName: string; [key: string]: string | number }>;
