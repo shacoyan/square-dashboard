@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import AppShell from './layout/AppShell';
+import TopBar from './layout/TopBar';
 import { Container, Stack } from './ui';
 import StoreSwitcher from './StoreSwitcher';
 import DatePicker from './DatePicker';
@@ -159,19 +160,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     : '--:--:--';
 
   return (
-    <AppShell header={
-      <header className="bg-indigo-600 text-white shadow">
-        <Container className="py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold">SABABA 売上ダッシュボード</h1>
-          <button
-            onClick={onLogout}
-            className="px-4 py-2 text-sm bg-indigo-500 hover:bg-indigo-400 rounded transition-colors"
-          >
-            ログアウト
-          </button>
-        </Container>
-      </header>
-    }>
+    <AppShell header={<TopBar onLogout={onLogout} />}>
       <Container className="py-6">
         <Stack gap="lg">
           <div className="bg-white rounded-lg shadow p-4 space-y-4">
