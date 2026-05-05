@@ -2,6 +2,7 @@
 
 import type { WeekdayAggregate } from '../../lib/weekdayAggregation';
 import { formatYen } from '../../utils';
+import { ChartLegend, type ChartLegendItem } from '../ui';
 import {
   ResponsiveContainer,
   BarChart,
@@ -10,9 +11,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from 'recharts';
 import type { TooltipProps } from 'recharts';
+import { FALLBACK_LOCATION_COLOR } from '../../lib/locationColors';
 
 interface Props {
   data: WeekdayAggregate[];
@@ -25,7 +26,7 @@ const SEGMENT_CONFIG = [
   { key: 'repeat', label: 'リピート', color: '#eab308' },
   { key: 'regular', label: '常連', color: '#ef4444' },
   { key: 'staff', label: 'スタッフ', color: '#a855f7' },
-  { key: 'unlisted', label: '記載なし', color: '#6b7280' },
+  { key: 'unlisted', label: '記載なし', color: FALLBACK_LOCATION_COLOR },
 ] as const;
 
 type SegmentKey = (typeof SEGMENT_CONFIG)[number]['key'];
@@ -46,7 +47,7 @@ function getSegmentLabel(segmentKey: SegmentKey): string {
 
 function getSegmentColor(segmentKey: SegmentKey): string {
   const config = SEGMENT_CONFIG.find((s) => s.key === segmentKey);
-  return config ? config.color : '#6b7280';
+  return config ? config.color : FALLBACK_LOCATION_COLOR;
 }
 
 const WEEKDAY_NAMES: Record<string, string> = {
@@ -119,22 +120,6 @@ function CustomTooltip({ active, payload, label, metric }: TooltipProps<number, 
   );
 }
 
-function CustomLegend() {
-  return (
-    <div className="flex justify-center gap-4 text-gray-600 text-xs mt-2 flex-wrap">
-      {SEGMENT_CONFIG.map((segment) => (
-        <div key={segment.key} className="flex items-center gap-1">
-          <span
-            className="inline-block w-3 h-3 rounded-sm"
-            style={{ backgroundColor: segment.color }}
-          />
-          <span>{segment.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function WeekdayBarChart({ data, metric, stacked = true }: Props) {
   const hasData = data.some((d) => d.sampleCount > 0);
 
@@ -148,40 +133,48 @@ export default function WeekdayBarChart({ data, metric, stacked = true }: Props)
 
   const segmentKeys = getSegmentKeys();
 
+  const legendItems: ChartLegendItem[] = SEGMENT_CONFIG.map((s) => ({
+    id: s.key,
+    label: s.label,
+    color: s.color,
+  }));
+
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis
-          dataKey="label"
-          tick={{ fill: '#6b7280', fontSize: 12 }}
-          axisLine={{ stroke: '#d1d5db' }}
-        />
-        <YAxis
-          tick={{ fill: '#6b7280', fontSize: 12 }}
-          axisLine={{ stroke: '#d1d5db' }}
-          allowDecimals={metric === 'customers' ? false : true}
-          tickFormatter={metric === 'sales' ? (v: number) => formatYen(v) : undefined}
-        />
-        <Tooltip
-          content={(props: TooltipProps<number, string>) => (
-            <CustomTooltip {...props} metric={metric} />
-          )}
-        />
-        <Legend content={() => <CustomLegend />} />
-        {segmentKeys.map((key) => {
-          const dataKey = getDataKey(key, metric);
-          return (
-            <Bar
-              key={key}
-              dataKey={dataKey}
-              name={getSegmentLabel(key)}
-              stackId={stacked ? 'a' : undefined}
-              fill={getSegmentColor(key)}
-            />
-          );
-        })}
-      </BarChart>
-    </ResponsiveContainer>
+    <>
+      <ResponsiveContainer width="100%" height={240}>
+        <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: '#6b7280', fontSize: 12 }}
+            axisLine={{ stroke: '#d1d5db' }}
+          />
+          <YAxis
+            tick={{ fill: '#6b7280', fontSize: 12 }}
+            axisLine={{ stroke: '#d1d5db' }}
+            allowDecimals={metric === 'customers' ? false : true}
+            tickFormatter={metric === 'sales' ? (v: number) => formatYen(v) : undefined}
+          />
+          <Tooltip
+            content={(props: TooltipProps<number, string>) => (
+              <CustomTooltip {...props} metric={metric} />
+            )}
+          />
+          {segmentKeys.map((key) => {
+            const dataKey = getDataKey(key, metric);
+            return (
+              <Bar
+                key={key}
+                dataKey={dataKey}
+                name={getSegmentLabel(key)}
+                stackId={stacked ? 'a' : undefined}
+                fill={getSegmentColor(key)}
+              />
+            );
+          })}
+        </BarChart>
+      </ResponsiveContainer>
+      <ChartLegend size="sm" items={legendItems} />
+    </>
   );
 }

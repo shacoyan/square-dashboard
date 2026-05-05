@@ -9,7 +9,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   LabelList,
 } from 'recharts';
 import type { DailySegmentPoint } from '../../types';
@@ -209,11 +208,6 @@ export default function LocationTrendChart({
                 if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
                 return String(label);
               }}
-            />
-            <Legend
-              formatter={(value: string) => (
-                <span className="text-gray-600 text-xs">{value}</span>
-              )}
             />
             {locationSeries.map((loc) => {
               const color = colorMap[loc.locationId] ?? '#6b7280';

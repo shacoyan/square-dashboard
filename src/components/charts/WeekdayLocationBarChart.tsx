@@ -8,11 +8,12 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from 'recharts';
 import type { TooltipProps } from 'recharts';
 import { formatYen } from '../../utils';
 import type { WeekdayLocationAggregate } from '../../lib/weekdayLocationAggregation';
+import { ChartLegend, type ChartLegendItem } from '../ui';
+import { FALLBACK_LOCATION_COLOR } from '../../lib/locationColors';
 
 interface LocationMeta {
   locationId: string;
@@ -70,7 +71,7 @@ function CustomTooltip({
       items.push({
         name: loc.locationName,
         value: v,
-        color: payload.find((p) => p.dataKey === loc.locationId)?.color ?? '#6b7280',
+        color: payload.find((p) => p.dataKey === loc.locationId)?.color ?? FALLBACK_LOCATION_COLOR,
       });
     }
   }
@@ -104,28 +105,6 @@ function CustomTooltip({
   );
 }
 
-function CustomLegend({
-  locationSeries,
-  colorMap,
-}: {
-  locationSeries: LocationMeta[];
-  colorMap: Record<string, string>;
-}) {
-  return (
-    <div className="flex justify-center gap-4 text-gray-600 text-xs mt-2 flex-wrap">
-      {locationSeries.map((loc) => (
-        <div key={loc.locationId} className="flex items-center gap-1">
-          <span
-            className="inline-block w-3 h-3 rounded-sm"
-            style={{ backgroundColor: colorMap[loc.locationId] ?? '#6b7280' }}
-          />
-          <span>{loc.locationName}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function WeekdayLocationBarChart({
   data,
   locationSeries,
@@ -155,45 +134,49 @@ export default function WeekdayLocationBarChart({
     return row;
   });
 
+  const legendItems: ChartLegendItem[] = locationSeries.map((loc) => ({
+    id: loc.locationId,
+    label: loc.locationName,
+    color: colorMap[loc.locationId] ?? FALLBACK_LOCATION_COLOR,
+  }));
+
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis
-          dataKey="label"
-          tick={{ fill: '#6b7280', fontSize: 12 }}
-          axisLine={{ stroke: '#d1d5db' }}
-        />
-        <YAxis
-          tick={{ fill: '#6b7280', fontSize: 12 }}
-          axisLine={{ stroke: '#d1d5db' }}
-          allowDecimals={metric === 'customers' ? false : true}
-          tickFormatter={metric === 'sales' ? (v: number) => formatYen(v) : undefined}
-        />
-        <Tooltip
-          content={(props: TooltipProps<number, string>) => (
-            <CustomTooltip
-              {...props}
-              metric={metric}
-              locationSeries={locationSeries}
-            />
-          )}
-        />
-        <Legend
-          content={() => (
-            <CustomLegend locationSeries={locationSeries} colorMap={colorMap} />
-          )}
-        />
-        {locationSeries.map((loc) => (
-          <Bar
-            key={loc.locationId}
-            dataKey={loc.locationId}
-            name={loc.locationName}
-            stackId="a"
-            fill={colorMap[loc.locationId] ?? '#6b7280'}
+    <>
+      <ResponsiveContainer width="100%" height={240}>
+        <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: '#6b7280', fontSize: 12 }}
+            axisLine={{ stroke: '#d1d5db' }}
           />
-        ))}
-      </BarChart>
-    </ResponsiveContainer>
+          <YAxis
+            tick={{ fill: '#6b7280', fontSize: 12 }}
+            axisLine={{ stroke: '#d1d5db' }}
+            allowDecimals={metric === 'customers' ? false : true}
+            tickFormatter={metric === 'sales' ? (v: number) => formatYen(v) : undefined}
+          />
+          <Tooltip
+            content={(props: TooltipProps<number, string>) => (
+              <CustomTooltip
+                {...props}
+                metric={metric}
+                locationSeries={locationSeries}
+              />
+            )}
+          />
+          {locationSeries.map((loc) => (
+            <Bar
+              key={loc.locationId}
+              dataKey={loc.locationId}
+              name={loc.locationName}
+              stackId="a"
+              fill={colorMap[loc.locationId] ?? FALLBACK_LOCATION_COLOR}
+            />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+      <ChartLegend size="sm" items={legendItems} />
+    </>
   );
 }

@@ -8,10 +8,10 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   LabelList,
 } from 'recharts';
 import type { ReactNode } from 'react';
+import { ChartLegend, type ChartLegendItem } from '../ui/ChartLegend';
 
 interface Props {
   rows: Array<{ locationName: string; [key: string]: string | number }>;
@@ -48,7 +48,7 @@ export default function LocationStackChart({ rows, series, valueUnit, emptyMessa
   ): [ReactNode, ReactNode] => {
     const numValue = typeof value === 'number' ? value : Number(value) || 0;
     const payload = props.payload ?? {};
-    
+
     let sum = 0;
     for (const s of series) {
       const v = payload[s.key];
@@ -66,61 +66,64 @@ export default function LocationStackChart({ rows, series, valueUnit, emptyMessa
     ];
   };
 
+  const legendItems: ChartLegendItem[] = series.map((s) => ({
+    id: s.key,
+    label: s.label,
+    color: s.color,
+  }));
+
   return (
-    <div className="w-full" style={{ height: `${chartHeight}px` }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={rows} layout="vertical" margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
-          <CartesianGrid stroke="#d1d5db" strokeDasharray="3 3" />
-          <XAxis
-            type="number"
-            tick={{ fontSize: 11, fill: '#6b7280' }}
-            axisLine={{ stroke: '#d1d5db' }}
-            tickLine={{ stroke: '#d1d5db' }}
-          />
-          <YAxis
-            type="category"
-            dataKey="locationName"
-            width={140}
-            tick={{ fontSize: 11, fill: '#6b7280' }}
-            axisLine={{ stroke: '#d1d5db' }}
-            tickLine={{ stroke: '#d1d5db' }}
-          />
-          <Tooltip
-            formatter={tooltipFormatter}
-            contentStyle={{
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              color: '#111827',
-              fontSize: '13px',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
-            }}
-          />
-          <Legend
-            verticalAlign="top"
-            formatter={(value: string) => (
-              <span className="text-gray-600 text-xs">{value}</span>
-            )}
-          />
-          {series.map((s) => (
-            <Bar
-              key={s.key}
-              dataKey={s.key}
-              name={s.label}
-              stackId="a"
-              fill={s.color}
-            >
-              <LabelList
+    <div className="w-full">
+      <ChartLegend items={legendItems} size="sm" align="center" className="mb-2" />
+      <div className="w-full" style={{ height: `${chartHeight}px` }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={rows} layout="vertical" margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
+            <CartesianGrid stroke="#d1d5db" strokeDasharray="3 3" />
+            <XAxis
+              type="number"
+              tick={{ fontSize: 11, fill: '#6b7280' }}
+              axisLine={{ stroke: '#d1d5db' }}
+              tickLine={{ stroke: '#d1d5db' }}
+            />
+            <YAxis
+              type="category"
+              dataKey="locationName"
+              width={140}
+              tick={{ fontSize: 11, fill: '#6b7280' }}
+              axisLine={{ stroke: '#d1d5db' }}
+              tickLine={{ stroke: '#d1d5db' }}
+            />
+            <Tooltip
+              formatter={tooltipFormatter}
+              contentStyle={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                color: '#111827',
+                fontSize: '13px',
+                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
+              }}
+            />
+            {series.map((s) => (
+              <Bar
+                key={s.key}
                 dataKey={s.key}
-                position="insideRight"
-                fill="#fff"
-                fontSize={10}
-                formatter={(v: number) => (typeof v === 'number' && v > 0 ? String(v) : '')}
-              />
-            </Bar>
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
+                name={s.label}
+                stackId="a"
+                fill={s.color}
+              >
+                <LabelList
+                  dataKey={s.key}
+                  position="insideRight"
+                  fill="#fff"
+                  fontSize={10}
+                  formatter={(v: number) => (typeof v === 'number' && v > 0 ? String(v) : '')}
+                />
+              </Bar>
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

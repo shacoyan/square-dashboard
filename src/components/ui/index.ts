@@ -11,3 +11,5 @@ export { ErrorState } from './ErrorState';
 export { DatePicker } from './DatePicker';
 export type { DatePickerProps } from './DatePicker';
 export { PeriodSelector } from './PeriodSelector';
+export { ChartLegend } from './ChartLegend';
+export type { ChartLegendItem, ChartLegendProps } from './ChartLegend';

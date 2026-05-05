@@ -9,7 +9,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ReferenceLine,
 } from 'recharts';
 import type { TooltipProps } from 'recharts';
@@ -19,6 +18,7 @@ import {
   getLineChartData,
   type OccupancyMatrix,
 } from '../../lib/occupancyAggregation';
+import { ChartLegend, type ChartLegendItem } from '../ui';
 
 interface Props {
   matrix: OccupancyMatrix;
@@ -105,6 +105,16 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
   const dataMaxPersons = useMemo(() => data.reduce((m,d) => (d.persons > m ? d.persons : m), 0), [data]);
   const yDomain: [number, number] = mode === 'average' ? [0, Math.max(10, dataMaxPersons)] : [0, dataMaxPersons];
 
+  const legendItems: ChartLegendItem[] = useMemo(() => {
+    const items: ChartLegendItem[] = [
+      { id: 'normal', label: `${modeLabel}${metricLabel}（${unit}）`, color: COLOR_NORMAL }
+    ];
+    if (mode === 'average') {
+      items.push({ id: 'alert', label: `${THRESHOLD_PERSONS}人以上`, color: COLOR_ALERT });
+    }
+    return items;
+  }, [mode, modeLabel, metricLabel, unit]);
+
   return (
     <div className="w-full">
       {/* コントロール行 */}
@@ -149,81 +159,68 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
           {hasAnyChecked ? 'データがありません' : '曜日を 1 つ以上選択してください'}
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={splitData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis
-              dataKey="label"
-              tick={{ fill: '#6b7280', fontSize: 11 }}
-              axisLine={{ stroke: '#d1d5db' }}
-              interval={5}
-            />
-            <YAxis
-              tick={{ fill: '#6b7280', fontSize: 11 }}
-              axisLine={{ stroke: '#d1d5db' }}
-              allowDecimals={mode === 'average'}
-              domain={yDomain}
-            />
-            <Tooltip
-              content={(props: TooltipProps<number, string>) => (
-                <CustomTooltip {...props} mode={mode} />
-              )}
-            />
-            {mode === 'average' && (
-              <ReferenceLine
-                y={THRESHOLD_PERSONS}
-                stroke={COLOR_ALERT}
-                strokeDasharray="4 4"
-                strokeWidth={1}
-                label={{
-                  value: `${THRESHOLD_PERSONS}人`,
-                  position: 'right',
-                  fill: COLOR_ALERT,
-                  fontSize: 11,
-                }}
-                ifOverflow="extendDomain"
+        <div>
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={splitData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis
+                dataKey="label"
+                tick={{ fill: '#6b7280', fontSize: 11 }}
+                axisLine={{ stroke: '#d1d5db' }}
+                interval={5}
               />
-            )}
-            <Line
-              type="monotone"
-              dataKey="personsNormal"
-              stroke={COLOR_NORMAL}
-              strokeWidth={2}
-              dot={false}
-              isAnimationActive={false}
-              name={`${modeLabel}${metricLabel}`}
-              connectNulls={false}
-            />
-            {mode === 'average' && (
+              <YAxis
+                tick={{ fill: '#6b7280', fontSize: 11 }}
+                axisLine={{ stroke: '#d1d5db' }}
+                allowDecimals={mode === 'average'}
+                domain={yDomain}
+              />
+              <Tooltip
+                content={(props: TooltipProps<number, string>) => (
+                  <CustomTooltip {...props} mode={mode} />
+                )}
+              />
+              {mode === 'average' && (
+                <ReferenceLine
+                  y={THRESHOLD_PERSONS}
+                  stroke={COLOR_ALERT}
+                  strokeDasharray="4 4"
+                  strokeWidth={1}
+                  label={{
+                    value: `${THRESHOLD_PERSONS}人`,
+                    position: 'right',
+                    fill: COLOR_ALERT,
+                    fontSize: 11,
+                  }}
+                  ifOverflow="extendDomain"
+                />
+              )}
               <Line
                 type="monotone"
-                dataKey="personsAlert"
-                stroke={COLOR_ALERT}
+                dataKey="personsNormal"
+                stroke={COLOR_NORMAL}
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
-                name={`${THRESHOLD_PERSONS}人以上`}
+                name={`${modeLabel}${metricLabel}`}
                 connectNulls={false}
               />
-            )}
-            <Legend
-              content={() => (
-                <div className="flex justify-center items-center gap-4 text-gray-600 text-xs mt-2">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="inline-block w-3 h-3 rounded-sm" style={{ background: COLOR_NORMAL }} />
-                    <span>{modeLabel}{metricLabel}（{unit}）</span>
-                  </span>
-                  {mode === 'average' && (
-                    <span className="inline-flex items-center gap-1">
-                      <span className="inline-block w-3 h-3 rounded-sm" style={{ background: COLOR_ALERT }} />
-                      <span>{THRESHOLD_PERSONS}人以上</span>
-                    </span>
-                  )}
-                </div>
+              {mode === 'average' && (
+                <Line
+                  type="monotone"
+                  dataKey="personsAlert"
+                  stroke={COLOR_ALERT}
+                  strokeWidth={2}
+                  dot={false}
+                  isAnimationActive={false}
+                  name={`${THRESHOLD_PERSONS}人以上`}
+                  connectNulls={false}
+                />
               )}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+            </LineChart>
+          </ResponsiveContainer>
+          <ChartLegend items={legendItems} size="sm" align="center" className="mt-2" />
+        </div>
       )}
     </div>
   );

@@ -9,7 +9,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from 'recharts';
 import type { TooltipProps } from 'recharts';
 import type { DailySegmentPoint } from '../../types';
@@ -208,11 +207,6 @@ export default function SegmentTrendChart({ data }: Props) {
             <Tooltip
               content={(tipProps: TooltipProps<number, string>) => (
                 <CustomTooltip {...tipProps} visibleKeys={visibleKeys} />
-              )}
-            />
-            <Legend
-              formatter={(value: string) => (
-                <span className="text-gray-600 text-xs">{value}</span>
               )}
             />
             {SERIES.map((s) => (

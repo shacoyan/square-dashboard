@@ -1,7 +1,8 @@
 'use client';
 
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import type { SegmentBreakdown } from '../../types';
+import { ChartLegend } from '../ui';
 
 interface Props {
   sales: SegmentBreakdown;
@@ -37,53 +38,53 @@ export default function SegmentPieChart({ sales }: Props) {
     ? [{ name: 'データなし', value: 1, segment: 'new' as const }]
     : SEGMENT_ORDER.map((segment) => ({ name: LABELS[segment], value: sales[segment], segment }));
 
+  const legendItems = SEGMENT_ORDER.map(s => ({ id: s, label: LABELS[s], color: COLORS[s] }));
+
   return (
-    <div className="w-full h-[300px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            innerRadius={60}
-            outerRadius={110}
-            paddingAngle={total === 0 ? 0 : 2}
-            dataKey="value"
-          >
-            {data.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={total === 0 ? '#d1d5db' : COLORS[entry.segment]}
-                stroke="none"
+    <div className="space-y-3">
+      <div className="w-full h-[300px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={60}
+              outerRadius={110}
+              paddingAngle={total === 0 ? 0 : 2}
+              dataKey="value"
+            >
+              {data.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={total === 0 ? '#d1d5db' : COLORS[entry.segment]}
+                  stroke="none"
+                />
+              ))}
+            </Pie>
+            {total > 0 && (
+              <Tooltip
+                formatter={formatTooltip}
+                contentStyle={{
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  color: '#111827',
+                  fontSize: '13px',
+                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                }}
+                itemStyle={{ color: '#111827' }}
+                labelStyle={{ color: '#111827' }}
               />
-            ))}
-          </Pie>
-          {total > 0 && (
-            <Tooltip
-              formatter={formatTooltip}
-              contentStyle={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                color: '#111827',
-                fontSize: '13px',
-                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-              }}
-              itemStyle={{ color: '#111827' }}
-              labelStyle={{ color: '#111827' }}
-            />
-          )}
-          {total > 0 && (
-            <Legend
-              formatter={(value: string) => (
-                <span className="text-gray-600 text-xs">{value}</span>
-              )}
-            />
-          )}
-        </PieChart>
-      </ResponsiveContainer>
+            )}
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      {total > 0 && (
+        <ChartLegend items={legendItems} size="sm" align="center" />
+      )}
       {total === 0 && (
-        <p className="text-center text-gray-500 text-sm -mt-4">売上データなし</p>
+        <p className="text-center text-gray-500 text-sm">売上データなし</p>
       )}
     </div>
   );
