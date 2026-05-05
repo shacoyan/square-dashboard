@@ -13,8 +13,8 @@ interface Props {
 /**
  * 時間帯別混雑分析セクション。
  * 呼び出し側で flat 化済みの transactions を受け取り `buildOccupancyMatrix` で 7×48 集計。
- * - ヒートマップ: 平均同時滞在組数（曜日 × 時間帯）
- * - 折れ線: 平均/合計トグル + 曜日フィルタ
+ * - ヒートマップ: 平均同時滞在人数（曜日 × 時間帯、tooltip で組数も併記）
+ * - 折れ線: 平均/合計 + 組数/人数 トグル + 曜日フィルタ
  */
 export default function OccupancyAnalysisSection({ transactions }: Props) {
   const matrix = useMemo(() => buildOccupancyMatrix(transactions), [transactions]);
@@ -26,7 +26,7 @@ export default function OccupancyAnalysisSection({ transactions }: Props) {
       <div>
         <h3 className="text-md font-bold text-gray-900">時間帯別混雑分析</h3>
         <p className="text-xs text-gray-500 mt-1">
-          同時滞在組数（注文開始 〜 決済完了の重なり）を 30 分刻みで集計。
+          同時滞在人数・組数（注文開始 〜 決済完了の重なり）を 30 分刻みで集計。
         </p>
       </div>
 

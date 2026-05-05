@@ -24,18 +24,39 @@ interface Props {
 }
 
 type Mode = 'average' | 'sum';
+type Metric = 'groups' | 'persons';
 
-function CustomTooltip({ active, payload, label, mode }: TooltipProps<number, string> & { mode: Mode }) {
+function formatVal(v: number | undefined, mode: Mode): string {
+  const n = typeof v === 'number' ? v : Number(v ?? 0);
+  return mode === 'average' ? n.toFixed(2) : Math.round(n).toLocaleString();
+}
+
+function CustomTooltip({
+  active,
+  payload,
+  label,
+  mode,
+  metric,
+}: TooltipProps<number, string> & { mode: Mode; metric: Metric }) {
   if (!active || !payload || payload.length === 0) return null;
-  const value = payload[0]?.value ?? 0;
-  const valueNum = typeof value === 'number' ? value : Number(value);
-  const formatted = mode === 'average' ? valueNum.toFixed(2) : Math.round(valueNum).toLocaleString();
+  const row = payload[0]?.payload as { groups?: number; persons?: number } | undefined;
+  const g = row?.groups ?? 0;
+  const p = row?.persons ?? 0;
+  const groupsBold = metric === 'groups';
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-lg text-xs">
       <p className="font-bold text-gray-800 mb-1">{label}</p>
       <div className="flex justify-between gap-4">
-        <span className="text-gray-600">{mode === 'average' ? '平均' : '合計'}</span>
-        <span className="font-medium">{formatted} 組</span>
+        <span className="text-gray-600">組数</span>
+        <span className={groupsBold ? 'font-bold' : 'font-normal text-gray-700'}>
+          {formatVal(g, mode)} 組
+        </span>
+      </div>
+      <div className="flex justify-between gap-4">
+        <span className="text-gray-600">人数</span>
+        <span className={!groupsBold ? 'font-bold' : 'font-normal text-gray-700'}>
+          {formatVal(p, mode)} 人
+        </span>
       </div>
     </div>
   );
@@ -43,6 +64,7 @@ function CustomTooltip({ active, payload, label, mode }: TooltipProps<number, st
 
 export default function OccupancyLineChart({ matrix }: Props) {
   const [mode, setMode] = useState<Mode>('average');
+  const [metric, setMetric] = useState<Metric>('groups');
   const [weekdayFilter, setWeekdayFilter] = useState<boolean[]>(
     () => Array.from({ length: WEEKDAY_COUNT }, () => true),
   );
@@ -53,11 +75,15 @@ export default function OccupancyLineChart({ matrix }: Props) {
   );
 
   const hasAnyChecked = weekdayFilter.some((b) => b);
-  const hasNonZero = data.some((d) => d.value > 0);
+  const hasNonZero = data.some((d) => d.groups > 0 || d.persons > 0);
 
   const toggleWeekday = (w: number) => {
     setWeekdayFilter((prev) => prev.map((b, i) => (i === w ? !b : b)));
   };
+
+  const unit = metric === 'groups' ? '組' : '人';
+  const metricLabel = metric === 'groups' ? '同時滞在組数' : '同時滞在人数';
+  const modeLabel = mode === 'average' ? '平均' : '合計';
 
   return (
     <div className="w-full">
@@ -78,6 +104,24 @@ export default function OccupancyLineChart({ matrix }: Props) {
             className={`px-3 py-1 text-sm ${mode === 'sum' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
           >
             合計
+          </button>
+        </div>
+
+        {/* metric toggle */}
+        <div className="inline-flex rounded-md overflow-hidden border border-gray-300">
+          <button
+            type="button"
+            onClick={() => setMetric('groups')}
+            className={`px-3 py-1 text-sm ${metric === 'groups' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+          >
+            組数
+          </button>
+          <button
+            type="button"
+            onClick={() => setMetric('persons')}
+            className={`px-3 py-1 text-sm ${metric === 'persons' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+          >
+            人数
           </button>
         </div>
 
@@ -119,25 +163,25 @@ export default function OccupancyLineChart({ matrix }: Props) {
             />
             <Tooltip
               content={(props: TooltipProps<number, string>) => (
-                <CustomTooltip {...props} mode={mode} />
+                <CustomTooltip {...props} mode={mode} metric={metric} />
               )}
             />
             <Legend
               content={() => (
                 <div className="flex justify-center gap-2 text-gray-600 text-xs mt-2">
                   <span className="inline-block w-3 h-3 rounded-sm bg-blue-500" />
-                  <span>{mode === 'average' ? '平均同時滞在組数' : '合計同時滞在組数'}</span>
+                  <span>{modeLabel}{metricLabel}（{unit}）</span>
                 </div>
               )}
             />
             <Line
               type="monotone"
-              dataKey="value"
+              dataKey={metric}
               stroke="#3b82f6"
               strokeWidth={2}
               dot={false}
               isAnimationActive={false}
-              name={mode === 'average' ? '平均' : '合計'}
+              name={`${modeLabel}${metricLabel}`}
             />
           </LineChart>
         </ResponsiveContainer>

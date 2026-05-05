@@ -6,7 +6,7 @@ import {
   WEEKDAY_COUNT,
   WEEKDAY_LABELS,
   SLOT_LABELS,
-  getAverage,
+  getAverages,
   type OccupancyMatrix,
 } from '../../lib/occupancyAggregation';
 
@@ -16,28 +16,28 @@ interface Props {
 
 /**
  * 7 行（曜日）× 48 列（30min slot）ヒートマップ。
- * - 値は「平均同時滞在組数」固定（要件 3-A）。
+ * - 濃淡は「平均同時滞在人数」固定（要件）。tooltip は組数+人数を両方表示。
  * - 列ヘッダは 3h 刻みの 8 本のみ（slot % 6 === 0）表示。
- * - hover は title 属性で簡易 tooltip。
- * - 0 値: bg-gray-100 / 値あり: bg-blue-500 + opacity (= value/max)。
+ * - 0 値: bg-gray-100 / 値あり: bg-blue-500 + opacity (= persons / maxPersons)。
  */
 export default function OccupancyHeatmap({ matrix }: Props) {
-  const { averages, max } = useMemo(() => {
-    const avg: number[][] = Array.from({ length: WEEKDAY_COUNT }, () => Array(SLOT_COUNT).fill(0));
-    let m = 0;
+  const { avgGroups, avgPersons, maxPersons } = useMemo(() => {
+    const aG: number[][] = Array.from({ length: WEEKDAY_COUNT }, () => Array(SLOT_COUNT).fill(0));
+    const aP: number[][] = Array.from({ length: WEEKDAY_COUNT }, () => Array(SLOT_COUNT).fill(0));
+    let mP = 0;
     for (let w = 0; w < WEEKDAY_COUNT; w++) {
       for (let s = 0; s < SLOT_COUNT; s++) {
-        const v = getAverage(matrix, w, s);
-        avg[w][s] = v;
-        if (v > m) m = v;
+        const { groups, persons } = getAverages(matrix, w, s);
+        aG[w][s] = groups;
+        aP[w][s] = persons;
+        if (persons > mP) mP = persons;
       }
     }
-    return { averages: avg, max: m };
+    return { avgGroups: aG, avgPersons: aP, maxPersons: mP };
   }, [matrix]);
 
-  const hasData = max > 0;
+  const hasData = maxPersons > 0;
 
-  // grid-cols-[40px_repeat(48,minmax(0,1fr))]
   const gridTemplate = `40px repeat(${SLOT_COUNT}, minmax(0, 1fr))`;
 
   return (
@@ -68,10 +68,11 @@ export default function OccupancyHeatmap({ matrix }: Props) {
                 {WEEKDAY_LABELS[w]}
               </div>
               {Array.from({ length: SLOT_COUNT }, (_, s) => {
-                const v = averages[w][s];
-                const isZero = v <= 0;
-                const opacity = hasData && !isZero ? Math.max(0.08, v / max) : 0;
-                const titleText = `${WEEKDAY_LABELS[w]}曜 ${SLOT_LABELS[s]}: 平均 ${v.toFixed(1)} 組`;
+                const g = avgGroups[w][s];
+                const p = avgPersons[w][s];
+                const isZero = p <= 0;
+                const opacity = hasData && !isZero ? Math.max(0.08, p / maxPersons) : 0;
+                const titleText = `${WEEKDAY_LABELS[w]}曜 ${SLOT_LABELS[s]}: 組 ${g.toFixed(1)} 組 / 人 ${p.toFixed(1)} 人`;
                 return (
                   <div
                     key={`c-${w}-${s}`}
@@ -98,7 +99,7 @@ export default function OccupancyHeatmap({ matrix }: Props) {
             </div>
             <span>多</span>
             {hasData ? (
-              <span className="ml-2">最大: {max.toFixed(1)} 組（平均）</span>
+              <span className="ml-2">最大: {maxPersons.toFixed(1)} 人（平均）</span>
             ) : (
               <span className="ml-2 text-gray-400">データなし</span>
             )}
