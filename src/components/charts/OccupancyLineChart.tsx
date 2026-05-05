@@ -86,7 +86,7 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
     );
     return data.map((d, i) => ({
       ...d,
-      personsNormal: expanded[i] ? null : d.persons,
+      personsNormal: flagged[i] ? null : d.persons,
       personsAlert:  expanded[i] ? d.persons : null,
     }));
   }, [data, mode]);
