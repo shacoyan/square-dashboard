@@ -11,6 +11,8 @@ interface Props {
   weekIndex: number;
   onWeekIndexChange: (n: number) => void;
   availableWeeks: number;
+  startHour?: number;
+  endHour?: number;
 }
 
 export default function SegmentTabPanel(props: Props) {

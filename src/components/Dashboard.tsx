@@ -281,6 +281,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
             weekIndex={weekIndex}
             availableWeeks={segmentAvailableWeeks}
             onWeekIndexChange={setWeekIndex}
+            startHour={startHour}
+            endHour={endHour}
           />
         ) : activeTab === 'compare' ? (
           <LocationComparisonSection

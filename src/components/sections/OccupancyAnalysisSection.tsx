@@ -2,12 +2,14 @@
 
 import { useMemo } from 'react';
 import type { Transaction } from '../../types';
-import { buildOccupancyMatrix } from '../../lib/occupancyAggregation';
+import { buildOccupancyMatrix, getActiveSlots } from '../../lib/occupancyAggregation';
 import OccupancyHeatmap from '../charts/OccupancyHeatmap';
 import OccupancyLineChart from '../charts/OccupancyLineChart';
 
 interface Props {
   transactions: Transaction[];
+  startHour?: number;
+  endHour?: number;
 }
 
 /**
@@ -16,8 +18,9 @@ interface Props {
  * - ヒートマップ: 平均同時滞在人数（曜日 × 時間帯、tooltip で組数も併記）
  * - 折れ線: 平均/合計 + 組数/人数 トグル + 曜日フィルタ
  */
-export default function OccupancyAnalysisSection({ transactions }: Props) {
+export default function OccupancyAnalysisSection({ transactions, startHour, endHour }: Props) {
   const matrix = useMemo(() => buildOccupancyMatrix(transactions), [transactions]);
+  const activeSlots = useMemo(() => getActiveSlots(startHour, endHour), [startHour, endHour]);
 
   const hasAnyData = matrix.totalSpans > 0;
 
@@ -40,14 +43,14 @@ export default function OccupancyAnalysisSection({ transactions }: Props) {
             <h4 className="text-sm font-semibold text-gray-700 mb-2">
               曜日 × 時間帯ヒートマップ（平均）
             </h4>
-            <OccupancyHeatmap matrix={matrix} />
+            <OccupancyHeatmap matrix={matrix} activeSlots={activeSlots} />
           </div>
 
           <div className="bg-white rounded-md border border-gray-200 p-3">
             <h4 className="text-sm font-semibold text-gray-700 mb-2">
               時間帯別推移（折れ線）
             </h4>
-            <OccupancyLineChart matrix={matrix} />
+            <OccupancyLineChart matrix={matrix} activeSlots={activeSlots} />
           </div>
         </>
       )}

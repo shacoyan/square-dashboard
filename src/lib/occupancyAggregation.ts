@@ -132,13 +132,18 @@ export function getLineChartData(
   matrix: OccupancyMatrix,
   weekdayFilter: boolean[],
   mode: 'average' | 'sum',
+  activeSlots?: number[],
 ): LineChartPoint[] {
   const totalDateCount = weekdayFilter.reduce(
     (acc, on, w) => acc + (on ? matrix.dateCountsPerWeekday[w] : 0),
     0,
   );
+  const slots =
+    activeSlots && activeSlots.length > 0
+      ? activeSlots
+      : Array.from({ length: SLOT_COUNT }, (_, i) => i);
   const points: LineChartPoint[] = [];
-  for (let slot = 0; slot < SLOT_COUNT; slot++) {
+  for (const slot of slots) {
     let sumGroups = 0;
     let sumPersons = 0;
     for (let w = 0; w < WEEKDAY_COUNT; w++) {
@@ -158,4 +163,43 @@ export function getLineChartData(
     points.push({ slot, label: SLOT_LABELS[slot], groups, persons });
   }
   return points;
+}
+
+/**
+ * 営業開始 startHour 〜 営業終了 endHour に対応する 30 分スロット index 配列を時計順で返す。
+ * - endHour >= startHour: [startHour*2 .. (endHour+1)*2 - 1]
+ *   例 startHour=11, endHour=23 → 22..47 の 26 個
+ * - endHour <  startHour (翌日跨ぎ): [startHour*2..47] ++ [0..(endHour+1)*2 - 1]
+ *   例 startHour=17, endHour=2 → 34..47 + 0..5 = 20 個
+ * - どちらか/両方 undefined または不正値: 0..47 全 48 個（後方互換）
+ * - startHour === endHour: 24h 営業扱いで全 48 個
+ *
+ * mental check:
+ *   getActiveSlots(11, 23) → [22,23,...,47]              (length 26)
+ *   getActiveSlots(17, 2)  → [34,...,47,0,1,2,3,4,5]     (length 20)
+ *   getActiveSlots()       → [0,1,...,47]                (length 48)
+ *   getActiveSlots(0, 23)  → [0,1,...,47]                (length 48)
+ */
+export function getActiveSlots(startHour?: number, endHour?: number): number[] {
+  const all = (): number[] => Array.from({ length: SLOT_COUNT }, (_, i) => i);
+  const isValidHour = (h: unknown): h is number =>
+    typeof h === 'number' && Number.isFinite(h) && h >= 0 && h <= 23;
+
+  if (!isValidHour(startHour) || !isValidHour(endHour)) return all();
+  if (startHour === endHour) return all();
+
+  const startSlot = startHour * 2;
+  // endHour:59 までを含むため (endHour+1)*2 - 1 を末尾とする。endHour=23 → 47。
+  const endSlot = Math.min(SLOT_COUNT - 1, (endHour + 1) * 2 - 1);
+
+  if (endHour >= startHour) {
+    const out: number[] = [];
+    for (let s = startSlot; s <= endSlot; s++) out.push(s);
+    return out;
+  }
+  // 翌日跨ぎ
+  const out: number[] = [];
+  for (let s = startSlot; s < SLOT_COUNT; s++) out.push(s);
+  for (let s = 0; s <= endSlot; s++) out.push(s);
+  return out;
 }

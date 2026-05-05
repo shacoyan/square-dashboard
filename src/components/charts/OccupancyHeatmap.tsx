@@ -12,6 +12,7 @@ import {
 
 interface Props {
   matrix: OccupancyMatrix;
+  activeSlots: number[];
 }
 
 /**
@@ -20,7 +21,7 @@ interface Props {
  * - 列ヘッダは 3h 刻みの 8 本のみ（slot % 6 === 0）表示。
  * - 0 値: bg-gray-100 / 値あり: bg-blue-500 + opacity (= persons / maxPersons)。
  */
-export default function OccupancyHeatmap({ matrix }: Props) {
+export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
   const { avgGroups, avgPersons, maxPersons } = useMemo(() => {
     const aG: number[][] = Array.from({ length: WEEKDAY_COUNT }, () => Array(SLOT_COUNT).fill(0));
     const aP: number[][] = Array.from({ length: WEEKDAY_COUNT }, () => Array(SLOT_COUNT).fill(0));
@@ -30,15 +31,20 @@ export default function OccupancyHeatmap({ matrix }: Props) {
         const { groups, persons } = getAverages(matrix, w, s);
         aG[w][s] = groups;
         aP[w][s] = persons;
-        if (persons > mP) mP = persons;
+      }
+    }
+    // maxPersons は表示対象 (activeSlots) のマスのみで算出。画面外ピークで薄まるのを回避。
+    for (const s of activeSlots) {
+      for (let w = 0; w < WEEKDAY_COUNT; w++) {
+        if (aP[w][s] > mP) mP = aP[w][s];
       }
     }
     return { avgGroups: aG, avgPersons: aP, maxPersons: mP };
-  }, [matrix]);
+  }, [matrix, activeSlots]);
 
   const hasData = maxPersons > 0;
 
-  const gridTemplate = `40px repeat(${SLOT_COUNT}, minmax(0, 1fr))`;
+  const gridTemplate = `40px repeat(${activeSlots.length}, minmax(0, 1fr))`;
 
   return (
     <div className="w-full">
@@ -50,9 +56,9 @@ export default function OccupancyHeatmap({ matrix }: Props) {
             style={{ gridTemplateColumns: gridTemplate }}
           >
             <div />
-            {Array.from({ length: SLOT_COUNT }, (_, s) => (
-              <div key={`h-${s}`} className="text-left">
-                {s % 6 === 0 ? SLOT_LABELS[s].slice(0, 2) + '時' : ''}
+            {activeSlots.map((s, i) => (
+              <div key={`h-${i}-${s}`} className="text-left">
+                {i % 6 === 0 ? SLOT_LABELS[s].slice(0, 2) + '時' : ''}
               </div>
             ))}
           </div>
@@ -67,7 +73,7 @@ export default function OccupancyHeatmap({ matrix }: Props) {
               <div className="text-xs text-gray-700 pr-2 flex items-center justify-end">
                 {WEEKDAY_LABELS[w]}
               </div>
-              {Array.from({ length: SLOT_COUNT }, (_, s) => {
+              {activeSlots.map((s, i) => {
                 const g = avgGroups[w][s];
                 const p = avgPersons[w][s];
                 const isZero = p <= 0;
@@ -75,7 +81,7 @@ export default function OccupancyHeatmap({ matrix }: Props) {
                 const titleText = `${WEEKDAY_LABELS[w]}曜 ${SLOT_LABELS[s]}: 組 ${g.toFixed(1)} 組 / 人 ${p.toFixed(1)} 人`;
                 return (
                   <div
-                    key={`c-${w}-${s}`}
+                    key={`c-${w}-${i}-${s}`}
                     className={`min-h-[20px] border-r border-white ${isZero ? 'bg-gray-100' : 'bg-blue-500'}`}
                     style={{ opacity: isZero ? 1 : opacity }}
                     title={titleText}

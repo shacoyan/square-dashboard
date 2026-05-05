@@ -21,6 +21,7 @@ import {
 
 interface Props {
   matrix: OccupancyMatrix;
+  activeSlots: number[];
 }
 
 type Mode = 'average' | 'sum';
@@ -62,7 +63,7 @@ function CustomTooltip({
   );
 }
 
-export default function OccupancyLineChart({ matrix }: Props) {
+export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
   const [mode, setMode] = useState<Mode>('average');
   const [metric, setMetric] = useState<Metric>('groups');
   const [weekdayFilter, setWeekdayFilter] = useState<boolean[]>(
@@ -70,8 +71,8 @@ export default function OccupancyLineChart({ matrix }: Props) {
   );
 
   const data = useMemo(
-    () => getLineChartData(matrix, weekdayFilter, mode),
-    [matrix, weekdayFilter, mode],
+    () => getLineChartData(matrix, weekdayFilter, mode, activeSlots),
+    [matrix, weekdayFilter, mode, activeSlots],
   );
 
   const hasAnyChecked = weekdayFilter.some((b) => b);

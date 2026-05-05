@@ -14,6 +14,8 @@ interface Props {
   weekIndex: number;
   onWeekIndexChange: (n: number) => void;
   availableWeeks: number;
+  startHour?: number;
+  endHour?: number;
 }
 
 const PERIOD_TABS: { key: PeriodPreset; label: string }[] = [
@@ -99,6 +101,8 @@ export default function CustomerSegmentSection({
   weekIndex,
   onWeekIndexChange,
   availableWeeks,
+  startHour,
+  endHour,
 }: Props) {
   const totalSales = data ? data.totalSales : 0;
   const totalAcquisition = data
@@ -271,7 +275,7 @@ export default function CustomerSegmentSection({
           </div>
 
           <div className="bg-white rounded-xl shadow p-6">
-            <OccupancyAnalysisSection transactions={transactions} />
+            <OccupancyAnalysisSection transactions={transactions} startHour={startHour} endHour={endHour} />
           </div>
 
           <div className="bg-white rounded-xl shadow p-6">

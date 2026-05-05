@@ -451,7 +451,7 @@ export default function LocationComparisonSection(props: Props) {
             </div>
 
             <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
-              <OccupancyAnalysisSection transactions={data.rows.flatMap((r) => r.transactions ?? [])} />
+              <OccupancyAnalysisSection transactions={data.rows.flatMap((r) => r.transactions ?? [])} startHour={startHour} endHour={endHour} />
             </div>
           </div>
         </>
