@@ -13,3 +13,5 @@ export type { DatePickerProps } from './DatePicker';
 export { PeriodSelector } from './PeriodSelector';
 export { ChartLegend } from './ChartLegend';
 export type { ChartLegendItem, ChartLegendProps } from './ChartLegend';
+export { ChartTooltip } from './ChartTooltip';
+export type { ChartTooltipProps, ChartTooltipPayloadItem } from './ChartTooltip';

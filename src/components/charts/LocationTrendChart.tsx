@@ -14,6 +14,8 @@ import {
 import type { DailySegmentPoint } from '../../types';
 import { formatYen } from '../../utils';
 import { TOTAL_LINE_COLOR } from '../../lib/locationColors';
+import { chartTheme } from '../../lib/chartTheme';
+import { ChartTooltip, type ChartTooltipPayloadItem } from '../ui';
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
 
 const TOTAL_KEY = '__total__';
@@ -138,9 +140,39 @@ export default function LocationTrendChart({
     setVisibility(next);
   };
 
+  // dataKey 別フォーマッタ。metric=sales なら円表示、それ以外は素の数値。
+  const tooltipFormatters = useMemo(() => {
+    const map: Record<
+      string,
+      (value: number | string | Array<number | string>) => string
+    > = {};
+    const fmt = (v: number | string | Array<number | string>): string => {
+      if (Array.isArray(v)) return v.join(', ');
+      const num = typeof v === 'number' ? v : Number(v) || 0;
+      return metric === 'sales' ? formatYen(num) : `${num}`;
+    };
+    for (const loc of locationSeries) {
+      map[loc.locationId] = fmt;
+    }
+    map[TOTAL_KEY] = fmt;
+    return map;
+  }, [locationSeries, metric]);
+
+  // hide=true の系列が Recharts のバージョンによっては payload に残るため、
+  // visibility で絞り込んだ payload を ChartTooltip に渡す（R2 対策）。
+  const filterPayload = (
+    payload: ChartTooltipPayloadItem[] | undefined
+  ): ChartTooltipPayloadItem[] | undefined => {
+    if (!payload) return payload;
+    return payload.filter((p) => {
+      const key = p.dataKey != null ? String(p.dataKey) : '';
+      return visibility[key] !== false;
+    });
+  };
+
   if (isEmpty) {
     return (
-      <div className="w-full">
+      <div className="w-full min-w-0">
         <SeriesCheckboxGroup
           items={checkboxItems}
           visible={visibility}
@@ -149,7 +181,10 @@ export default function LocationTrendChart({
           onAllOff={handleAllOff}
           className="mb-2"
         />
-        <div className="w-full h-[320px] flex items-center justify-center">
+        <div
+          className="w-full min-w-0 flex items-center justify-center"
+          style={{ height: `${chartTheme.heightPreset.detail}px` }}
+        >
           <p className="text-gray-500 text-sm">推移データなし</p>
         </div>
       </div>
@@ -157,7 +192,7 @@ export default function LocationTrendChart({
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full min-w-0">
       <SeriesCheckboxGroup
         items={checkboxItems}
         visible={visibility}
@@ -166,10 +201,10 @@ export default function LocationTrendChart({
         onAllOff={handleAllOff}
         className="mb-2"
       />
-      <div className="w-full h-[320px]">
+      <div className="w-full min-w-0" style={{ height: `${chartTheme.heightPreset.detail}px` }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
+          <LineChart data={chartData} margin={chartTheme.defaultMargin}>
+            <CartesianGrid {...chartTheme.grid} />
             <XAxis
               dataKey="date"
               tickFormatter={(value) => {
@@ -178,36 +213,34 @@ export default function LocationTrendChart({
                 if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
                 return String(value);
               }}
-              tick={{ fontSize: 11, fill: '#6b7280' }}
-              axisLine={{ stroke: '#d1d5db' }}
-              tickLine={{ stroke: '#d1d5db' }}
+              tick={chartTheme.axis.tickStyle}
+              tickLine={chartTheme.axis.tickLine}
+              axisLine={chartTheme.axis.axisLine}
+              stroke={chartTheme.axis.stroke}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: '#6b7280' }}
-              axisLine={{ stroke: '#d1d5db' }}
-              tickLine={{ stroke: '#d1d5db' }}
+              tick={chartTheme.axis.tickStyle}
+              tickLine={chartTheme.axis.tickLine}
+              axisLine={chartTheme.axis.axisLine}
+              stroke={chartTheme.axis.stroke}
               allowDecimals={false}
             />
             <Tooltip
-              formatter={(value: number, name: string) =>
-                metric === 'sales' ? [formatYen(value), name] : [value, name]
-              }
-              contentStyle={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                color: '#111827',
-                fontSize: '13px',
-                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-              }}
-              itemStyle={{ color: '#111827' }}
-              labelStyle={{ color: '#111827' }}
-              labelFormatter={(label) => {
-                if (!label) return '';
-                const parts = String(label).split('-');
-                if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
-                return String(label);
-              }}
+              cursor={{ stroke: 'rgba(15,23,42,0.2)', strokeWidth: 1 }}
+              content={(p) => (
+                <ChartTooltip
+                  active={p.active}
+                  payload={filterPayload(p.payload as never) as never}
+                  label={p.label as string | number | undefined}
+                  formatters={tooltipFormatters}
+                  labelFormatter={(label) => {
+                    if (!label) return '';
+                    const parts = String(label).split('-');
+                    if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
+                    return String(label);
+                  }}
+                />
+              )}
             />
             {locationSeries.map((loc) => {
               const color = colorMap[loc.locationId] ?? '#6b7280';

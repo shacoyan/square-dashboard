@@ -12,9 +12,9 @@ import {
   ResponsiveContainer,
   LabelList,
 } from 'recharts';
-import type { TooltipProps } from 'recharts';
-import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import { formatYen } from '../../utils';
+import { chartTheme } from '../../lib/chartTheme';
+import { ChartTooltip } from '../ui';
 
 interface RowData {
   locationName: string;
@@ -27,60 +27,12 @@ interface Props {
   rows: RowData[];
 }
 
-const SalesTooltip = ({ active, payload, label }: TooltipProps<ValueType, NameType>) => {
-  if (active && payload && payload.length) {
-    return (
-      <div
-        style={{
-          backgroundColor: '#ffffff',
-          border: '1px solid #e5e7eb',
-          borderRadius: '8px',
-          color: '#111827',
-          fontSize: '13px',
-          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-          padding: '10px',
-        }}
-      >
-        <p style={{ color: '#111827', marginBottom: '4px', fontWeight: 'bold' }}>{label}</p>
-        <p style={{ color: '#111827' }}>
-          売上: {formatYen(Number(payload[0].value ?? 0))}
-        </p>
-      </div>
-    );
-  }
-  return null;
-};
-
-const CustomersTooltip = ({ active, payload, label }: TooltipProps<ValueType, NameType>) => {
-  if (active && payload && payload.length) {
-    return (
-      <div
-        style={{
-          backgroundColor: '#ffffff',
-          border: '1px solid #e5e7eb',
-          borderRadius: '8px',
-          color: '#111827',
-          fontSize: '13px',
-          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-          padding: '10px',
-        }}
-      >
-        <p style={{ color: '#111827', marginBottom: '4px', fontWeight: 'bold' }}>{label}</p>
-        <p style={{ color: '#111827' }}>
-          客数: {payload[0].value}人
-        </p>
-      </div>
-    );
-  }
-  return null;
-};
-
 const LocationBarChart: React.FC<Props> = ({ rows }) => {
   if (rows.length === 0) {
     return (
       <div
         style={{
-          height: 320,
+          height: chartTheme.heightPreset.standard,
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
@@ -93,25 +45,44 @@ const LocationBarChart: React.FC<Props> = ({ rows }) => {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="w-full min-w-0 space-y-6">
+      <div className="w-full min-w-0">
         <h4 className="text-sm font-semibold text-gray-700 mb-2">総売上</h4>
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={rows} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
+        <ResponsiveContainer width="100%" height={chartTheme.heightPreset.standard}>
+          <BarChart data={rows} margin={chartTheme.defaultMargin}>
+            <CartesianGrid {...chartTheme.grid} />
             <XAxis
               dataKey="locationName"
-              tick={{ fontSize: 12 }}
+              tick={chartTheme.axis.tickStyle}
+              tickLine={chartTheme.axis.tickLine}
+              axisLine={chartTheme.axis.axisLine}
+              stroke={chartTheme.axis.stroke}
               angle={rows.length > 5 ? -20 : 0}
               textAnchor={rows.length > 5 ? 'end' : 'middle'}
               height={60}
             />
             <YAxis
               tickFormatter={(value: number) => formatYen(value)}
-              tick={{ fontSize: 12 }}
+              tick={chartTheme.axis.tickStyle}
+              tickLine={chartTheme.axis.tickLine}
+              axisLine={chartTheme.axis.axisLine}
+              stroke={chartTheme.axis.stroke}
             />
-            <Tooltip content={<SalesTooltip />} />
-            <Bar dataKey="totalSales" barSize={20}>
+            <Tooltip
+              cursor={{ fill: 'rgba(15,23,42,0.04)' }}
+              content={(p) => (
+                <ChartTooltip
+                  active={p.active}
+                  payload={p.payload as never}
+                  label={p.label as string | number | undefined}
+                  hideName
+                  formatters={{
+                    totalSales: (v) => formatYen(Number(v) || 0),
+                  }}
+                />
+              )}
+            />
+            <Bar dataKey="totalSales" name="売上" barSize={20}>
               {rows.map((r, i) => (
                 <Cell key={r.locationName + i} fill={r.color} />
               ))}
@@ -126,24 +97,43 @@ const LocationBarChart: React.FC<Props> = ({ rows }) => {
         </ResponsiveContainer>
       </div>
 
-      <div>
+      <div className="w-full min-w-0">
         <h4 className="text-sm font-semibold text-gray-700 mb-2">総客数</h4>
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={rows} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
+        <ResponsiveContainer width="100%" height={chartTheme.heightPreset.standard}>
+          <BarChart data={rows} margin={chartTheme.defaultMargin}>
+            <CartesianGrid {...chartTheme.grid} />
             <XAxis
               dataKey="locationName"
-              tick={{ fontSize: 12 }}
+              tick={chartTheme.axis.tickStyle}
+              tickLine={chartTheme.axis.tickLine}
+              axisLine={chartTheme.axis.axisLine}
+              stroke={chartTheme.axis.stroke}
               angle={rows.length > 5 ? -20 : 0}
               textAnchor={rows.length > 5 ? 'end' : 'middle'}
               height={60}
             />
             <YAxis
               tickFormatter={(value: number) => `${value}人`}
-              tick={{ fontSize: 12 }}
+              tick={chartTheme.axis.tickStyle}
+              tickLine={chartTheme.axis.tickLine}
+              axisLine={chartTheme.axis.axisLine}
+              stroke={chartTheme.axis.stroke}
             />
-            <Tooltip content={<CustomersTooltip />} />
-            <Bar dataKey="totalCustomers" barSize={20}>
+            <Tooltip
+              cursor={{ fill: 'rgba(15,23,42,0.04)' }}
+              content={(p) => (
+                <ChartTooltip
+                  active={p.active}
+                  payload={p.payload as never}
+                  label={p.label as string | number | undefined}
+                  hideName
+                  formatters={{
+                    totalCustomers: (v) => `${Number(v) || 0}人`,
+                  }}
+                />
+              )}
+            />
+            <Bar dataKey="totalCustomers" name="客数" barSize={20}>
               {rows.map((r, i) => (
                 <Cell key={r.locationName + i} fill={r.color} />
               ))}

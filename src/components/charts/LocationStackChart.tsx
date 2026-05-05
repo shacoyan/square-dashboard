@@ -10,8 +10,8 @@ import {
   Tooltip,
   LabelList,
 } from 'recharts';
-import type { ReactNode } from 'react';
-import { ChartLegend, type ChartLegendItem } from '../ui';
+import { ChartLegend, ChartTooltip, type ChartLegendItem } from '../ui';
+import { chartTheme } from '../../lib/chartTheme';
 
 interface Props {
   rows: Array<{ locationName: string; [key: string]: string | number }>;
@@ -32,39 +32,41 @@ export default function LocationStackChart({ rows, series, valueUnit, emptyMessa
 
   if (isEmpty) {
     return (
-      <div className="flex items-center justify-center w-full" style={{ height: '240px' }}>
+      <div
+        className="flex items-center justify-center w-full"
+        style={{ height: `${chartTheme.heightPreset.compact}px` }}
+      >
         <p className="text-gray-500 text-sm">{emptyMessage ?? 'データなし'}</p>
       </div>
     );
   }
 
-  const chartHeight = Math.max(240, rows.length * 48 + 80);
+  // 行数に応じて伸びるが、detail (400) を最低値として担保
+  const chartHeight = Math.max(chartTheme.heightPreset.detail, rows.length * 48 + 80);
   const unit = valueUnit ?? '人';
 
-  const tooltipFormatter = (
-    value: number | string,
-    name: string,
-    props: { payload?: Record<string, number | string> }
-  ): [ReactNode, ReactNode] => {
-    const numValue = typeof value === 'number' ? value : Number(value) || 0;
-    const payload = props.payload ?? {};
-
-    let sum = 0;
-    for (const s of series) {
-      const v = payload[s.key];
-      if (typeof v === 'number') {
-        sum += v;
+  // dataKey 別に value + % 表示。payload (= 同一 X 軸上の全系列) から合計を再計算
+  const formatters: Record<
+    string,
+    (
+      value: number | string | Array<number | string>,
+      name?: string | number,
+      item?: { payload?: Record<string, unknown> }
+    ) => string
+  > = {};
+  for (const s of series) {
+    formatters[s.key] = (value, _name, item) => {
+      const num = typeof value === 'number' ? value : Number(value) || 0;
+      const rowPayload = (item?.payload ?? {}) as Record<string, unknown>;
+      let sum = 0;
+      for (const ss of series) {
+        const v = rowPayload[ss.key];
+        if (typeof v === 'number') sum += v;
       }
-    }
-
-    const pct = sum > 0 ? Math.round((numValue / sum) * 100) : null;
-    const formattedValue = pct !== null ? `${numValue}${unit} (${pct}%)` : `${numValue}${unit}`;
-
-    return [
-      formattedValue,
-      <span key={name} className="text-gray-600 text-xs">{name}</span>,
-    ];
-  };
+      const pct = sum > 0 ? Math.round((num / sum) * 100) : null;
+      return pct !== null ? `${num}${unit} (${pct}%)` : `${num}${unit}`;
+    };
+  }
 
   const legendItems: ChartLegendItem[] = series.map((s) => ({
     id: s.key,
@@ -73,36 +75,38 @@ export default function LocationStackChart({ rows, series, valueUnit, emptyMessa
   }));
 
   return (
-    <div className="w-full">
+    <div className="w-full min-w-0">
       <ChartLegend items={legendItems} size="sm" align="center" className="mb-2" />
-      <div className="w-full" style={{ height: `${chartHeight}px` }}>
+      <div className="w-full min-w-0" style={{ height: `${chartHeight}px` }}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rows} layout="vertical" margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
-            <CartesianGrid stroke="#d1d5db" strokeDasharray="3 3" />
+          <BarChart data={rows} layout="vertical" margin={chartTheme.marginVerticalLayout}>
+            <CartesianGrid {...chartTheme.grid} />
             <XAxis
               type="number"
-              tick={{ fontSize: 11, fill: '#6b7280' }}
-              axisLine={{ stroke: '#d1d5db' }}
-              tickLine={{ stroke: '#d1d5db' }}
+              tick={chartTheme.axis.tickStyle}
+              tickLine={chartTheme.axis.tickLine}
+              axisLine={chartTheme.axis.axisLine}
+              stroke={chartTheme.axis.stroke}
             />
             <YAxis
               type="category"
               dataKey="locationName"
               width={140}
-              tick={{ fontSize: 11, fill: '#6b7280' }}
-              axisLine={{ stroke: '#d1d5db' }}
-              tickLine={{ stroke: '#d1d5db' }}
+              tick={chartTheme.axis.tickStyle}
+              tickLine={chartTheme.axis.tickLine}
+              axisLine={chartTheme.axis.axisLine}
+              stroke={chartTheme.axis.stroke}
             />
             <Tooltip
-              formatter={tooltipFormatter}
-              contentStyle={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                color: '#111827',
-                fontSize: '13px',
-                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
-              }}
+              cursor={{ fill: 'rgba(15,23,42,0.04)' }}
+              content={(p) => (
+                <ChartTooltip
+                  active={p.active}
+                  payload={p.payload as never}
+                  label={p.label as string | number | undefined}
+                  formatters={formatters}
+                />
+              )}
             />
             {series.map((s) => (
               <Bar

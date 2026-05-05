@@ -2,7 +2,8 @@
 
 import type { WeekdayAggregate } from '../../lib/weekdayAggregation';
 import { formatYen } from '../../utils';
-import { ChartLegend, type ChartLegendItem } from '../ui';
+import { ChartLegend, ChartTooltip, type ChartLegendItem } from '../ui';
+import { chartTheme } from '../../lib/chartTheme';
 import {
   ResponsiveContainer,
   BarChart,
@@ -12,7 +13,6 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import type { TooltipProps } from 'recharts';
 import { FALLBACK_LOCATION_COLOR } from '../../lib/locationColors';
 
 interface Props {
@@ -60,64 +60,13 @@ const WEEKDAY_NAMES: Record<string, string> = {
   日: '日曜日',
 };
 
-function CustomTooltip({ active, payload, label, metric }: TooltipProps<number, string> & { metric: Props['metric'] }) {
-  if (!active || !payload || payload.length === 0) return null;
-
-  const raw = payload[0]?.payload as Record<string, number> | undefined;
-  if (!raw) return null;
-
-  const segmentKeys = getSegmentKeys();
-  const dayLabel = WEEKDAY_NAMES[label ?? ''] ?? label ?? '';
-  const sampleCount = raw.sampleCount ?? 0;
-
-  const formatValue = (val: number): string => {
-    if (metric === 'customers') {
-      return (Math.round(val * 10) / 10).toFixed(1);
-    }
-    return formatYen(Math.round(val));
-  };
-
-  let total = 0;
-  let unlistedValue = 0;
-
-  segmentKeys.forEach((key) => {
-    const dataKey = getDataKey(key, metric);
-    const v = raw[dataKey] ?? 0;
-    if (key === 'unlisted') {
-      unlistedValue = v;
-    }
-    total += v;
-  });
-
-  const displayTotal = metric === 'customers' ? total - unlistedValue : total;
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg text-sm">
-      <p className="font-bold text-gray-800 mb-1">{dayLabel}</p>
-      {segmentKeys.map((key) => {
-        const dataKey = getDataKey(key, metric);
-        const value = raw[dataKey] ?? 0;
-        if (value === 0) return null;
-        return (
-          <div key={key} className="flex justify-between gap-4">
-            <span className="text-gray-600">{getSegmentLabel(key)}</span>
-            <span className="font-medium">{formatValue(value)}</span>
-          </div>
-        );
-      })}
-      <hr className="my-1 border-gray-200" />
-      <div className="flex justify-between gap-4 font-bold">
-        <span>合計</span>
-        <span>{formatValue(displayTotal)}</span>
-      </div>
-      {metric === 'customers' && unlistedValue > 0 && (
-        <div className="text-xs text-gray-500 mt-0.5">
-          (記載なし {formatValue(unlistedValue)})
-        </div>
-      )}
-      <div className="text-xs text-gray-400 mt-1">日数: {sampleCount}日</div>
-    </div>
-  );
+// 値整形ヘルパー（旧ロジック踏襲、設計書 §242）
+function formatByMetric(val: number | string | Array<number | string>, metric: Props['metric']): string {
+  const n = typeof val === 'number' ? val : Number(val) || 0;
+  if (metric === 'customers') {
+    return (Math.round(n * 10) / 10).toFixed(1);
+  }
+  return formatYen(Math.round(n));
 }
 
 export default function WeekdayBarChart({ data, metric, stacked = true }: Props) {
@@ -139,25 +88,40 @@ export default function WeekdayBarChart({ data, metric, stacked = true }: Props)
     color: s.color,
   }));
 
+  // dataKey 別 formatter: customers なら "new"/"repeat"/..., sales なら "newSales"/...
+  const formatters: Record<string, (v: number | string | Array<number | string>) => string> = {};
+  for (const key of segmentKeys) {
+    const dk = getDataKey(key, metric);
+    formatters[dk] = (v) => formatByMetric(v, metric);
+  }
+
   return (
-    <>
-      <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+    <div className="w-full min-w-0">
+      <ResponsiveContainer width="100%" height={chartTheme.heightPreset.compact}>
+        <BarChart data={data} margin={chartTheme.defaultMargin}>
+          <CartesianGrid {...chartTheme.grid} />
           <XAxis
             dataKey="label"
-            tick={{ fill: '#6b7280', fontSize: 12 }}
-            axisLine={{ stroke: '#d1d5db' }}
+            tick={chartTheme.axis.tickStyle}
+            axisLine={chartTheme.axis.axisLine}
+            tickLine={chartTheme.axis.tickLine}
           />
           <YAxis
-            tick={{ fill: '#6b7280', fontSize: 12 }}
-            axisLine={{ stroke: '#d1d5db' }}
+            tick={chartTheme.axis.tickStyle}
+            axisLine={chartTheme.axis.axisLine}
+            tickLine={chartTheme.axis.tickLine}
             allowDecimals={metric === 'customers' ? false : true}
             tickFormatter={metric === 'sales' ? (v: number) => formatYen(v) : undefined}
           />
           <Tooltip
-            content={(props: TooltipProps<number, string>) => (
-              <CustomTooltip {...props} metric={metric} />
+            content={(p) => (
+              <ChartTooltip
+                active={p.active}
+                payload={p.payload as never}
+                label={p.label as string | number | undefined}
+                formatters={formatters}
+                labelFormatter={(l) => WEEKDAY_NAMES[String(l)] ?? String(l)}
+              />
             )}
           />
           {segmentKeys.map((key) => {
@@ -175,6 +139,6 @@ export default function WeekdayBarChart({ data, metric, stacked = true }: Props)
         </BarChart>
       </ResponsiveContainer>
       <ChartLegend size="sm" items={legendItems} />
-    </>
+    </div>
   );
 }

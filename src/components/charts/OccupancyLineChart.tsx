@@ -11,14 +11,14 @@ import {
   Tooltip,
   ReferenceLine,
 } from 'recharts';
-import type { TooltipProps } from 'recharts';
 import {
   WEEKDAY_COUNT,
   WEEKDAY_LABELS,
   getLineChartData,
   type OccupancyMatrix,
 } from '../../lib/occupancyAggregation';
-import { ChartLegend, type ChartLegendItem } from '../ui';
+import { ChartLegend, ChartTooltip, type ChartLegendItem, type ChartTooltipPayloadItem } from '../ui';
+import { chartTheme } from '../../lib/chartTheme';
 
 interface Props {
   matrix: OccupancyMatrix;
@@ -31,38 +31,10 @@ const THRESHOLD_PERSONS = 8;
 const COLOR_NORMAL = '#3b82f6';   // blue-500
 const COLOR_ALERT  = '#ef4444';   // red-500
 
-function formatVal(v: number | undefined, mode: Mode): string {
-  const n = typeof v === 'number' ? v : Number(v ?? 0);
+function formatVal(v: number | string | Array<number | string> | undefined, mode: Mode): string {
+  const raw = Array.isArray(v) ? v[0] : v;
+  const n = typeof raw === 'number' ? raw : Number(raw ?? 0);
   return mode === 'average' ? n.toFixed(2) : Math.round(n).toLocaleString();
-}
-
-function CustomTooltip({
-  active,
-  payload,
-  label,
-  mode,
-}: TooltipProps<number, string> & { mode: Mode }) {
-  if (!active || !payload || payload.length === 0) return null;
-  const row = payload[0]?.payload as { groups?: number; persons?: number } | undefined;
-  const g = row?.groups ?? 0;
-  const p = row?.persons ?? 0;
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-lg text-xs">
-      <p className="font-bold text-gray-800 mb-1">{label}</p>
-      <div className="flex justify-between gap-4">
-        <span className="text-gray-600">組数</span>
-        <span className="font-normal text-gray-700">
-          {formatVal(g, mode)} 組
-        </span>
-      </div>
-      <div className="flex justify-between gap-4">
-        <span className="text-gray-600">人数</span>
-        <span className="font-bold">
-          {formatVal(p, mode)} 人
-        </span>
-      </div>
-    </div>
-  );
 }
 
 export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
@@ -116,7 +88,7 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
   }, [mode, modeLabel, metricLabel, unit]);
 
   return (
-    <div className="w-full">
+    <div className="w-full min-w-0">
       {/* コントロール行 */}
       <div className="flex flex-wrap items-center gap-3 mb-3">
         {/* mode toggle */}
@@ -159,26 +131,65 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
           {hasAnyChecked ? 'データがありません' : '曜日を 1 つ以上選択してください'}
         </div>
       ) : (
-        <div>
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={splitData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <div className="w-full min-w-0">
+          <ResponsiveContainer width="100%" height={chartTheme.heightPreset.compact}>
+            <LineChart data={splitData} margin={chartTheme.defaultMargin}>
+              <CartesianGrid {...chartTheme.grid} />
               <XAxis
                 dataKey="label"
-                tick={{ fill: '#6b7280', fontSize: 11 }}
-                axisLine={{ stroke: '#d1d5db' }}
+                tick={chartTheme.axis.tickStyle}
+                tickLine={chartTheme.axis.tickLine}
+                axisLine={chartTheme.axis.axisLine}
                 interval={5}
               />
               <YAxis
-                tick={{ fill: '#6b7280', fontSize: 11 }}
-                axisLine={{ stroke: '#d1d5db' }}
+                tick={chartTheme.axis.tickStyle}
+                tickLine={chartTheme.axis.tickLine}
+                axisLine={chartTheme.axis.axisLine}
                 allowDecimals={mode === 'average'}
                 domain={yDomain}
               />
               <Tooltip
-                content={(props: TooltipProps<number, string>) => (
-                  <CustomTooltip {...props} mode={mode} />
-                )}
+                content={(p) => {
+                  // personsNormal / personsAlert のうち value 非 null を 1 つだけ「人数」として表示し、
+                  // 8 人閾値超えなら赤系色を保持（payload[].color が COLOR_ALERT/COLOR_NORMAL のため自然に反映）。
+                  const rawPayload = (p.payload ?? []) as ChartTooltipPayloadItem[];
+                  const active = rawPayload.find((it) => {
+                    const v = it.value;
+                    if (v === null || v === undefined) return false;
+                    if (Array.isArray(v)) return v.length > 0;
+                    return true;
+                  });
+                  const merged: ChartTooltipPayloadItem[] = [];
+                  if (active) {
+                    merged.push({
+                      ...active,
+                      name: `${modeLabel}${metricLabel}`,
+                      dataKey: 'persons',
+                    });
+                  }
+                  // 元データの groups も 1 行追加（同モードフォーマット）
+                  const row = (rawPayload[0]?.payload ?? {}) as { groups?: number };
+                  if (typeof row.groups === 'number') {
+                    merged.push({
+                      dataKey: 'groups',
+                      name: `${modeLabel}組数`,
+                      value: row.groups,
+                      color: '#94a3b8',
+                    });
+                  }
+                  return (
+                    <ChartTooltip
+                      active={p.active}
+                      payload={merged}
+                      label={p.label as string | number | undefined}
+                      formatters={{
+                        persons: (v) => `${formatVal(v, mode)} ${unit}`,
+                        groups: (v) => `${formatVal(v, mode)} 組`,
+                      }}
+                    />
+                  );
+                }}
               />
               {mode === 'average' && (
                 <ReferenceLine

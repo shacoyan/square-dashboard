@@ -2,7 +2,8 @@
 
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import type { AcquisitionBreakdown } from '../../types';
-import { ChartLegend } from '../ui';
+import { ChartLegend, ChartTooltip } from '../ui';
+import { chartTheme } from '../../lib/chartTheme';
 
 interface Props {
   data: AcquisitionBreakdown;
@@ -21,10 +22,10 @@ export default function AcquisitionChart({ data }: Props) {
 
   if (total === 0) {
     return (
-      <div className="space-y-3">
-        <div className="w-full h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
+      <div className="w-full min-w-0 space-y-3">
+        <div className="w-full min-w-0">
+          <ResponsiveContainer width="100%" height={chartTheme.heightPreset.standard}>
+            <PieChart margin={chartTheme.marginPie}>
               <Pie
                 data={[{ name: '新規客なし', value: 1 }]}
                 cx="50%"
@@ -49,10 +50,10 @@ export default function AcquisitionChart({ data }: Props) {
   })).filter((d) => d.value > 0);
 
   return (
-    <div className="space-y-3">
-      <div className="w-full h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
+    <div className="w-full min-w-0 space-y-3">
+      <div className="w-full min-w-0">
+        <ResponsiveContainer width="100%" height={chartTheme.heightPreset.standard}>
+          <PieChart margin={chartTheme.marginPie}>
             <Pie
               data={chartData}
               cx="50%"
@@ -67,20 +68,21 @@ export default function AcquisitionChart({ data }: Props) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value: number, name: string, props: { payload?: { percent?: number } }) => {
-                const percent = props.payload?.percent ?? 0;
-                return [`${value}人（${(percent * 100).toFixed(1)}%）`, name];
-              }}
-              contentStyle={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                color: '#111827',
-                fontSize: '13px',
-                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-              }}
-              itemStyle={{ color: '#111827' }}
-              labelStyle={{ color: '#111827' }}
+              cursor={{ fill: 'rgba(15,23,42,0.04)' }}
+              content={(p) => (
+                <ChartTooltip
+                  active={p.active}
+                  payload={p.payload as never}
+                  label={p.label as string | number | undefined}
+                  formatters={{
+                    value: (value: number | string | Array<number | string>, _name?: string | number, item?: { payload?: Record<string, unknown> }) => {
+                      const percent =
+                        (item?.payload as { percent?: number } | undefined)?.percent ?? 0;
+                      return `${Number(value).toLocaleString()}人（${(percent * 100).toFixed(1)}%）`;
+                    },
+                  }}
+                />
+              )}
             />
           </PieChart>
         </ResponsiveContainer>

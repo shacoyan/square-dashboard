@@ -9,10 +9,10 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import type { TooltipProps } from 'recharts';
 import { formatYen } from '../../utils';
 import type { WeekdayLocationAggregate } from '../../lib/weekdayLocationAggregation';
-import { ChartLegend, type ChartLegendItem } from '../ui';
+import { ChartLegend, ChartTooltip, type ChartLegendItem } from '../ui';
+import { chartTheme } from '../../lib/chartTheme';
 import { FALLBACK_LOCATION_COLOR } from '../../lib/locationColors';
 
 interface LocationMeta {
@@ -37,72 +37,12 @@ const WEEKDAY_FULL_NAMES: Record<string, string> = {
   日: '日曜日',
 };
 
-function formatValue(v: number, metric: 'customers' | 'sales'): string {
+function formatByMetric(v: number | string | Array<number | string>, metric: 'customers' | 'sales'): string {
+  const n = typeof v === 'number' ? v : Number(v) || 0;
   if (metric === 'customers') {
-    return (Math.round(v * 10) / 10).toFixed(1);
+    return (Math.round(n * 10) / 10).toFixed(1);
   }
-  return formatYen(Math.round(v));
-}
-
-function CustomTooltip({
-  active,
-  payload,
-  label,
-  metric,
-  locationSeries,
-}: TooltipProps<number, string> & {
-  metric: 'customers' | 'sales';
-  locationSeries: LocationMeta[];
-}) {
-  if (!active || !payload || payload.length === 0) return null;
-
-  const raw = payload[0]?.payload as Record<string, number | string> | undefined;
-  if (!raw) return null;
-
-  const sampleCount = (raw.sampleCount as number) ?? 0;
-  const dayLabel = WEEKDAY_FULL_NAMES[String(label ?? '')] ?? String(label ?? '');
-
-  let total = 0;
-  const items: { name: string; value: number; color: string }[] = [];
-  for (const loc of locationSeries) {
-    const v = (raw[loc.locationId] as number) ?? 0;
-    total += v;
-    if (v > 0) {
-      items.push({
-        name: loc.locationName,
-        value: v,
-        color: payload.find((p) => p.dataKey === loc.locationId)?.color ?? FALLBACK_LOCATION_COLOR,
-      });
-    }
-  }
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg text-sm">
-      <p className="font-bold text-gray-800 mb-1">{dayLabel}</p>
-      {items.length === 0 ? (
-        <div className="text-gray-500 text-xs">データなし</div>
-      ) : (
-        items.map((it) => (
-          <div key={it.name} className="flex justify-between gap-4">
-            <span className="flex items-center gap-1">
-              <span
-                className="inline-block w-2.5 h-2.5 rounded-sm"
-                style={{ backgroundColor: it.color }}
-              />
-              <span className="text-gray-600">{it.name}</span>
-            </span>
-            <span className="font-medium">{formatValue(it.value, metric)}</span>
-          </div>
-        ))
-      )}
-      <hr className="my-1 border-gray-200" />
-      <div className="flex justify-between gap-4 font-bold">
-        <span>合計</span>
-        <span>{formatValue(total, metric)}</span>
-      </div>
-      <div className="text-xs text-gray-400 mt-1">日数: {sampleCount}日</div>
-    </div>
-  );
+  return formatYen(Math.round(n));
 }
 
 export default function WeekdayLocationBarChart({
@@ -140,28 +80,38 @@ export default function WeekdayLocationBarChart({
     color: colorMap[loc.locationId] ?? FALLBACK_LOCATION_COLOR,
   }));
 
+  // dataKey (locationId) 別 formatter
+  const formatters: Record<string, (v: number | string | Array<number | string>) => string> = {};
+  for (const loc of locationSeries) {
+    formatters[loc.locationId] = (v) => formatByMetric(v, metric);
+  }
+
   return (
-    <>
-      <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+    <div className="w-full min-w-0">
+      <ResponsiveContainer width="100%" height={chartTheme.heightPreset.detail}>
+        <BarChart data={chartData} margin={chartTheme.defaultMargin}>
+          <CartesianGrid {...chartTheme.grid} />
           <XAxis
             dataKey="label"
-            tick={{ fill: '#6b7280', fontSize: 12 }}
-            axisLine={{ stroke: '#d1d5db' }}
+            tick={chartTheme.axis.tickStyle}
+            axisLine={chartTheme.axis.axisLine}
+            tickLine={chartTheme.axis.tickLine}
           />
           <YAxis
-            tick={{ fill: '#6b7280', fontSize: 12 }}
-            axisLine={{ stroke: '#d1d5db' }}
+            tick={chartTheme.axis.tickStyle}
+            axisLine={chartTheme.axis.axisLine}
+            tickLine={chartTheme.axis.tickLine}
             allowDecimals={metric === 'customers' ? false : true}
             tickFormatter={metric === 'sales' ? (v: number) => formatYen(v) : undefined}
           />
           <Tooltip
-            content={(props: TooltipProps<number, string>) => (
-              <CustomTooltip
-                {...props}
-                metric={metric}
-                locationSeries={locationSeries}
+            content={(p) => (
+              <ChartTooltip
+                active={p.active}
+                payload={p.payload as never}
+                label={p.label as string | number | undefined}
+                formatters={formatters}
+                labelFormatter={(l) => WEEKDAY_FULL_NAMES[String(l)] ?? String(l)}
               />
             )}
           />
@@ -177,6 +127,6 @@ export default function WeekdayLocationBarChart({
         </BarChart>
       </ResponsiveContainer>
       <ChartLegend size="sm" items={legendItems} />
-    </>
+    </div>
   );
 }

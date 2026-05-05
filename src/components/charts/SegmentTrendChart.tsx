@@ -10,9 +10,9 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import type { TooltipProps } from 'recharts';
 import type { DailySegmentPoint } from '../../types';
-import { formatYen } from '../../utils';
+import { ChartTooltip, type ChartTooltipPayloadItem } from '../ui';
+import { chartTheme } from '../../lib/chartTheme';
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
 
 interface Props {
@@ -44,79 +44,6 @@ function formatDateLabel(label: string | number | undefined): string {
   const parts = String(label).split('-');
   if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
   return String(label);
-}
-
-interface CustomTooltipProps extends TooltipProps<number, string> {
-  visibleKeys: Record<CountKey, boolean>;
-}
-
-function CustomTooltip(props: CustomTooltipProps) {
-  const { active, payload, label, visibleKeys } = props;
-  if (!active || !payload || payload.length === 0) return null;
-
-  const point = payload[0]?.payload as DailySegmentPoint | undefined;
-  if (!point) return null;
-
-  const totalCustomers = SERIES.reduce((sum, s) => {
-    if (!visibleKeys[s.key]) return sum;
-    return sum + ((point[s.key] as number) ?? 0);
-  }, 0);
-
-  const totalSalesExcludingUnlisted = SERIES.reduce((sum, s) => {
-    if (!visibleKeys[s.key] || s.key === 'unlisted') return sum;
-    return sum + ((point[s.salesKey] as number) ?? 0);
-  }, 0);
-
-  return (
-    <div
-      style={{
-        backgroundColor: '#ffffff',
-        border: '1px solid #e5e7eb',
-        borderRadius: '8px',
-        color: '#111827',
-        fontSize: '13px',
-        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-        padding: '10px 12px',
-        minWidth: '200px',
-      }}
-    >
-      <div style={{ fontWeight: 600, marginBottom: 6 }}>{formatDateLabel(label)}</div>
-      {SERIES.filter(s => visibleKeys[s.key]).map(s => {
-        const count = (point[s.key] as number) ?? 0;
-        const sales = (point[s.salesKey] as number) ?? 0;
-        return (
-          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1.6 }}>
-            <span
-              style={{
-                display: 'inline-block',
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                backgroundColor: s.color,
-                flexShrink: 0,
-              }}
-            />
-            <span style={{ color: s.color, minWidth: 64 }}>{s.label}</span>
-            <span style={{ color: '#111827' }}>{count}人</span>
-            <span style={{ color: '#6b7280', marginLeft: 'auto' }}>{formatYen(sales)}</span>
-          </div>
-        );
-      })}
-      <div style={{ borderTop: '1px solid #e5e7eb', marginTop: 6, paddingTop: 6 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-          <span>合計人数</span>
-          <span>{totalCustomers}人</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-          <span>合計売上</span>
-          <span>{formatYen(totalSalesExcludingUnlisted)}</span>
-        </div>
-        <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: 2 }}>
-          （合計売上は記載なしを除く）
-        </div>
-      </div>
-    </div>
-  );
 }
 
 const INITIAL_VISIBLE_KEYS: Record<CountKey, boolean> = {
@@ -172,8 +99,17 @@ export default function SegmentTrendChart({ data }: Props) {
   const handleAllOn = () => setVisibleKeys(ALL_ON_VISIBLE_KEYS);
   const handleAllOff = () => setVisibleKeys(ALL_OFF_VISIBLE_KEYS);
 
+  // dataKey 別 formatter（人数表示）。設計書 §97 により合計表示は L14 以降へ送り、L13 では個別系列のみ。
+  const formatters: Record<string, (v: number | string | Array<number | string>) => string> = {};
+  for (const s of SERIES) {
+    formatters[s.key] = (v) => {
+      const n = typeof v === 'number' ? v : Number(v) || 0;
+      return `${n.toLocaleString()}人`;
+    };
+  }
+
   return (
-    <div className="w-full">
+    <div className="w-full min-w-0">
       <SeriesCheckboxGroup
         items={checkboxItems}
         visible={visibleKeys as Record<string, boolean>}
@@ -182,10 +118,10 @@ export default function SegmentTrendChart({ data }: Props) {
         onAllOff={handleAllOff}
         className="mb-2"
       />
-      <div className="w-full h-[300px]">
+      <div className="w-full min-w-0" style={{ height: chartTheme.heightPreset.detail }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
+          <LineChart data={chartData} margin={chartTheme.defaultMargin}>
+            <CartesianGrid {...chartTheme.grid} />
             <XAxis
               dataKey="date"
               tickFormatter={(value) => {
@@ -194,20 +130,36 @@ export default function SegmentTrendChart({ data }: Props) {
                 if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
                 return String(value);
               }}
-              tick={{ fontSize: 11, fill: '#6b7280' }}
-              axisLine={{ stroke: '#d1d5db' }}
-              tickLine={{ stroke: '#d1d5db' }}
+              tick={chartTheme.axis.tickStyle}
+              axisLine={chartTheme.axis.axisLine}
+              tickLine={chartTheme.axis.tickLine}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: '#6b7280' }}
-              axisLine={{ stroke: '#d1d5db' }}
-              tickLine={{ stroke: '#d1d5db' }}
+              tick={chartTheme.axis.tickStyle}
+              axisLine={chartTheme.axis.axisLine}
+              tickLine={chartTheme.axis.tickLine}
               allowDecimals={false}
             />
             <Tooltip
-              content={(tipProps: TooltipProps<number, string>) => (
-                <CustomTooltip {...tipProps} visibleKeys={visibleKeys} />
-              )}
+              content={(p) => {
+                // hide 系列が Recharts の payload に残るバージョン互換のため visibleKeys でフィルタ
+                const filtered = (p.payload as ChartTooltipPayloadItem[] | undefined)?.filter(
+                  (it) => {
+                    const k = it.dataKey != null ? String(it.dataKey) : '';
+                    if (!COUNT_KEYS.has(k)) return false;
+                    return visibleKeys[k as CountKey];
+                  },
+                );
+                return (
+                  <ChartTooltip
+                    active={p.active}
+                    payload={filtered as never}
+                    label={p.label as string | number | undefined}
+                    formatters={formatters}
+                    labelFormatter={(l) => formatDateLabel(l)}
+                  />
+                );
+              }}
             />
             {SERIES.map((s) => (
               <Line
