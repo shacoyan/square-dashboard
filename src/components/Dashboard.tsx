@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import AppShell from './layout/AppShell';
 import TopBar from './layout/TopBar';
+import ControlBar from './layout/ControlBar';
 import { Container, Stack } from './ui';
-import StoreSwitcher from './StoreSwitcher';
-import DatePicker from './DatePicker';
 import DashboardTabs from './DashboardTabs';
 import DailyTabPanel from './tabs/DailyTabPanel';
 import SegmentTabPanel from './tabs/SegmentTabPanel';
@@ -163,77 +162,30 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     <AppShell header={<TopBar onLogout={onLogout} />}>
       <Container className="py-6">
         <Stack gap="lg">
-          <div className="bg-white rounded-lg shadow p-4 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <DatePicker value={date} onChange={setDate} />
-            </div>
-
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">営業開始:</label>
-                <select
-                  value={startHour}
-                  onChange={(e) => {
-                    const h = parseInt(e.target.value, 10);
-                    setStartHour(h);
-                    localStorage.setItem('sq_start_hour', String(h));
-                    setDate(getBusinessDate(h));
-                  }}
-                  className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">営業終了:</label>
-                <select
-                  value={endHour}
-                  onChange={(e) => {
-                    const h = parseInt(e.target.value, 10);
-                    setEndHour(h);
-                    localStorage.setItem('sq_end_hour', String(h));
-                  }}
-                  className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={i} value={i}>{String(i).padStart(2, '0')}:59</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {locationsLoading ? (
-              <p className="text-sm text-gray-400">店舗情報を取得中...</p>
-            ) : (
-              <StoreSwitcher
-                locations={locations}
-                selectedId={selectedLocationId}
-                onChange={setSelectedLocationId}
-              />
-            )}
-
-            {locationsError && (
-              <p className="text-red-600 text-sm">⚠ {locationsError}</p>
-            )}
-
-            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-              <button
-                onClick={refresh}
-                disabled={loading || !selectedLocationId}
-                className="px-4 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {loading ? '読み込み中...' : '更新'}
-              </button>
-              <div className="text-right">
-                <p className="text-xs text-gray-400">{getPeriodLabel(date, startHour, endHour)}</p>
-                <span className="text-xs text-gray-500">
-                  最終更新: {formattedLastUpdated}
-                </span>
-              </div>
-            </div>
-          </div>
+          <ControlBar
+            date={date}
+            onDateChange={setDate}
+            startHour={startHour}
+            endHour={endHour}
+            onStartHourChange={(h) => {
+              setStartHour(h);
+              localStorage.setItem('sq_start_hour', String(h));
+              setDate(getBusinessDate(h));
+            }}
+            onEndHourChange={(h) => {
+              setEndHour(h);
+              localStorage.setItem('sq_end_hour', String(h));
+            }}
+            locations={locations}
+            selectedLocationId={selectedLocationId}
+            onLocationChange={setSelectedLocationId}
+            locationsLoading={locationsLoading}
+            locationsError={locationsError}
+            loading={loading}
+            onRefresh={refresh}
+            periodLabel={getPeriodLabel(date, startHour, endHour)}
+            formattedLastUpdated={formattedLastUpdated}
+          />
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
