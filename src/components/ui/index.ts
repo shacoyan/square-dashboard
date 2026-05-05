@@ -8,3 +8,6 @@ export { Badge } from './Badge';
 export { Skeleton } from './Skeleton';
 export { EmptyState } from './EmptyState';
 export { ErrorState } from './ErrorState';
+export { DatePicker } from './DatePicker';
+export type { DatePickerProps } from './DatePicker';
+export { PeriodSelector } from './PeriodSelector';

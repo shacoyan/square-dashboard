@@ -1,6 +1,5 @@
-import { Card, Stack, Button } from '../ui';
+import { Card, Stack, Button, DatePicker } from '../ui';
 import StoreSwitcher from '../StoreSwitcher';
-import DatePicker from '../DatePicker';
 import type { Location } from '../../types';
 
 interface ControlBarProps {
@@ -63,7 +62,7 @@ export default function ControlBar({
 
           {/* Row 2: 日付 */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <DatePicker value={date} onChange={onDateChange} />
+            <DatePicker value={date} onChange={onDateChange} startHour={startHour} />
           </div>
 
           {/* Row 3: 営業時間 */}

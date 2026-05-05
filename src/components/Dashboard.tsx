@@ -12,21 +12,11 @@ import { useOpenOrders } from '../hooks/useOpenOrders';
 import { useCustomerSegment } from '../hooks/useCustomerSegment';
 import type { Location } from '../types';
 import type { PeriodPreset } from '../types';
+import { getBusinessDate } from '../lib/businessDate';
 
 interface DashboardProps {
   token: string;
   onLogout: () => void;
-}
-
-function getBusinessDate(startHour: number): string {
-  const now = new Date();
-  const jstHour = (now.getUTCHours() + 9) % 24;
-  if (startHour > 0 && jstHour < startHour) {
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    return yesterday.toISOString().split('T')[0];
-  }
-  return now.toISOString().split('T')[0];
 }
 
 function getPeriodLabel(date: string, startHour: number, endHour: number): string {

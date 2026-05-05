@@ -1,6 +1,7 @@
 import { formatYen } from '../utils';
 import type { CustomerSegmentAnalysis, PeriodPreset, SegmentBreakdown, AcquisitionBreakdown, Transaction } from '../types';
 import { SegmentPieChart, SegmentTrendChart, AcquisitionChart } from './charts';
+import { PeriodSelector } from './ui';
 import WeekdayAnalysisSection from './WeekdayAnalysisSection';
 import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
 
@@ -17,12 +18,6 @@ interface Props {
   startHour?: number;
   endHour?: number;
 }
-
-const PERIOD_TABS: { key: PeriodPreset; label: string }[] = [
-  { key: 'today', label: '今日' },
-  { key: 'week', label: '週' },
-  { key: 'month', label: '今月' },
-];
 
 function SkeletonCard() {
   return (
@@ -118,51 +113,14 @@ export default function CustomerSegmentSection({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <h2 className="text-lg font-bold text-gray-900 mb-2 sm:mb-0">店舗データ分析</h2>
 
-          <div className="flex space-x-2" role="tablist" aria-label="期間選択">
-            {PERIOD_TABS.map((tab) => {
-              const isSelected = period === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  role="tab"
-                  aria-selected={isSelected}
-                  tabIndex={isSelected ? 0 : -1}
-                  onClick={() => onPeriodChange(tab.key)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
-                    isSelected
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+          <PeriodSelector
+            period={period}
+            onPeriodChange={onPeriodChange}
+            weekIndex={weekIndex}
+            onWeekIndexChange={onWeekIndexChange}
+            availableWeeks={availableWeeks}
+          />
         </div>
-
-        {period === 'week' && availableWeeks > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="週選択">
-            {Array.from({ length: availableWeeks }, (_, i) => i + 1).map((n) => {
-              const isSelected = weekIndex === n;
-              return (
-                <button
-                  key={n}
-                  role="tab"
-                  aria-selected={isSelected}
-                  onClick={() => onWeekIndexChange(n)}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
-                    isSelected
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  第{n}週
-                </button>
-              );
-            })}
-          </div>
-        )}
 
         {loading && <SkeletonSection />}
 

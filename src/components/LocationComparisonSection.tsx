@@ -2,16 +2,12 @@ import React from 'react';
 import type { Location, PeriodPreset, LocationSegmentRow } from '../types';
 import { useMultiLocationSegment } from '../hooks/useMultiLocationSegment';
 import { LocationBarChart, LocationStackChart, LocationTrendChart } from './charts';
+import { PeriodSelector } from './ui';
 import { formatYen } from '../utils';
 import WeekdayLocationAnalysisSection from './WeekdayLocationAnalysisSection';
 import { getLocationColors } from '../lib/locationColors';
 
 import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
-const PERIOD_TABS: { key: PeriodPreset; label: string }[] = [
-  { key: 'today', label: '今日' },
-  { key: 'week', label: '週' },
-  { key: 'month', label: '今月' },
-];
 
 const SEGMENT_SERIES = [
   { key: 'new', label: '新規', color: '#3b82f6' },
@@ -149,53 +145,13 @@ export default function LocationComparisonSection(props: Props) {
     <div className="space-y-6">
       <h2 className="text-lg font-bold text-gray-900">全店舗比較</h2>
 
-      <div className="flex space-x-2" role="tablist" aria-label="期間選択">
-        {PERIOD_TABS.map((tab) => {
-          const isSelected = period === tab.key;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              role="tab"
-              aria-selected={isSelected}
-              tabIndex={isSelected ? 0 : -1}
-              onClick={() => onPeriodChange(tab.key)}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
-                isSelected
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {period === 'week' && availableWeeks > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="週選択">
-          {Array.from({ length: availableWeeks }, (_, i) => i + 1).map((n) => {
-            const isSelected = weekIndex === n;
-            return (
-              <button
-                key={n}
-                type="button"
-                role="tab"
-                aria-selected={isSelected}
-                tabIndex={isSelected ? 0 : -1}
-                onClick={() => onWeekIndexChange(n)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
-                  isSelected
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                第{n}週
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <PeriodSelector
+        period={period}
+        onPeriodChange={onPeriodChange}
+        weekIndex={weekIndex}
+        onWeekIndexChange={onWeekIndexChange}
+        availableWeeks={availableWeeks}
+      />
 
       {loading && <SkeletonCompareSection />}
 
