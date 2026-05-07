@@ -11,6 +11,8 @@ interface Props {
   weekIndex: number;
   onWeekIndexChange: (n: number) => void;
   availableWeeks: number;
+  quarterIndex: number;
+  onQuarterIndexChange: (n: number) => void;
   startHour?: number;
   endHour?: number;
 }

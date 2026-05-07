@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Transaction, CustomerSegmentAnalysis, PeriodPreset, DailySegmentPoint, OpenOrder } from '../types';
 import { aggregateSegments, allocateSalesByTransaction, countCustomersByTransaction } from '../lib/customerSegment';
+import { aggregateTrendByGranularity, granularityFor } from '../lib/trendAggregation';
 import { MSG } from '../lib/messages';
 
 interface Args {
@@ -11,6 +12,7 @@ interface Args {
   startHour: number;
   endHour: number;
   weekIndex?: number;
+  quarterIndex?: number;
   enabled: boolean;
 }
 
@@ -42,7 +44,12 @@ function getMonthWeekCount(year: number, month: number): number {
   return Math.floor(diffDays / 7) + 1;
 }
 
-function calculatePeriodDates(period: PeriodPreset, baseDate: string, weekIndex?: number): string[] {
+function calculatePeriodDates(
+  period: PeriodPreset,
+  baseDate: string,
+  weekIndex?: number,
+  quarterIndex?: number,
+): string[] {
   const [by, bm, bd] = baseDate.split('-').map(Number);
 
   const { year: todayY, month: todayM, day: todayD } = getJSTDateParts(new Date());
@@ -58,7 +65,7 @@ function calculatePeriodDates(period: PeriodPreset, baseDate: string, weekIndex?
   } else if (period === 'week') {
     const firstMon = getFirstWeekMonday(by, bm);
     const baseDateUTC = Date.UTC(by, bm - 1, bd);
-    
+
     let effectiveIndex: number;
     if (weekIndex !== undefined) {
       effectiveIndex = weekIndex;
@@ -68,10 +75,23 @@ function calculatePeriodDates(period: PeriodPreset, baseDate: string, weekIndex?
       effectiveIndex = Math.floor(days / 7) + 1;
       if (effectiveIndex < 1) effectiveIndex = 1;
     }
-    
+
     startDateObj = new Date(firstMon.getTime() + 7 * (effectiveIndex - 1) * 86400000);
     endDateObj = new Date(firstMon.getTime() + (7 * (effectiveIndex - 1) + 6) * 86400000);
+  } else if (period === 'quarter') {
+    const effectiveQ =
+      quarterIndex !== undefined
+        ? quarterIndex
+        : Math.floor((bm - 1) / 3) + 1; // 1-3->Q1, 4-6->Q2, 7-9->Q3, 10-12->Q4
+    const startMonth = (effectiveQ - 1) * 3 + 1; // 1, 4, 7, 10
+    const endMonth = startMonth + 2;             // 3, 6, 9, 12
+    startDateObj = new Date(Date.UTC(by, startMonth - 1, 1));
+    endDateObj = new Date(Date.UTC(by, endMonth, 0)); // endMonth-1 month last day
+  } else if (period === 'year') {
+    startDateObj = new Date(Date.UTC(by, 0, 1));    // 1/1
+    endDateObj = new Date(Date.UTC(by, 12, 0));     // 12/31
   } else {
+    // month
     startDateObj = new Date(Date.UTC(by, bm - 1, 1));
     endDateObj = new Date(Date.UTC(by, bm, 0));
   }
@@ -121,7 +141,7 @@ export function useCustomerSegment(args: Args): {
   refresh: () => void;
   availableWeeks: number;
 } {
-  const { token, locationId, period, baseDate, startHour, endHour, weekIndex, enabled } = args;
+  const { token, locationId, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled } = args;
 
   const [data, setData] = useState<CustomerSegmentAnalysis | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -151,7 +171,7 @@ export function useCustomerSegment(args: Args): {
     setData(null);
     setTransactions([]);
 
-    const dates = calculatePeriodDates(period, baseDate, weekIndex);
+    const dates = calculatePeriodDates(period, baseDate, weekIndex, quarterIndex);
 
     if (dates.length === 0) {
       setLoading(false);
@@ -226,7 +246,7 @@ export function useCustomerSegment(args: Args): {
 
         const mappedOpenOrders = openOrders.map(openOrderToTransaction);
         const combinedTransactions = [...transactions, ...mappedOpenOrders];
-        
+
         allTransactions.push(...combinedTransactions);
 
         let dayNew = 0;
@@ -286,6 +306,9 @@ export function useCustomerSegment(args: Args): {
       const averageDailySales = period === 'today' ? dailySalesTotal : (dates.length > 0 ? dailySalesTotal / elapsedDays : null);
       const overallAveragePerCustomer = dailyCustomersTotal > 0 ? dailySalesTotal / dailyCustomersTotal : null;
 
+      const sortedDailyTrend = dailyTrend.sort((a, b) => a.date.localeCompare(b.date));
+      const aggregatedTrend = aggregateTrendByGranularity(sortedDailyTrend, granularityFor(period));
+
       setData({
         period,
         periodStart: dates[0] ?? baseDate,
@@ -298,7 +321,7 @@ export function useCustomerSegment(args: Args): {
         customersBySegment: result.customers,
         salesBySegment: result.sales,
         acquisitionBreakdown: result.acquisition,
-        dailyTrend: dailyTrend.sort((a, b) => a.date.localeCompare(b.date)),
+        dailyTrend: aggregatedTrend,
       });
       setTransactions(allTransactions);
 
@@ -314,7 +337,7 @@ export function useCustomerSegment(args: Args): {
         setLoading(false);
       }
     }
-  }, [token, locationId, period, baseDate, startHour, endHour, weekIndex, enabled]);
+  }, [token, locationId, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled]);
 
   useEffect(() => {
     fetchData();

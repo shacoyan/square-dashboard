@@ -77,7 +77,7 @@ export interface DailySegmentPoint {
   unlistedSales: number;
 }
 
-export type PeriodPreset = 'today' | 'week' | 'month';
+export type PeriodPreset = 'today' | 'week' | 'month' | 'quarter' | 'year';
 
 export interface CustomerSegmentAnalysis {
   period: PeriodPreset;

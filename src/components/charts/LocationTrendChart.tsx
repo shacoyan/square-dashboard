@@ -11,12 +11,13 @@ import {
   Tooltip,
   LabelList,
 } from 'recharts';
-import type { DailySegmentPoint } from '../../types';
+import type { DailySegmentPoint, PeriodPreset } from '../../types';
 import { formatYen } from '../../utils';
 import { TOTAL_LINE_COLOR } from '../../lib/locationColors';
 import { chartTheme } from '../../lib/chartTheme';
 import { ChartTooltip, type ChartTooltipPayloadItem, ChartFigure, EmptyState } from '../ui';
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
+import { granularityFor, type Granularity } from '../../lib/trendAggregation';
 import { MSG } from '../../lib/messages';
 
 const TOTAL_KEY = '__total__';
@@ -35,12 +36,35 @@ function getTotalSales(point: DailySegmentPoint): number {
   );
 }
 
+function formatDateLabel(label: string | number | undefined, granularity: Granularity): string {
+  if (label === undefined || label === null || label === '') return '';
+  const parts = String(label).split('-');
+  if (parts.length < 3) return String(label);
+  const [y, m, d] = parts;
+  switch (granularity) {
+    case 'monthly':
+      return `${y}/${m}`;
+    case 'weekly':
+      return `${m}/${d}週`;
+    case 'daily':
+    case 'hourly':
+    default:
+      return `${m}/${d}`;
+  }
+}
+
 interface Props {
   locationSeries: { locationId: string; locationName: string; points: DailySegmentPoint[] }[];
   totalsSeries: DailySegmentPoint[];
   allDates: string[];
   metric?: 'customers' | 'sales';
   colorMap: Record<string, string>;
+  /**
+   * 期間プリセット。X 軸ラベル粒度切替のみに使用。
+   * 集約自体は hook 側で実施済み（このコンポーネントでは再集約しない）。
+   * 省略時は 'month'（既存挙動 = daily ラベル）。
+   */
+  period?: PeriodPreset;
 }
 
 export default function LocationTrendChart({
@@ -49,8 +73,10 @@ export default function LocationTrendChart({
   allDates,
   metric = 'customers',
   colorMap,
+  period = 'month',
 }: Props) {
   const getValue = metric === 'sales' ? getTotalSales : getTotalCount;
+  const granularity = granularityFor(period);
 
   const [visibility, setVisibility] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = { [TOTAL_KEY]: true };
@@ -206,9 +232,7 @@ export default function LocationTrendChart({
                 dataKey="date"
                 tickFormatter={(value) => {
                   if (!value) return '--';
-                  const parts = String(value).split('-');
-                  if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
-                  return String(value);
+                  return formatDateLabel(String(value), granularity);
                 }}
                 tick={chartTheme.axis.tickStyle}
                 tickLine={chartTheme.axis.tickLine}
@@ -230,12 +254,7 @@ export default function LocationTrendChart({
                     payload={filterPayload(p.payload as never) as never}
                     label={p.label as string | number | undefined}
                     formatters={tooltipFormatters}
-                    labelFormatter={(label) => {
-                      if (!label) return '';
-                      const parts = String(label).split('-');
-                      if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
-                      return String(label);
-                    }}
+                    labelFormatter={(label) => formatDateLabel(label, granularity)}
                   />
                 )}
               />

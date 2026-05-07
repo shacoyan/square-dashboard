@@ -10,14 +10,21 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import type { DailySegmentPoint } from '../../types';
+import type { DailySegmentPoint, PeriodPreset } from '../../types';
 import { ChartTooltip, ChartFigure, type ChartTooltipPayloadItem } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
+import { granularityFor, type Granularity } from '../../lib/trendAggregation';
 import { MSG } from '../../lib/messages';
 
 interface Props {
   data: DailySegmentPoint[];
+  /**
+   * 期間プリセット。X 軸ラベルの粒度切替に使用。
+   * 集約自体は hook 側で実施済み（このコンポーネントでは再集約しない）。
+   * 省略時は 'month'（既存挙動 = daily ラベル）。
+   */
+  period?: PeriodPreset;
 }
 
 type CountKey = 'new' | 'repeat' | 'regular' | 'staff' | 'unlisted';
@@ -40,11 +47,21 @@ const SERIES: SeriesDef[] = [
 
 const COUNT_KEYS: ReadonlySet<string> = new Set<string>(SERIES.map(s => s.key));
 
-function formatDateLabel(label: string | number | undefined): string {
+function formatDateLabel(label: string | number | undefined, granularity: Granularity): string {
   if (label === undefined || label === null || label === '') return '';
   const parts = String(label).split('-');
-  if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
-  return String(label);
+  if (parts.length < 3) return String(label);
+  const [y, m, d] = parts;
+  switch (granularity) {
+    case 'monthly':
+      return `${y}/${m}`;
+    case 'weekly':
+      return `${m}/${d}週`;
+    case 'daily':
+    case 'hourly':
+    default:
+      return `${m}/${d}`;
+  }
 }
 
 const INITIAL_VISIBLE_KEYS: Record<CountKey, boolean> = {
@@ -71,8 +88,10 @@ const ALL_OFF_VISIBLE_KEYS: Record<CountKey, boolean> = {
   unlisted: false,
 };
 
-export default function SegmentTrendChart({ data }: Props) {
+export default function SegmentTrendChart({ data, period = 'month' }: Props) {
   const [visibleKeys, setVisibleKeys] = useState<Record<CountKey, boolean>>(INITIAL_VISIBLE_KEYS);
+
+  const granularity = granularityFor(period);
 
   const isEmpty = !data || data.length === 0;
 
@@ -128,9 +147,7 @@ export default function SegmentTrendChart({ data }: Props) {
                 dataKey="date"
                 tickFormatter={(value) => {
                   if (!value) return '--';
-                  const parts = String(value).split('-');
-                  if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
-                  return String(value);
+                  return formatDateLabel(String(value), granularity);
                 }}
                 tick={chartTheme.axis.tickStyle}
                 axisLine={chartTheme.axis.axisLine}
@@ -158,7 +175,7 @@ export default function SegmentTrendChart({ data }: Props) {
                       payload={filtered as never}
                       label={p.label as string | number | undefined}
                       formatters={formatters}
-                      labelFormatter={(l) => formatDateLabel(l)}
+                      labelFormatter={(l) => formatDateLabel(l, granularity)}
                     />
                   );
                 }}

@@ -37,6 +37,8 @@ interface Props {
   weekIndex: number;
   onWeekIndexChange: (n: number) => void;
   availableWeeks: number;
+  quarterIndex: number;
+  onQuarterIndexChange: (n: number) => void;
   baseDate: string;
   startHour: number;
   endHour: number;
@@ -52,6 +54,8 @@ export default function LocationComparisonSection(props: Props) {
     weekIndex,
     onWeekIndexChange,
     availableWeeks,
+    quarterIndex,
+    onQuarterIndexChange,
     baseDate,
     startHour,
     endHour,
@@ -66,6 +70,7 @@ export default function LocationComparisonSection(props: Props) {
     startHour,
     endHour,
     weekIndex,
+    quarterIndex,
     enabled: enabled && locations.length > 0,
   });
 
@@ -130,6 +135,8 @@ export default function LocationComparisonSection(props: Props) {
         weekIndex={weekIndex}
         onWeekIndexChange={onWeekIndexChange}
         availableWeeks={availableWeeks}
+        quarterIndex={quarterIndex}
+        onQuarterIndexChange={onQuarterIndexChange}
       />
     }>
       <div className="space-y-6">
@@ -360,6 +367,7 @@ export default function LocationComparisonSection(props: Props) {
                   allDates={data.allDates}
                   metric="customers"
                   colorMap={barColorsMap}
+                  period={period}
                 />
               </div>
 
@@ -375,6 +383,7 @@ export default function LocationComparisonSection(props: Props) {
                   allDates={data.allDates}
                   metric="sales"
                   colorMap={barColorsMap}
+                  period={period}
                 />
               </div>
 

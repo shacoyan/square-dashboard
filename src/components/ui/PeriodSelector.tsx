@@ -8,6 +8,8 @@ const PERIOD_TABS: { key: PeriodPreset; label: string }[] = [
   { key: 'today', label: '今日' },
   { key: 'week', label: '週' },
   { key: 'month', label: '今月' },
+  { key: 'quarter', label: '四半期' },
+  { key: 'year', label: '年間' },
 ];
 
 export interface PeriodSelectorProps {
@@ -16,6 +18,8 @@ export interface PeriodSelectorProps {
   weekIndex: number;
   onWeekIndexChange: (n: number) => void;
   availableWeeks: number;
+  quarterIndex: number;
+  onQuarterIndexChange: (n: number) => void;
   ariaLabel?: string;
   className?: string;
 }
@@ -35,12 +39,14 @@ export function PeriodSelector({
   weekIndex,
   onWeekIndexChange,
   availableWeeks,
+  quarterIndex,
+  onQuarterIndexChange,
   ariaLabel = '期間選択',
   className,
 }: PeriodSelectorProps) {
   return (
     <div className={cn('flex flex-col gap-3', className)}>
-      <div className="flex space-x-2" role="tablist" aria-label={ariaLabel}>
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label={ariaLabel}>
         {PERIOD_TABS.map((tab) => {
           const isSelected = period === tab.key;
           return (
@@ -74,6 +80,27 @@ export function PeriodSelector({
                 className={cn(weekTabBaseClass, isSelected ? selectedClass : unselectedClass)}
               >
                 第{n}週
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {period === 'quarter' && (
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="四半期選択">
+          {[1, 2, 3, 4].map((n) => {
+            const isSelected = quarterIndex === n;
+            return (
+              <button
+                key={n}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                tabIndex={isSelected ? 0 : -1}
+                onClick={() => onQuarterIndexChange(n)}
+                className={cn(weekTabBaseClass, isSelected ? selectedClass : unselectedClass)}
+              >
+                Q{n}
               </button>
             );
           })}

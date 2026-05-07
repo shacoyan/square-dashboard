@@ -16,6 +16,8 @@ interface Props {
   weekIndex: number;
   onWeekIndexChange: (n: number) => void;
   availableWeeks: number;
+  quarterIndex: number;
+  onQuarterIndexChange: (n: number) => void;
   startHour?: number;
   endHour?: number;
 }
@@ -70,6 +72,8 @@ export default function CustomerSegmentSection({
   weekIndex,
   onWeekIndexChange,
   availableWeeks,
+  quarterIndex,
+  onQuarterIndexChange,
   startHour,
   endHour,
 }: Props) {
@@ -92,6 +96,8 @@ export default function CustomerSegmentSection({
             weekIndex={weekIndex}
             onWeekIndexChange={onWeekIndexChange}
             availableWeeks={availableWeeks}
+            quarterIndex={quarterIndex}
+            onQuarterIndexChange={onQuarterIndexChange}
           />
         }
       >
@@ -197,7 +203,7 @@ export default function CustomerSegmentSection({
           <Card title="日次推移">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
               <div className="md:col-span-2">
-                <SegmentTrendChart data={data.dailyTrend} />
+                <SegmentTrendChart data={data.dailyTrend} period={period} />
               </div>
               <div className="max-h-[280px] overflow-y-auto space-y-2">
                 {data.dailyTrend.map((day) => (

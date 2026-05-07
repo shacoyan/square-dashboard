@@ -80,9 +80,18 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
   };
 
   const [weekIndex, setWeekIndex] = useState<number>(() => getWeekIndexForDate(getBusinessDate(13)));
+  const [quarterIndex, setQuarterIndex] = useState<number>(() => {
+    const m = parseInt(getBusinessDate(13).split('-')[1], 10);
+    return Math.floor((m - 1) / 3) + 1;
+  });
 
   useEffect(() => {
     setWeekIndex(getWeekIndexForDate(date));
+  }, [date, period]);
+
+  useEffect(() => {
+    const m = parseInt(date.split('-')[1], 10);
+    setQuarterIndex(Math.floor((m - 1) / 3) + 1);
   }, [date, period]);
 
   useEffect(() => {
@@ -133,6 +142,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     startHour,
     endHour,
     weekIndex,
+    quarterIndex,
     enabled: hasSegmentBeenActive,
   });
 
@@ -228,6 +238,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
                   weekIndex={weekIndex}
                   availableWeeks={segmentAvailableWeeks}
                   onWeekIndexChange={setWeekIndex}
+                  quarterIndex={quarterIndex}
+                  onQuarterIndexChange={setQuarterIndex}
                   startHour={startHour}
                   endHour={endHour}
                 />
@@ -250,6 +262,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
                   weekIndex={weekIndex}
                   onWeekIndexChange={setWeekIndex}
                   availableWeeks={segmentAvailableWeeks}
+                  quarterIndex={quarterIndex}
+                  onQuarterIndexChange={setQuarterIndex}
                   baseDate={date}
                   startHour={startHour}
                   endHour={endHour}

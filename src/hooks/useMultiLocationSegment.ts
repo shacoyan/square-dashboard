@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Transaction, OpenOrder, Location, PeriodPreset, DailySegmentPoint, SegmentBreakdown, AcquisitionBreakdown, LocationSegmentRow, LocationComparisonData } from '../types';
 import { aggregateSegments, allocateSalesByTransaction, countCustomersByTransaction } from '../lib/customerSegment';
+import { aggregateTrendByGranularity, granularityFor } from '../lib/trendAggregation';
 import { MSG } from '../lib/messages';
 
 function getJSTDateParts(date: Date): { year: number; month: number; day: number } {
@@ -24,7 +25,12 @@ function getFirstWeekMonday(year: number, month: number): Date {
   return new Date(Date.UTC(year, month - 1, 1 - offset));
 }
 
-function calculatePeriodDates(period: PeriodPreset, baseDate: string, weekIndex?: number): string[] {
+function calculatePeriodDates(
+  period: PeriodPreset,
+  baseDate: string,
+  weekIndex?: number,
+  quarterIndex?: number,
+): string[] {
   const [by, bm, bd] = baseDate.split('-').map(Number);
 
   const { year: todayY, month: todayM, day: todayD } = getJSTDateParts(new Date());
@@ -53,7 +59,20 @@ function calculatePeriodDates(period: PeriodPreset, baseDate: string, weekIndex?
 
     startDateObj = new Date(firstMon.getTime() + 7 * (effectiveIndex - 1) * 86400000);
     endDateObj = new Date(firstMon.getTime() + (7 * (effectiveIndex - 1) + 6) * 86400000);
+  } else if (period === 'quarter') {
+    const effectiveQ =
+      quarterIndex !== undefined
+        ? quarterIndex
+        : Math.floor((bm - 1) / 3) + 1;
+    const startMonth = (effectiveQ - 1) * 3 + 1;
+    const endMonth = startMonth + 2;
+    startDateObj = new Date(Date.UTC(by, startMonth - 1, 1));
+    endDateObj = new Date(Date.UTC(by, endMonth, 0));
+  } else if (period === 'year') {
+    startDateObj = new Date(Date.UTC(by, 0, 1));
+    endDateObj = new Date(Date.UTC(by, 12, 0));
   } else {
+    // month
     startDateObj = new Date(Date.UTC(by, bm - 1, 1));
     endDateObj = new Date(Date.UTC(by, bm, 0));
   }
@@ -103,6 +122,7 @@ export interface UseMultiLocationSegmentArgs {
   startHour: number;
   endHour: number;
   weekIndex?: number;
+  quarterIndex?: number;
   enabled: boolean;
 }
 
@@ -122,7 +142,7 @@ type RangeFetchResult = {
 };
 
 export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseMultiLocationSegmentResult {
-  const { token, locations, period, baseDate, startHour, endHour, weekIndex, enabled } = args;
+  const { token, locations, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled } = args;
 
   const [data, setData] = useState<LocationComparisonData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -146,7 +166,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
     setData(null);
 
     try {
-      const dates = calculatePeriodDates(period, baseDate, weekIndex);
+      const dates = calculatePeriodDates(period, baseDate, weekIndex, quarterIndex);
       if (dates.length === 0) {
         setLoading(false);
         setData(null);
@@ -170,7 +190,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
 
         const txPromise = fetch(txUrl, { signal: controller.signal, headers });
         const openPromise = fetch(openUrl, { signal: controller.signal, headers });
-        
+
         const locationId = loc.id;
 
         const task = Promise.allSettled([txPromise, openPromise]).then(async (results): Promise<RangeFetchResult> => {
@@ -242,6 +262,8 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
       }
 
       const elapsedDays = dates.length;
+      const granularity = granularityFor(period);
+
       const rows: LocationSegmentRow[] = locations.map(loc => {
         const entry = locMap.get(loc.id)!;
         const fullyFailed = entry.failedDays === entry.totalDays;
@@ -267,7 +289,8 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
         const totalCustomers = agg.customers.new + agg.customers.repeat + agg.customers.regular + agg.customers.staff;
         const averageDailySales = period === 'today' ? totalSales : (elapsedDays > 0 ? totalSales / elapsedDays : null);
         const overallAveragePerCustomer = totalCustomers > 0 ? totalSales / totalCustomers : null;
-        const dailyTrend = [...entry.dailyTrend].sort((a, b) => a.date.localeCompare(b.date));
+        const sortedDailyTrend = [...entry.dailyTrend].sort((a, b) => a.date.localeCompare(b.date));
+        const aggregatedDailyTrend = aggregateTrendByGranularity(sortedDailyTrend, granularity);
         return {
           locationId: loc.id,
           locationName: loc.name,
@@ -278,7 +301,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
           customersBySegment: agg.customers,
           salesBySegment: agg.sales,
           acquisitionBreakdown: agg.acquisition,
-          dailyTrend,
+          dailyTrend: aggregatedDailyTrend,
           loadError: null,
           partialFailure: entry.failedDays > 0 ? { failedDays: entry.failedDays, totalDays: entry.totalDays } : null,
           transactions: entry.transactions,
@@ -312,6 +335,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
 
       const totalCustomersAll = customersAll.new + customersAll.repeat + customersAll.regular + customersAll.staff;
 
+      // Totals trend: rows の集約済 dailyTrend を date キーでさらに合算
       const trendMap = new Map<string, DailySegmentPoint>();
       for (const r of rows) {
         for (const p of r.dailyTrend) {
@@ -350,6 +374,9 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
         warn = `${fullyFailedCount}${MSG.warning.partialFailureMultiLocation.replace('{n}', String(totalFailedPairs))}`;
       }
 
+      // allDates: chart の bucket key 配列。粒度集約後の date 列を採用（昇順）。
+      const allDates = totalsDailyTrend.map(p => p.date);
+
       setData({
         period,
         periodStart: dates[0],
@@ -366,7 +393,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
           acquisitionBreakdown: acqAll,
           dailyTrend: totalsDailyTrend,
         },
-        allDates: [...dates],
+        allDates,
       });
       setError(warn);
     } catch (err: unknown) {
@@ -381,7 +408,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
         setLoading(false);
       }
     }
-  }, [token, period, baseDate, startHour, endHour, weekIndex, enabled, locationIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [token, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled, locationIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchData();
