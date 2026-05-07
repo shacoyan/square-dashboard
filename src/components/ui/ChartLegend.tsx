@@ -94,7 +94,7 @@ export const ChartLegend: React.FC<ChartLegendProps> = ({
                 type="button"
                 aria-pressed={!isHidden}
                 onClick={() => onToggle?.(item.id)}
-                className={`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-indigo-500 rounded-sm ${MOTION.fast}`}
+                className={`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-primary rounded-sm ${MOTION.fast}`}
               >
                 {renderItemContent(item, isHidden)}
               </button>

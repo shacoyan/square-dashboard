@@ -347,7 +347,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
       const fullyFailedCount = rows.filter(r => r.loadError).length;
       let warn: string | null = null;
       if (totalFailedPairs > 0) {
-        warn = `${fullyFailedCount}店舗×${totalFailedPairs}日で${MSG.error.fetch}`;
+        warn = `${fullyFailedCount}${MSG.warning.partialFailureMultiLocation.replace('{n}', String(totalFailedPairs))}`;
       }
 
       setData({

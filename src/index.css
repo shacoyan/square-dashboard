@@ -27,3 +27,11 @@
     }
   }
 }
+
+/* L20 §4.5: print stylesheet — sticky 解除 / tablist 非表示 / 影と遷移除去 */
+@media print {
+  .sticky { position: static !important; top: auto !important; }
+  [role="tablist"] { display: none !important; }
+  * { transition: none !important; box-shadow: none !important; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

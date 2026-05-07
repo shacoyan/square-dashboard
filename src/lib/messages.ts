@@ -47,4 +47,9 @@ export const MSG = {
     copy: 'コピー',
     copied: 'コピー済',
   },
+  warning: {
+    partialFailureTransactions: '日の取引データを取得できませんでした（一部データが欠落しています）。',
+    partialFailureOpenOrders: '日の未決済伝票を取得できませんでした。',
+    partialFailureMultiLocation: '店舗×{n}日でデータを取得できませんでした。',
+  },
 } as const;

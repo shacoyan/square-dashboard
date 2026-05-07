@@ -22,15 +22,15 @@ interface Props {
 
 function SegmentCustomerCard({ label, count, sales, showCount = true }: { label: string; count: number; sales: number; showCount?: boolean }) {
   return (
-    <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
-      <p className="text-sm font-medium text-gray-500 mb-1">{label}</p>
+    <div className="bg-surface-muted rounded-xl border border-border p-6">
+      <p className="text-sm font-medium text-text-muted mb-1">{label}</p>
       {showCount ? (
         <>
-          <p className="text-2xl font-bold text-gray-900">{count.toLocaleString()}人</p>
-          <p className="text-sm text-gray-500 mt-1">売上: {formatYen(sales)}</p>
+          <p className="text-2xl font-bold text-text">{count.toLocaleString()}人</p>
+          <p className="text-sm text-text-muted mt-1">売上: {formatYen(sales)}</p>
         </>
       ) : (
-        <p className="text-2xl font-bold text-gray-900">{formatYen(sales)}</p>
+        <p className="text-2xl font-bold text-text">{formatYen(sales)}</p>
       )}
     </div>
   );
@@ -121,34 +121,34 @@ export default function CustomerSegmentSection({
         {!loading && !error && data && (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
-                <p className="text-sm font-medium text-gray-500 mb-1">期間売上</p>
-                <p className="text-2xl font-bold text-gray-900">{formatYen(totalSales)}</p>
-                <p className="text-xs text-gray-500 mt-1">
+              <div className="bg-surface-muted rounded-xl border border-border p-6">
+                <p className="text-sm font-medium text-text-muted mb-1">期間売上</p>
+                <p className="text-2xl font-bold text-text">{formatYen(totalSales)}</p>
+                <p className="text-xs text-text-muted mt-1">
                   {data.periodStart} 〜 {data.periodEnd} ({data.elapsedDays}日間)
                 </p>
               </div>
 
-              <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
-                <p className="text-sm font-medium text-gray-500 mb-1">平均日売上</p>
-                <p className="text-2xl font-bold text-gray-900">
+              <div className="bg-surface-muted rounded-xl border border-border p-6">
+                <p className="text-sm font-medium text-text-muted mb-1">平均日売上</p>
+                <p className="text-2xl font-bold text-text">
                   {data.averageDailySales !== null ? formatYen(Math.round(data.averageDailySales)) : '--'}
                 </p>
               </div>
 
-              <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
-                <p className="text-sm font-medium text-gray-500 mb-1">全体客単価</p>
-                <p className="text-2xl font-bold text-gray-900">
+              <div className="bg-surface-muted rounded-xl border border-border p-6">
+                <p className="text-sm font-medium text-text-muted mb-1">全体客単価</p>
+                <p className="text-2xl font-bold text-text">
                   {data.overallAveragePerCustomer !== null ? formatYen(Math.round(data.overallAveragePerCustomer)) : '--'}
                 </p>
               </div>
 
-              <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
-                <p className="text-sm font-medium text-gray-500 mb-1">合計客数</p>
-                <p className="text-2xl font-bold text-gray-900">
+              <div className="bg-surface-muted rounded-xl border border-border p-6">
+                <p className="text-sm font-medium text-text-muted mb-1">合計客数</p>
+                <p className="text-2xl font-bold text-text">
                   {(data.customersBySegment.new + data.customersBySegment.repeat + data.customersBySegment.regular + data.customersBySegment.staff).toLocaleString()}人
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-text-muted mt-1">
                   新規 {data.customersBySegment.new} / リピート {data.customersBySegment.repeat} / 常連 {data.customersBySegment.regular} / スタ {data.customersBySegment.staff}
                 </p>
               </div>
@@ -184,7 +184,7 @@ export default function CustomerSegmentSection({
                   const sales = data.salesBySegment[key];
                   const percent = totalSales > 0 ? Math.round((sales / totalSales) * 100) : 0;
                   return (
-                    <div key={key} className="text-sm text-gray-700 flex items-center">
+                    <div key={key} className="text-sm text-text-muted flex items-center">
                       <span className="inline-block w-3 h-3 rounded-full mr-2 flex-shrink-0" style={{ backgroundColor: SALES_COLORS[key] }} />
                       <span>{label}: {formatYen(sales)} ({percent}%)</span>
                     </div>
@@ -201,7 +201,7 @@ export default function CustomerSegmentSection({
               </div>
               <div className="max-h-[280px] overflow-y-auto space-y-2">
                 {data.dailyTrend.map((day) => (
-                  <div key={day.date} className="text-sm text-gray-700">
+                  <div key={day.date} className="text-sm text-text-muted">
                     {day.date}: 合計{day.new + day.repeat + day.regular + day.staff}人（新{day.new}/リ{day.repeat}/常{day.regular}/ス{day.staff}/記{day.unlisted}）
                   </div>
                 ))}
@@ -223,7 +223,7 @@ export default function CustomerSegmentSection({
                   const count = data.acquisitionBreakdown[key] || 0;
                   const percent = totalAcquisition > 0 ? Math.round((count / totalAcquisition) * 100) : 0;
                   return (
-                    <div key={key} className="text-sm text-gray-700 flex items-center">
+                    <div key={key} className="text-sm text-text-muted flex items-center">
                       <span className="inline-block w-3 h-3 rounded-full mr-2 flex-shrink-0" style={{ backgroundColor: color }} />
                       <span>{label}: {count}件 ({percent}%)</span>
                     </div>

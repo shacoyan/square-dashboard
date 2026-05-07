@@ -93,7 +93,7 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
               className="grid items-stretch mb-[2px]"
               style={{ gridTemplateColumns: gridTemplate }}
             >
-              <div className="text-xs text-gray-700 pr-2 flex items-center justify-end">
+              <div className="text-xs text-text-muted pr-2 flex items-center justify-end">
                 {WEEKDAY_LABELS[w]}
               </div>
               {activeSlots.map((s, i) => {

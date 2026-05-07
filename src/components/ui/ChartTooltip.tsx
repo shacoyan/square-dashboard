@@ -74,7 +74,7 @@ export function ChartTooltip({
   }
 
   const rootClass = [
-    'rounded-lg bg-gray-900/95 px-3 py-2 text-xs text-white shadow-lg',
+    'rounded-lg bg-surface-inverse/95 px-3 py-2 text-xs text-white shadow-lg',
     'ring-1 ring-white/10 backdrop-blur-sm',
     '[font-variant-numeric:tabular-nums]',
     className ?? '',

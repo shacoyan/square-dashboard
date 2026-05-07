@@ -13,6 +13,7 @@ export default {
           DEFAULT: '#ffffff',
           muted: '#f9fafb',
           subtle: '#f3f4f6',
+          inverse: '#111827',
         },
         border: {
           DEFAULT: '#e5e7eb',

@@ -214,10 +214,10 @@ export function useCustomerSegment(args: Args): {
       const warningMessages: string[] = [];
 
       if (isTxFailure) {
-        warningMessages.push(`${dates.length}日の${MSG.error.transactions} 一部データが欠落しています。`);
+        warningMessages.push(`${dates.length}${MSG.warning.partialFailureTransactions}`);
       }
       if (isOpenFailure) {
-        warningMessages.push(`${dates.length}日の${MSG.error.openOrders}`);
+        warningMessages.push(`${dates.length}${MSG.warning.partialFailureOpenOrders}`);
       }
 
       dates.forEach(date => {
