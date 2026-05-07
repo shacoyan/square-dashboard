@@ -35,24 +35,24 @@ export default function OccupancyAnalysisSection({ transactions, startHour, endH
           <EmptyState title="データがありません" minHeight={160} />
         ) : (
           <>
-            <div className="bg-white rounded-md border border-gray-200 p-3">
-              <h4 className="text-sm font-semibold text-gray-700 mb-2">
+            <div className="bg-surface rounded-md border border-border p-3">
+              <h3 className="text-sm font-semibold text-text mb-2">
                 曜日 × 時間帯ヒートマップ（平均）
-              </h4>
+              </h3>
               <OccupancyHeatmap matrix={matrix} activeSlots={activeSlots} />
             </div>
 
-            <div className="bg-white rounded-md border border-gray-200 p-1.5 md:p-3">
-              <h4 className="text-sm font-semibold text-gray-700 mb-2">
+            <div className="bg-surface rounded-md border border-border p-1.5 md:p-3">
+              <h3 className="text-sm font-semibold text-text mb-2">
                 時間帯別推移（折れ線）
-              </h4>
+              </h3>
               <OccupancyLineChart matrix={matrix} activeSlots={activeSlots} />
             </div>
           </>
         )}
 
         {matrix.skippedCount > 0 && (
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-text-muted">
             ※ 開始時刻不明 {matrix.skippedCount.toLocaleString()} 件をスキップ
           </div>
         )}

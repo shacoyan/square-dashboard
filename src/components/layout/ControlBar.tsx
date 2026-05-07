@@ -1,4 +1,4 @@
-import { Card, Stack, Button, DatePicker } from '../ui';
+import { Card, Stack, Button, DatePicker, ErrorState } from '../ui';
 import StoreSwitcher from '../StoreSwitcher';
 import type { Location } from '../../types';
 
@@ -21,7 +21,7 @@ interface ControlBarProps {
 }
 
 const selectClass =
-  'border border-border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface text-text';
+  'border border-border rounded px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 bg-surface text-text';
 
 export default function ControlBar({
   date,
@@ -56,7 +56,9 @@ export default function ControlBar({
               />
             )}
             {locationsError && (
-              <p className="text-sm text-danger mt-2">⚠ {locationsError}</p>
+              <div className="mt-2">
+                <ErrorState variant="inline" tone="danger" title="店舗情報の取得エラー" description={locationsError} />
+              </div>
             )}
           </div>
 
@@ -74,8 +76,9 @@ export default function ControlBar({
               </summary>
               <div className="flex flex-col gap-2 mt-2">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-text">営業開始:</label>
+                  <label htmlFor="sp-start-hour" className="text-sm font-medium text-text">営業開始:</label>
                   <select
+                    id="sp-start-hour"
                     value={startHour}
                     onChange={(e) => onStartHourChange(parseInt(e.target.value, 10))}
                     className={selectClass}
@@ -88,8 +91,9 @@ export default function ControlBar({
                   </select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-text">営業終了:</label>
+                  <label htmlFor="sp-end-hour" className="text-sm font-medium text-text">営業終了:</label>
                   <select
+                    id="sp-end-hour"
                     value={endHour}
                     onChange={(e) => onEndHourChange(parseInt(e.target.value, 10))}
                     className={selectClass}
@@ -107,8 +111,9 @@ export default function ControlBar({
             {/* PC: 常時表示 */}
             <div className="hidden md:flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-text">営業開始:</label>
+                <label htmlFor="pc-start-hour" className="text-sm font-medium text-text">営業開始:</label>
                 <select
+                  id="pc-start-hour"
                   value={startHour}
                   onChange={(e) => onStartHourChange(parseInt(e.target.value, 10))}
                   className={selectClass}
@@ -121,8 +126,9 @@ export default function ControlBar({
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-text">営業終了:</label>
+                <label htmlFor="pc-end-hour" className="text-sm font-medium text-text">営業終了:</label>
                 <select
+                  id="pc-end-hour"
                   value={endHour}
                   onChange={(e) => onEndHourChange(parseInt(e.target.value, 10))}
                   className={selectClass}

@@ -237,10 +237,18 @@ export default function TransactionList({
                           )}
                         </div>
                         <button
+                          type="button"
                           onClick={(e) => handleCopy(e, tx)}
-                          className="ml-4 text-xs text-text-subtle hover:text-text whitespace-nowrap"
+                          aria-label="注文内容をコピー"
+                          className="ml-4 text-xs text-text-subtle hover:text-text whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded"
                         >
-                          {copiedId === tx.id ? '✓ コピー済' : 'コピー'}
+                          {copiedId === tx.id ? (
+                            <span role="status" aria-live="polite">
+                              <span aria-hidden="true">✓</span> コピー済
+                            </span>
+                          ) : (
+                            'コピー'
+                          )}
                         </button>
                       </div>
                     </td>

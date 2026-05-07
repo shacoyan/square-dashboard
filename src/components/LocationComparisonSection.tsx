@@ -90,7 +90,7 @@ export default function LocationComparisonSection(props: Props) {
           {isTotal ? '合計' : rowTyped.locationName}
           {hasPartialFailure && <span className="text-amber-700 ml-1">※</span>}
           {hasError && (
-            <span className="text-xs text-red-600 ml-1">({rowTyped.loadError})</span>
+            <span className="text-xs text-danger ml-1">({rowTyped.loadError})</span>
           )}
         </td>
         <td className={TD_NUM}>{formatYen(row.totalSales)}</td>

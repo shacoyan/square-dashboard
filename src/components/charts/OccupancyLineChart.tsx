@@ -17,7 +17,7 @@ import {
   getLineChartData,
   type OccupancyMatrix,
 } from '../../lib/occupancyAggregation';
-import { ChartLegend, ChartTooltip, EmptyState, type ChartLegendItem, type ChartTooltipPayloadItem } from '../ui';
+import { ChartLegend, ChartTooltip, ChartFigure, EmptyState, type ChartLegendItem, type ChartTooltipPayloadItem } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 
 interface Props {
@@ -92,37 +92,40 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
       {/* コントロール行 */}
       <div className="flex flex-wrap items-center gap-3 mb-3">
         {/* mode toggle */}
-        <div className="inline-flex rounded-md overflow-hidden border border-gray-300">
+        <div role="group" aria-label="集計モード切替" className="inline-flex rounded-md overflow-hidden border border-border">
           <button
             type="button"
             onClick={() => setMode('average')}
-            className={`px-3 py-1 text-sm ${mode === 'average' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            aria-pressed={mode === 'average'}
+            className={`px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${mode === 'average' ? 'bg-primary text-white' : 'bg-surface text-text hover:bg-surface-muted'}`}
           >
             平均
           </button>
           <button
             type="button"
             onClick={() => setMode('sum')}
-            className={`px-3 py-1 text-sm ${mode === 'sum' ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            aria-pressed={mode === 'sum'}
+            className={`px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${mode === 'sum' ? 'bg-primary text-white' : 'bg-surface text-text hover:bg-surface-muted'}`}
           >
             合計
           </button>
         </div>
 
         {/* weekday checkboxes */}
-        <div className="flex flex-wrap items-center gap-2">
+        <fieldset className="flex flex-wrap items-center gap-2 border-0 p-0 m-0">
+          <legend className="sr-only">曜日選択</legend>
           {WEEKDAY_LABELS.map((lbl, w) => (
-            <label key={`wf-${w}`} className="inline-flex items-center gap-1 text-sm text-gray-700 cursor-pointer">
+            <label key={`wf-${w}`} className="inline-flex items-center gap-1 text-sm text-text cursor-pointer">
               <input
                 type="checkbox"
                 checked={weekdayFilter[w]}
                 onChange={() => toggleWeekday(w)}
-                className="accent-blue-500"
+                className="accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
               />
               <span>{lbl}</span>
             </label>
           ))}
-        </div>
+        </fieldset>
       </div>
 
       {/* chart */}
@@ -132,7 +135,7 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
           minHeight={chartTheme.heightPreset.compact}
         />
       ) : (
-        <div className="w-full min-w-0">
+        <ChartFigure label="折れ線グラフ：曜日 × 時間帯 平均/合計 同時滞在人数推移" className="w-full min-w-0">
           <ResponsiveContainer width="100%" height={chartTheme.heightPreset.compact}>
             <LineChart data={splitData} margin={chartTheme.defaultMargin}>
               <CartesianGrid {...chartTheme.grid} />
@@ -232,7 +235,7 @@ export default function OccupancyLineChart({ matrix, activeSlots }: Props) {
             </LineChart>
           </ResponsiveContainer>
           <ChartLegend items={legendItems} size="sm" align="center" className="mt-2" />
-        </div>
+        </ChartFigure>
       )}
     </div>
   );

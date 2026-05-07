@@ -15,6 +15,7 @@ export interface SeriesCheckboxGroupProps {
   onAllOn?: () => void;
   onAllOff?: () => void;
   className?: string;
+  groupLabel?: string;
 }
 
 export const SeriesCheckboxGroup: React.FC<SeriesCheckboxGroupProps> = ({
@@ -24,9 +25,14 @@ export const SeriesCheckboxGroup: React.FC<SeriesCheckboxGroupProps> = ({
   onAllOn,
   onAllOff,
   className = '',
+  groupLabel = '表示する系列を選択',
 }) => {
   return (
-    <div className={`flex justify-between items-center gap-2 flex-wrap ${className}`}>
+    <div
+      role="group"
+      aria-label={groupLabel}
+      className={`flex justify-between items-center gap-2 flex-wrap ${className}`}
+    >
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         {items.map((item) => {
           const isVisible = visible[item.key] ?? true;
@@ -34,7 +40,7 @@ export const SeriesCheckboxGroup: React.FC<SeriesCheckboxGroupProps> = ({
           return (
             <label
               key={item.key}
-              className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-700 group"
+              className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-text group"
             >
               <input
                 type="checkbox"
@@ -43,7 +49,7 @@ export const SeriesCheckboxGroup: React.FC<SeriesCheckboxGroupProps> = ({
                 className="sr-only peer"
               />
               <span
-                className="relative w-4 h-4 rounded-sm border-2 flex items-center justify-center transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-offset-1 peer-focus-visible:ring-indigo-500"
+                className="relative w-4 h-4 rounded-sm border-2 flex items-center justify-center transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-offset-1 peer-focus-visible:ring-primary"
                 style={{
                   borderColor: item.color,
                   backgroundColor: isVisible ? item.color : 'transparent',
@@ -55,7 +61,7 @@ export const SeriesCheckboxGroup: React.FC<SeriesCheckboxGroupProps> = ({
                   </svg>
                 )}
               </span>
-              <span className={isVisible ? '' : 'text-gray-400 line-through'}>{item.label}</span>
+              <span className={isVisible ? '' : 'text-text-muted line-through'}>{item.label}</span>
             </label>
           );
         })}
@@ -65,7 +71,7 @@ export const SeriesCheckboxGroup: React.FC<SeriesCheckboxGroupProps> = ({
           {onAllOn && (
             <button
               type="button"
-              className="text-xs text-indigo-600 hover:underline"
+              className="text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded"
               onClick={onAllOn}
             >
               全て表示
@@ -74,7 +80,7 @@ export const SeriesCheckboxGroup: React.FC<SeriesCheckboxGroupProps> = ({
           {onAllOff && (
             <button
               type="button"
-              className="text-xs text-indigo-600 hover:underline"
+              className="text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded"
               onClick={onAllOff}
             >
               全て非表示

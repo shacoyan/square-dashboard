@@ -6,6 +6,8 @@ export { Tabs } from './Tabs';
 export { Select } from './Select';
 export { Badge } from './Badge';
 export { Skeleton } from './Skeleton';
+export { ChartFigure } from './ChartFigure';
+export type { ChartFigureProps } from './ChartFigure';
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
 export { ErrorState } from './ErrorState';

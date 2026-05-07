@@ -187,45 +187,69 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
 
           <DashboardTabs active={activeTab} onChange={handleTabChange} />
           {activeTab === 'daily' ? (
-            <DailyTabPanel
-              salesTotal={sales?.total_amount ?? 0}
-              salesCount={sales?.transaction_count ?? 0}
-              openTotal={openTotal}
-              openCount={openCount}
-              loading={loading}
-              openOrders={openOrders}
-              openOrdersLoading={openOrdersLoading}
-              openOrdersError={openOrdersError}
-              transactions={transactions}
-            />
+            <div
+              role="tabpanel"
+              id={`tabpanel-${activeTab}`}
+              aria-labelledby={`tab-${activeTab}`}
+              tabIndex={0}
+              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md"
+            >
+              <DailyTabPanel
+                salesTotal={sales?.total_amount ?? 0}
+                salesCount={sales?.transaction_count ?? 0}
+                openTotal={openTotal}
+                openCount={openCount}
+                loading={loading}
+                openOrders={openOrders}
+                openOrdersLoading={openOrdersLoading}
+                openOrdersError={openOrdersError}
+                transactions={transactions}
+              />
+            </div>
           ) : activeTab === 'segment' ? (
-            <SegmentTabPanel
-              data={segmentData}
-              transactions={segmentTransactions}
-              loading={segmentLoading}
-              error={segmentError}
-              period={period}
-              onPeriodChange={setPeriod}
-              weekIndex={weekIndex}
-              availableWeeks={segmentAvailableWeeks}
-              onWeekIndexChange={setWeekIndex}
-              startHour={startHour}
-              endHour={endHour}
-            />
+            <div
+              role="tabpanel"
+              id={`tabpanel-${activeTab}`}
+              aria-labelledby={`tab-${activeTab}`}
+              tabIndex={0}
+              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md"
+            >
+              <SegmentTabPanel
+                data={segmentData}
+                transactions={segmentTransactions}
+                loading={segmentLoading}
+                error={segmentError}
+                period={period}
+                onPeriodChange={setPeriod}
+                weekIndex={weekIndex}
+                availableWeeks={segmentAvailableWeeks}
+                onWeekIndexChange={setWeekIndex}
+                startHour={startHour}
+                endHour={endHour}
+              />
+            </div>
           ) : activeTab === 'compare' ? (
-            <LocationComparisonSection
-              token={token}
-              locations={locations}
-              period={period}
-              onPeriodChange={setPeriod}
-              weekIndex={weekIndex}
-              onWeekIndexChange={setWeekIndex}
-              availableWeeks={segmentAvailableWeeks}
-              baseDate={date}
-              startHour={startHour}
-              endHour={endHour}
-              enabled={hasCompareBeenActive}
-            />
+            <div
+              role="tabpanel"
+              id={`tabpanel-${activeTab}`}
+              aria-labelledby={`tab-${activeTab}`}
+              tabIndex={0}
+              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md"
+            >
+              <LocationComparisonSection
+                token={token}
+                locations={locations}
+                period={period}
+                onPeriodChange={setPeriod}
+                weekIndex={weekIndex}
+                onWeekIndexChange={setWeekIndex}
+                availableWeeks={segmentAvailableWeeks}
+                baseDate={date}
+                startHour={startHour}
+                endHour={endHour}
+                enabled={hasCompareBeenActive}
+              />
+            </div>
           ) : null}
         </Stack>
       </Container>

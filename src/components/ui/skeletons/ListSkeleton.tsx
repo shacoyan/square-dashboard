@@ -17,9 +17,16 @@ export function ListSkeleton({
   className,
 }: ListSkeletonProps) {
   return (
-    <div className={cn('flex flex-col', className)} style={{ gap }}>
+    <div
+      className={cn('flex flex-col', className)}
+      style={{ gap }}
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+      aria-label="読み込み中"
+    >
       {Array.from({ length: rows }).map((_, i) => (
-        <Skeleton key={i} width="100%" height={rowHeight} />
+        <Skeleton key={i} width="100%" height={rowHeight} ariaHidden />
       ))}
     </div>
   );

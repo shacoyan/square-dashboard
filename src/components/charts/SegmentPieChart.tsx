@@ -2,7 +2,7 @@
 
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import type { SegmentBreakdown } from '../../types';
-import { ChartLegend, ChartTooltip } from '../ui';
+import { ChartLegend, ChartTooltip, ChartFigure } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 import { segmentColors, segmentEmptyColor } from '../../lib/segmentColors';
 
@@ -32,46 +32,48 @@ export default function SegmentPieChart({ sales }: Props) {
   return (
     <div className="w-full min-w-0 space-y-3">
       <div className="w-full min-w-0">
-        <ResponsiveContainer width="100%" height={chartTheme.heightPreset.standard}>
-          <PieChart margin={chartTheme.marginPie}>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={110}
-              paddingAngle={total === 0 ? 0 : 2}
-              dataKey="value"
-            >
-              {data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={total === 0 ? segmentEmptyColor : segmentColors[entry.segment]}
-                  stroke="none"
-                />
-              ))}
-            </Pie>
-            {total > 0 && (
-              <Tooltip
-                cursor={{ fill: 'rgba(15,23,42,0.04)' }}
-                content={(p) => (
-                  <ChartTooltip
-                    active={p.active}
-                    payload={p.payload as never}
-                    label={p.label as string | number | undefined}
-                    formatters={{
-                      value: (value: number | string | Array<number | string>, _name?: string | number, item?: { payload?: Record<string, unknown> }) => {
-                        const percent =
-                          (item?.payload as { percent?: number } | undefined)?.percent ?? 0;
-                        return `¥${Number(value).toLocaleString()}（${(percent * 100).toFixed(1)}%）`;
-                      },
-                    }}
+        <ChartFigure label="円グラフ：セグメント別売上構成（新規・リピート・常連・スタッフ・記載なし）">
+          <ResponsiveContainer width="100%" height={chartTheme.heightPreset.standard}>
+            <PieChart margin={chartTheme.marginPie}>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={110}
+                paddingAngle={total === 0 ? 0 : 2}
+                dataKey="value"
+              >
+                {data.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={total === 0 ? segmentEmptyColor : segmentColors[entry.segment]}
+                    stroke="none"
                   />
-                )}
-              />
-            )}
-          </PieChart>
-        </ResponsiveContainer>
+                ))}
+              </Pie>
+              {total > 0 && (
+                <Tooltip
+                  cursor={{ fill: 'rgba(15,23,42,0.04)' }}
+                  content={(p) => (
+                    <ChartTooltip
+                      active={p.active}
+                      payload={p.payload as never}
+                      label={p.label as string | number | undefined}
+                      formatters={{
+                        value: (value: number | string | Array<number | string>, _name?: string | number, item?: { payload?: Record<string, unknown> }) => {
+                          const percent =
+                            (item?.payload as { percent?: number } | undefined)?.percent ?? 0;
+                          return `¥${Number(value).toLocaleString()}（${(percent * 100).toFixed(1)}%）`;
+                        },
+                      }}
+                    />
+                  )}
+                />
+              )}
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartFigure>
       </div>
       {total > 0 && (
         <ChartLegend items={legendItems} size="sm" align="center" />

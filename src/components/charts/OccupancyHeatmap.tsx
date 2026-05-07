@@ -9,6 +9,7 @@ import {
   getAverages,
   type OccupancyMatrix,
 } from '../../lib/occupancyAggregation';
+import { ChartFigure } from '../ui';
 
 const OCCUPANCY_HEATMAP_FULL_PERSONS = 10;
 
@@ -68,7 +69,7 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
   const gridTemplate = `40px repeat(${activeSlots.length}, minmax(0, 1fr))`;
 
   return (
-    <div className="w-full">
+    <ChartFigure label="ヒートマップ：曜日 × 時間帯 平均同時滞在人数 (7×48 マス)。濃いほど混雑。" className="w-full">
       <div className="overflow-x-auto">
         <div className="min-w-[720px]">
           {/* 列ヘッダ（3h 刻み 8 本） */}
@@ -76,7 +77,7 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
             className="grid items-end text-[10px] text-gray-500 mb-1"
             style={{ gridTemplateColumns: gridTemplate }}
           >
-            <div />
+            <div aria-hidden="true" />
             {activeSlots.map((s, i) => (
               <div key={`h-${i}-${s}`} className="text-left">
                 {i % 6 === 0 ? SLOT_LABELS[s].slice(0, 2) + '時' : ''}
@@ -104,6 +105,7 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
                     key={`c-${w}-${i}-${s}`}
                     className={`min-h-[20px] border-r border-white ${HEATMAP_BUCKET_CLASSES[bucket]}`}
                     title={titleText}
+                    aria-hidden="true"
                   />
                 );
               })}
@@ -118,6 +120,7 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
                 <div
                   key={`legend-${i}`}
                   className={`flex-1 ${cls}`}
+                  aria-hidden="true"
                 />
               ))}
             </div>
@@ -130,6 +133,6 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
           </div>
         </div>
       </div>
-    </div>
+    </ChartFigure>
   );
 }

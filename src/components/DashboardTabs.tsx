@@ -17,15 +17,17 @@ function DashboardTabs({ active, onChange }: Props) {
         return (
           <button
             key={tab.key}
+            id={`tab-${tab.key}`}
             role="tab"
             type="button"
             aria-selected={isActive}
+            aria-controls={`tabpanel-${tab.key}`}
             tabIndex={isActive ? 0 : -1}
             onClick={() => onChange(tab.key)}
             className={
               isActive
-                ? 'px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-indigo-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1'
-                : 'px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1'
+                ? 'px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-primary text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1'
+                : 'px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-surface-subtle text-text-muted hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1'
             }
           >
             {tab.label}

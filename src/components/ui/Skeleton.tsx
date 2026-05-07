@@ -6,19 +6,26 @@ export type SkeletonProps = {
   height?: string | number;
   circle?: boolean;
   className?: string;
+  ariaHidden?: boolean;
 };
 
-export function Skeleton({ width, height, circle, className }: SkeletonProps) {
+export function Skeleton({ width, height, circle, className, ariaHidden }: SkeletonProps) {
   const toCssValue = (n: string | number | undefined): string | undefined => {
     if (n === undefined) return undefined;
     return typeof n === 'number' ? `${n}px` : n;
   };
 
+  const ariaAttributes = ariaHidden
+    ? { 'aria-hidden': true as const }
+    : {
+        role: 'status' as const,
+        'aria-busy': true as const,
+        'aria-label': '読み込み中',
+      };
+
   return (
     <div
-      role="status"
-      aria-busy="true"
-      aria-label="読み込み中"
+      {...ariaAttributes}
       className={cn(
         'animate-pulse bg-surface-subtle',
         circle ? 'rounded-full' : 'rounded',

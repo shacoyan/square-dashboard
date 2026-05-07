@@ -17,9 +17,15 @@ export function KpiSkeleton({
   className,
 }: KpiSkeletonProps) {
   return (
-    <div className={cn('space-y-2', className)}>
-      {showLabel && <Skeleton width={labelWidth} height={12} />}
-      <Skeleton width="100%" height={valueHeight} />
+    <div
+      className={cn('space-y-2', className)}
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+      aria-label="読み込み中"
+    >
+      {showLabel && <Skeleton width={labelWidth} height={12} ariaHidden />}
+      <Skeleton width="100%" height={valueHeight} ariaHidden />
     </div>
   );
 }

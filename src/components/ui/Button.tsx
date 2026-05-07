@@ -41,7 +41,7 @@ export function Button({
       type={type}
       disabled={disabled || isLoading}
       className={cn(
-        'rounded-lg inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none',
+        'rounded-lg inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
         variantMap[variant],
         sizeMap[size],
         className

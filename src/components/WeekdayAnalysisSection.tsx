@@ -28,10 +28,11 @@ export default function WeekdayAnalysisSection({ dailyTrend, mode }: Props) {
           <button
             type="button"
             onClick={() => setSelectedMode('average')}
-            className={`px-3 py-1 text-sm rounded ${
+            aria-pressed={selectedMode === 'average'}
+            className={`px-3 py-1 text-sm rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${
               selectedMode === 'average'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-700'
+                ? 'bg-primary text-white'
+                : 'bg-surface-subtle text-text'
             }`}
           >
             平均
@@ -39,10 +40,11 @@ export default function WeekdayAnalysisSection({ dailyTrend, mode }: Props) {
           <button
             type="button"
             onClick={() => setSelectedMode('sum')}
-            className={`px-3 py-1 text-sm rounded ${
+            aria-pressed={selectedMode === 'sum'}
+            className={`px-3 py-1 text-sm rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${
               selectedMode === 'sum'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-700'
+                ? 'bg-primary text-white'
+                : 'bg-surface-subtle text-text'
             }`}
           >
             合計
@@ -51,16 +53,16 @@ export default function WeekdayAnalysisSection({ dailyTrend, mode }: Props) {
       }
     >
       <div className="space-y-3">
-        <h4 className="text-sm font-semibold text-gray-700 mt-4 mb-2">客数（棒グラフ）</h4>
+        <h3 className="text-sm font-semibold text-text mt-4 mb-2">客数（棒グラフ）</h3>
         <WeekdayBarChart data={aggregates} metric="customers" />
 
-        <h4 className="text-sm font-semibold text-gray-700 mt-4 mb-2">客数（テーブル）</h4>
+        <h3 className="text-sm font-semibold text-text mt-4 mb-2">客数（テーブル）</h3>
         <WeekdayTable data={aggregates} metric="customers" />
 
-        <h4 className="text-sm font-semibold text-gray-700 mt-4 mb-2">売上（棒グラフ）</h4>
+        <h3 className="text-sm font-semibold text-text mt-4 mb-2">売上（棒グラフ）</h3>
         <WeekdayBarChart data={aggregates} metric="sales" />
 
-        <h4 className="text-sm font-semibold text-gray-700 mt-4 mb-2">売上（テーブル）</h4>
+        <h3 className="text-sm font-semibold text-text mt-4 mb-2">売上（テーブル）</h3>
         <WeekdayTable data={aggregates} metric="sales" />
       </div>
     </Card>

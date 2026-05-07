@@ -15,7 +15,7 @@ import type { DailySegmentPoint } from '../../types';
 import { formatYen } from '../../utils';
 import { TOTAL_LINE_COLOR } from '../../lib/locationColors';
 import { chartTheme } from '../../lib/chartTheme';
-import { ChartTooltip, type ChartTooltipPayloadItem, EmptyState } from '../ui';
+import { ChartTooltip, type ChartTooltipPayloadItem, ChartFigure, EmptyState } from '../ui';
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
 
 const TOTAL_KEY = '__total__';
@@ -197,86 +197,88 @@ export default function LocationTrendChart({
         className="mb-2"
       />
       <div className="w-full min-w-0" style={{ height: `${chartTheme.heightPreset.detail}px` }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={chartTheme.defaultMargin}>
-            <CartesianGrid {...chartTheme.grid} />
-            <XAxis
-              dataKey="date"
-              tickFormatter={(value) => {
-                if (!value) return '--';
-                const parts = String(value).split('-');
-                if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
-                return String(value);
-              }}
-              tick={chartTheme.axis.tickStyle}
-              tickLine={chartTheme.axis.tickLine}
-              axisLine={chartTheme.axis.axisLine}
-              stroke={chartTheme.axis.stroke}
-            />
-            <YAxis
-              tick={chartTheme.axis.tickStyle}
-              tickLine={chartTheme.axis.tickLine}
-              axisLine={chartTheme.axis.axisLine}
-              stroke={chartTheme.axis.stroke}
-              allowDecimals={false}
-            />
-            <Tooltip
-              cursor={{ stroke: 'rgba(15,23,42,0.2)', strokeWidth: 1 }}
-              content={(p) => (
-                <ChartTooltip
-                  active={p.active}
-                  payload={filterPayload(p.payload as never) as never}
-                  label={p.label as string | number | undefined}
-                  formatters={tooltipFormatters}
-                  labelFormatter={(label) => {
-                    if (!label) return '';
-                    const parts = String(label).split('-');
-                    if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
-                    return String(label);
-                  }}
-                />
-              )}
-            />
-            {locationSeries.map((loc) => {
-              const color = colorMap[loc.locationId] ?? '#6b7280';
-              return (
-                <Line
-                  key={loc.locationId}
-                  type="monotone"
-                  dataKey={loc.locationId}
-                  name={loc.locationName}
-                  stroke={color}
-                  strokeWidth={2}
-                  dot={{ r: 3, fill: color }}
-                  activeDot={{ r: 5 }}
-                  connectNulls
-                  hide={!visibility[loc.locationId]}
-                />
-              );
-            })}
-            <Line
-              type="monotone"
-              dataKey={TOTAL_KEY}
-              name="合計"
-              stroke={TOTAL_LINE_COLOR}
-              strokeWidth={4}
-              dot={{ r: 4, fill: TOTAL_LINE_COLOR }}
-              activeDot={{ r: 6 }}
-              connectNulls
-              hide={!visibility[TOTAL_KEY]}
-            >
-              {metric !== 'sales' && (
-                <LabelList
-                  dataKey={TOTAL_KEY}
-                  position="top"
-                  fontSize={10}
-                  fill={TOTAL_LINE_COLOR}
-                  formatter={(v: number) => (typeof v === 'number' && v > 0 ? String(v) : '')}
-                />
-              )}
-            </Line>
-          </LineChart>
-        </ResponsiveContainer>
+        <ChartFigure label="折れ線グラフ：日次推移を店舗別と総計で表示">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={chartTheme.defaultMargin}>
+              <CartesianGrid {...chartTheme.grid} />
+              <XAxis
+                dataKey="date"
+                tickFormatter={(value) => {
+                  if (!value) return '--';
+                  const parts = String(value).split('-');
+                  if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
+                  return String(value);
+                }}
+                tick={chartTheme.axis.tickStyle}
+                tickLine={chartTheme.axis.tickLine}
+                axisLine={chartTheme.axis.axisLine}
+                stroke={chartTheme.axis.stroke}
+              />
+              <YAxis
+                tick={chartTheme.axis.tickStyle}
+                tickLine={chartTheme.axis.tickLine}
+                axisLine={chartTheme.axis.axisLine}
+                stroke={chartTheme.axis.stroke}
+                allowDecimals={false}
+              />
+              <Tooltip
+                cursor={{ stroke: 'rgba(15,23,42,0.2)', strokeWidth: 1 }}
+                content={(p) => (
+                  <ChartTooltip
+                    active={p.active}
+                    payload={filterPayload(p.payload as never) as never}
+                    label={p.label as string | number | undefined}
+                    formatters={tooltipFormatters}
+                    labelFormatter={(label) => {
+                      if (!label) return '';
+                      const parts = String(label).split('-');
+                      if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
+                      return String(label);
+                    }}
+                  />
+                )}
+              />
+              {locationSeries.map((loc) => {
+                const color = colorMap[loc.locationId] ?? '#6b7280';
+                return (
+                  <Line
+                    key={loc.locationId}
+                    type="monotone"
+                    dataKey={loc.locationId}
+                    name={loc.locationName}
+                    stroke={color}
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: color }}
+                    activeDot={{ r: 5 }}
+                    connectNulls
+                    hide={!visibility[loc.locationId]}
+                  />
+                );
+              })}
+              <Line
+                type="monotone"
+                dataKey={TOTAL_KEY}
+                name="合計"
+                stroke={TOTAL_LINE_COLOR}
+                strokeWidth={4}
+                dot={{ r: 4, fill: TOTAL_LINE_COLOR }}
+                activeDot={{ r: 6 }}
+                connectNulls
+                hide={!visibility[TOTAL_KEY]}
+              >
+                {metric !== 'sales' && (
+                  <LabelList
+                    dataKey={TOTAL_KEY}
+                    position="top"
+                    fontSize={10}
+                    fill={TOTAL_LINE_COLOR}
+                    formatter={(v: number) => (typeof v === 'number' && v > 0 ? String(v) : '')}
+                  />
+                )}
+              </Line>
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartFigure>
       </div>
     </div>
   );

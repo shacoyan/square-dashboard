@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from 'recharts';
 import type { DailySegmentPoint } from '../../types';
-import { ChartTooltip, type ChartTooltipPayloadItem } from '../ui';
+import { ChartTooltip, ChartFigure, type ChartTooltipPayloadItem } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
 
@@ -119,64 +119,66 @@ export default function SegmentTrendChart({ data }: Props) {
         className="mb-2"
       />
       <div className="w-full min-w-0" style={{ height: chartTheme.heightPreset.detail }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={chartTheme.defaultMargin}>
-            <CartesianGrid {...chartTheme.grid} />
-            <XAxis
-              dataKey="date"
-              tickFormatter={(value) => {
-                if (!value) return '--';
-                const parts = String(value).split('-');
-                if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
-                return String(value);
-              }}
-              tick={chartTheme.axis.tickStyle}
-              axisLine={chartTheme.axis.axisLine}
-              tickLine={chartTheme.axis.tickLine}
-            />
-            <YAxis
-              tick={chartTheme.axis.tickStyle}
-              axisLine={chartTheme.axis.axisLine}
-              tickLine={chartTheme.axis.tickLine}
-              allowDecimals={false}
-            />
-            <Tooltip
-              content={(p) => {
-                // hide 系列が Recharts の payload に残るバージョン互換のため visibleKeys でフィルタ
-                const filtered = (p.payload as ChartTooltipPayloadItem[] | undefined)?.filter(
-                  (it) => {
-                    const k = it.dataKey != null ? String(it.dataKey) : '';
-                    if (!COUNT_KEYS.has(k)) return false;
-                    return visibleKeys[k as CountKey];
-                  },
-                );
-                return (
-                  <ChartTooltip
-                    active={p.active}
-                    payload={filtered as never}
-                    label={p.label as string | number | undefined}
-                    formatters={formatters}
-                    labelFormatter={(l) => formatDateLabel(l)}
-                  />
-                );
-              }}
-            />
-            {SERIES.map((s) => (
-              <Line
-                key={s.key}
-                type="monotone"
-                dataKey={s.key}
-                name={s.label}
-                stroke={s.color}
-                strokeWidth={2}
-                dot={{ r: 3, fill: s.color }}
-                activeDot={{ r: 5 }}
-                connectNulls
-                hide={!visibleKeys[s.key]}
+        <ChartFigure label="折れ線グラフ：日次の客数または売上をセグメント別（新規・リピート・常連・スタッフ・記載なし）に表示">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={chartTheme.defaultMargin}>
+              <CartesianGrid {...chartTheme.grid} />
+              <XAxis
+                dataKey="date"
+                tickFormatter={(value) => {
+                  if (!value) return '--';
+                  const parts = String(value).split('-');
+                  if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
+                  return String(value);
+                }}
+                tick={chartTheme.axis.tickStyle}
+                axisLine={chartTheme.axis.axisLine}
+                tickLine={chartTheme.axis.tickLine}
               />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
+              <YAxis
+                tick={chartTheme.axis.tickStyle}
+                axisLine={chartTheme.axis.axisLine}
+                tickLine={chartTheme.axis.tickLine}
+                allowDecimals={false}
+              />
+              <Tooltip
+                content={(p) => {
+                  // hide 系列が Recharts の payload に残るバージョン互換のため visibleKeys でフィルタ
+                  const filtered = (p.payload as ChartTooltipPayloadItem[] | undefined)?.filter(
+                    (it) => {
+                      const k = it.dataKey != null ? String(it.dataKey) : '';
+                      if (!COUNT_KEYS.has(k)) return false;
+                      return visibleKeys[k as CountKey];
+                    },
+                  );
+                  return (
+                    <ChartTooltip
+                      active={p.active}
+                      payload={filtered as never}
+                      label={p.label as string | number | undefined}
+                      formatters={formatters}
+                      labelFormatter={(l) => formatDateLabel(l)}
+                    />
+                  );
+                }}
+              />
+              {SERIES.map((s) => (
+                <Line
+                  key={s.key}
+                  type="monotone"
+                  dataKey={s.key}
+                  name={s.label}
+                  stroke={s.color}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: s.color }}
+                  activeDot={{ r: 5 }}
+                  connectNulls
+                  hide={!visibleKeys[s.key]}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartFigure>
         {isEmpty && (
           <p className="text-center text-gray-500 text-sm -mt-4">推移データなし</p>
         )}

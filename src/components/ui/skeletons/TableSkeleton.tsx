@@ -17,16 +17,22 @@ export function TableSkeleton({
   className,
 }: TableSkeletonProps) {
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
+    <div
+      className={cn('flex flex-col gap-2', className)}
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+      aria-label="読み込み中"
+    >
       {Array.from({ length: rows }).map((_, r) =>
         columns ? (
           <div key={r} className="flex gap-2">
             {Array.from({ length: columns }).map((_, c) => (
-              <Skeleton key={c} className="flex-1" height={rowHeight} />
+              <Skeleton key={c} className="flex-1" height={rowHeight} ariaHidden />
             ))}
           </div>
         ) : (
-          <Skeleton key={r} width="100%" height={rowHeight} />
+          <Skeleton key={r} width="100%" height={rowHeight} ariaHidden />
         ),
       )}
     </div>

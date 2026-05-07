@@ -10,7 +10,7 @@ import {
   Tooltip,
   LabelList,
 } from 'recharts';
-import { ChartLegend, ChartTooltip, type ChartLegendItem, EmptyState } from '../ui';
+import { ChartLegend, ChartTooltip, ChartFigure, type ChartLegendItem, EmptyState } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 
 interface Props {
@@ -73,55 +73,57 @@ export default function LocationStackChart({ rows, series, valueUnit, emptyMessa
     <div className="w-full min-w-0">
       <ChartLegend items={legendItems} size="sm" align="center" className="mb-2" />
       <div className="w-full min-w-0" style={{ height: `${chartHeight}px` }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rows} layout="vertical" margin={chartTheme.marginVerticalLayout}>
-            <CartesianGrid {...chartTheme.grid} />
-            <XAxis
-              type="number"
-              tick={chartTheme.axis.tickStyle}
-              tickLine={chartTheme.axis.tickLine}
-              axisLine={chartTheme.axis.axisLine}
-              stroke={chartTheme.axis.stroke}
-            />
-            <YAxis
-              type="category"
-              dataKey="locationName"
-              width={140}
-              tick={chartTheme.axis.tickStyle}
-              tickLine={chartTheme.axis.tickLine}
-              axisLine={chartTheme.axis.axisLine}
-              stroke={chartTheme.axis.stroke}
-            />
-            <Tooltip
-              cursor={{ fill: 'rgba(15,23,42,0.04)' }}
-              content={(p) => (
-                <ChartTooltip
-                  active={p.active}
-                  payload={p.payload as never}
-                  label={p.label as string | number | undefined}
-                  formatters={formatters}
-                />
-              )}
-            />
-            {series.map((s) => (
-              <Bar
-                key={s.key}
-                dataKey={s.key}
-                name={s.label}
-                stackId="a"
-                fill={s.color}
-              >
-                <LabelList
+        <ChartFigure label="積み上げ棒グラフ：店舗別の構成内訳">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={rows} layout="vertical" margin={chartTheme.marginVerticalLayout}>
+              <CartesianGrid {...chartTheme.grid} />
+              <XAxis
+                type="number"
+                tick={chartTheme.axis.tickStyle}
+                tickLine={chartTheme.axis.tickLine}
+                axisLine={chartTheme.axis.axisLine}
+                stroke={chartTheme.axis.stroke}
+              />
+              <YAxis
+                type="category"
+                dataKey="locationName"
+                width={140}
+                tick={chartTheme.axis.tickStyle}
+                tickLine={chartTheme.axis.tickLine}
+                axisLine={chartTheme.axis.axisLine}
+                stroke={chartTheme.axis.stroke}
+              />
+              <Tooltip
+                cursor={{ fill: 'rgba(15,23,42,0.04)' }}
+                content={(p) => (
+                  <ChartTooltip
+                    active={p.active}
+                    payload={p.payload as never}
+                    label={p.label as string | number | undefined}
+                    formatters={formatters}
+                  />
+                )}
+              />
+              {series.map((s) => (
+                <Bar
+                  key={s.key}
                   dataKey={s.key}
-                  position="insideRight"
-                  fill="#fff"
-                  fontSize={10}
-                  formatter={(v: number) => (typeof v === 'number' && v > 0 ? String(v) : '')}
-                />
-              </Bar>
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
+                  name={s.label}
+                  stackId="a"
+                  fill={s.color}
+                >
+                  <LabelList
+                    dataKey={s.key}
+                    position="insideRight"
+                    fill="#fff"
+                    fontSize={10}
+                    formatter={(v: number) => (typeof v === 'number' && v > 0 ? String(v) : '')}
+                  />
+                </Bar>
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartFigure>
       </div>
     </div>
   );

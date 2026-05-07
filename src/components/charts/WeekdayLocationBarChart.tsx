@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { formatYen } from '../../utils';
 import type { WeekdayLocationAggregate } from '../../lib/weekdayLocationAggregation';
-import { ChartLegend, ChartTooltip, type ChartLegendItem, EmptyState } from '../ui';
+import { ChartLegend, ChartTooltip, ChartFigure, type ChartLegendItem, EmptyState } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 import { FALLBACK_LOCATION_COLOR } from '../../lib/locationColors';
 
@@ -86,44 +86,46 @@ export default function WeekdayLocationBarChart({
 
   return (
     <div className="w-full min-w-0">
-      <ResponsiveContainer width="100%" height={chartTheme.heightPreset.detail}>
-        <BarChart data={chartData} margin={chartTheme.defaultMargin}>
-          <CartesianGrid {...chartTheme.grid} />
-          <XAxis
-            dataKey="label"
-            tick={chartTheme.axis.tickStyle}
-            axisLine={chartTheme.axis.axisLine}
-            tickLine={chartTheme.axis.tickLine}
-          />
-          <YAxis
-            tick={chartTheme.axis.tickStyle}
-            axisLine={chartTheme.axis.axisLine}
-            tickLine={chartTheme.axis.tickLine}
-            allowDecimals={metric === 'customers' ? false : true}
-            tickFormatter={metric === 'sales' ? (v: number) => formatYen(v) : undefined}
-          />
-          <Tooltip
-            content={(p) => (
-              <ChartTooltip
-                active={p.active}
-                payload={p.payload as never}
-                label={p.label as string | number | undefined}
-                formatters={formatters}
-                labelFormatter={(l) => WEEKDAY_FULL_NAMES[String(l)] ?? String(l)}
-              />
-            )}
-          />
-          {locationSeries.map((loc) => (
-            <Bar
-              key={loc.locationId}
-              dataKey={loc.locationId}
-              name={loc.locationName}
-              stackId="a"
-              fill={colorMap[loc.locationId] ?? FALLBACK_LOCATION_COLOR}
+      <ChartFigure label="積み上げ棒グラフ：曜日別の客数または売上を店舗別に集計">
+        <ResponsiveContainer width="100%" height={chartTheme.heightPreset.detail}>
+          <BarChart data={chartData} margin={chartTheme.defaultMargin}>
+            <CartesianGrid {...chartTheme.grid} />
+            <XAxis
+              dataKey="label"
+              tick={chartTheme.axis.tickStyle}
+              axisLine={chartTheme.axis.axisLine}
+              tickLine={chartTheme.axis.tickLine}
             />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
+            <YAxis
+              tick={chartTheme.axis.tickStyle}
+              axisLine={chartTheme.axis.axisLine}
+              tickLine={chartTheme.axis.tickLine}
+              allowDecimals={metric === 'customers' ? false : true}
+              tickFormatter={metric === 'sales' ? (v: number) => formatYen(v) : undefined}
+            />
+            <Tooltip
+              content={(p) => (
+                <ChartTooltip
+                  active={p.active}
+                  payload={p.payload as never}
+                  label={p.label as string | number | undefined}
+                  formatters={formatters}
+                  labelFormatter={(l) => WEEKDAY_FULL_NAMES[String(l)] ?? String(l)}
+                />
+              )}
+            />
+            {locationSeries.map((loc) => (
+              <Bar
+                key={loc.locationId}
+                dataKey={loc.locationId}
+                name={loc.locationName}
+                stackId="a"
+                fill={colorMap[loc.locationId] ?? FALLBACK_LOCATION_COLOR}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartFigure>
       <ChartLegend size="sm" items={legendItems} />
     </div>
   );

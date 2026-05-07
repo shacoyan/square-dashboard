@@ -189,10 +189,18 @@ export default function OpenOrderList({ orders, loading, error }: Props) {
                         )}
                         <div className="mt-2 text-right">
                           <button
+                            type="button"
                             onClick={(e) => handleCopy(e, order)}
-                            className="text-xs text-text-subtle hover:text-text whitespace-nowrap"
+                            aria-label="注文内容をコピー"
+                            className="text-xs text-text-subtle hover:text-text whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded"
                           >
-                            {copiedId === order.id ? 'コピー済' : 'コピー'}
+                            {copiedId === order.id ? (
+                              <span role="status" aria-live="polite">
+                                <span aria-hidden="true">✓</span> コピー済
+                              </span>
+                            ) : (
+                              'コピー'
+                            )}
                           </button>
                         </div>
                       </td>

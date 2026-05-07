@@ -17,13 +17,19 @@ export function ChartSkeleton({
   className,
 }: ChartSkeletonProps) {
   return (
-    <div className={cn('w-full', className)}>
-      <Skeleton width="100%" height={chartTheme.heightPreset[heightPreset ?? 'standard']} />
+    <div
+      className={cn('w-full', className)}
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+      aria-label="読み込み中"
+    >
+      <Skeleton width="100%" height={chartTheme.heightPreset[heightPreset ?? 'standard']} ariaHidden />
       {withLegend && (
         <div className="flex gap-3 mt-3">
-          <Skeleton width={64} height={12} />
-          <Skeleton width={64} height={12} />
-          <Skeleton width={64} height={12} />
+          <Skeleton width={64} height={12} ariaHidden />
+          <Skeleton width={64} height={12} ariaHidden />
+          <Skeleton width={64} height={12} ariaHidden />
         </div>
       )}
     </div>

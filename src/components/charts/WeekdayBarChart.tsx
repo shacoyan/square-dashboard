@@ -2,7 +2,7 @@
 
 import type { WeekdayAggregate } from '../../lib/weekdayAggregation';
 import { formatYen } from '../../utils';
-import { ChartLegend, ChartTooltip, type ChartLegendItem, EmptyState } from '../ui';
+import { ChartFigure, ChartLegend, ChartTooltip, type ChartLegendItem, EmptyState } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 import {
   ResponsiveContainer,
@@ -95,47 +95,49 @@ export default function WeekdayBarChart({ data, metric, stacked = true }: Props)
 
   return (
     <div className="w-full min-w-0">
-      <ResponsiveContainer width="100%" height={chartTheme.heightPreset.compact}>
-        <BarChart data={data} margin={chartTheme.defaultMargin}>
-          <CartesianGrid {...chartTheme.grid} />
-          <XAxis
-            dataKey="label"
-            tick={chartTheme.axis.tickStyle}
-            axisLine={chartTheme.axis.axisLine}
-            tickLine={chartTheme.axis.tickLine}
-          />
-          <YAxis
-            tick={chartTheme.axis.tickStyle}
-            axisLine={chartTheme.axis.axisLine}
-            tickLine={chartTheme.axis.tickLine}
-            allowDecimals={metric === 'customers' ? false : true}
-            tickFormatter={metric === 'sales' ? (v: number) => formatYen(v) : undefined}
-          />
-          <Tooltip
-            content={(p) => (
-              <ChartTooltip
-                active={p.active}
-                payload={p.payload as never}
-                label={p.label as string | number | undefined}
-                formatters={formatters}
-                labelFormatter={(l) => WEEKDAY_NAMES[String(l)] ?? String(l)}
-              />
-            )}
-          />
-          {segmentKeys.map((key) => {
-            const dataKey = getDataKey(key, metric);
-            return (
-              <Bar
-                key={key}
-                dataKey={dataKey}
-                name={getSegmentLabel(key)}
-                stackId={stacked ? 'a' : undefined}
-                fill={getSegmentColor(key)}
-              />
-            );
-          })}
-        </BarChart>
-      </ResponsiveContainer>
+      <ChartFigure label="積み上げ棒グラフ：曜日別の客数または売上をセグメント別に集計">
+        <ResponsiveContainer width="100%" height={chartTheme.heightPreset.compact}>
+          <BarChart data={data} margin={chartTheme.defaultMargin}>
+            <CartesianGrid {...chartTheme.grid} />
+            <XAxis
+              dataKey="label"
+              tick={chartTheme.axis.tickStyle}
+              axisLine={chartTheme.axis.axisLine}
+              tickLine={chartTheme.axis.tickLine}
+            />
+            <YAxis
+              tick={chartTheme.axis.tickStyle}
+              axisLine={chartTheme.axis.axisLine}
+              tickLine={chartTheme.axis.tickLine}
+              allowDecimals={metric === 'customers' ? false : true}
+              tickFormatter={metric === 'sales' ? (v: number) => formatYen(v) : undefined}
+            />
+            <Tooltip
+              content={(p) => (
+                <ChartTooltip
+                  active={p.active}
+                  payload={p.payload as never}
+                  label={p.label as string | number | undefined}
+                  formatters={formatters}
+                  labelFormatter={(l) => WEEKDAY_NAMES[String(l)] ?? String(l)}
+                />
+              )}
+            />
+            {segmentKeys.map((key) => {
+              const dataKey = getDataKey(key, metric);
+              return (
+                <Bar
+                  key={key}
+                  dataKey={dataKey}
+                  name={getSegmentLabel(key)}
+                  stackId={stacked ? 'a' : undefined}
+                  fill={getSegmentColor(key)}
+                />
+              );
+            })}
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartFigure>
       <ChartLegend size="sm" items={legendItems} />
     </div>
   );
