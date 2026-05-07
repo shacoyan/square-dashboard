@@ -1,18 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import AppShell from './layout/AppShell';
 import TopBar from './layout/TopBar';
 import ControlBar from './layout/ControlBar';
-import { Container, Stack, EmptyState, ErrorState } from './ui';
+import { Card, Container, Stack, EmptyState, ErrorState } from './ui';
+import { ChartSkeleton, ListSkeleton } from './ui/skeletons';
 import DashboardTabs from './DashboardTabs';
 import DailyTabPanel from './tabs/DailyTabPanel';
-import SegmentTabPanel from './tabs/SegmentTabPanel';
-import LocationComparisonSection from './LocationComparisonSection';
 import { useSquareData } from '../hooks/useSquareData';
 import { useOpenOrders } from '../hooks/useOpenOrders';
 import { useCustomerSegment } from '../hooks/useCustomerSegment';
 import type { Location } from '../types';
 import type { PeriodPreset } from '../types';
 import { getBusinessDate } from '../lib/businessDate';
+
+const SegmentTabPanel = lazy(() => import('./tabs/SegmentTabPanel'));
+const LocationComparisonSection = lazy(() => import('./LocationComparisonSection'));
 
 interface DashboardProps {
   token: string;
@@ -214,19 +216,21 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
               tabIndex={0}
               className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md"
             >
-              <SegmentTabPanel
-                data={segmentData}
-                transactions={segmentTransactions}
-                loading={segmentLoading}
-                error={segmentError}
-                period={period}
-                onPeriodChange={setPeriod}
-                weekIndex={weekIndex}
-                availableWeeks={segmentAvailableWeeks}
-                onWeekIndexChange={setWeekIndex}
-                startHour={startHour}
-                endHour={endHour}
-              />
+              <Suspense fallback={<SegmentTabFallback />}>
+                <SegmentTabPanel
+                  data={segmentData}
+                  transactions={segmentTransactions}
+                  loading={segmentLoading}
+                  error={segmentError}
+                  period={period}
+                  onPeriodChange={setPeriod}
+                  weekIndex={weekIndex}
+                  availableWeeks={segmentAvailableWeeks}
+                  onWeekIndexChange={setWeekIndex}
+                  startHour={startHour}
+                  endHour={endHour}
+                />
+              </Suspense>
             </div>
           ) : activeTab === 'compare' ? (
             <div
@@ -236,23 +240,47 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
               tabIndex={0}
               className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md"
             >
-              <LocationComparisonSection
-                token={token}
-                locations={locations}
-                period={period}
-                onPeriodChange={setPeriod}
-                weekIndex={weekIndex}
-                onWeekIndexChange={setWeekIndex}
-                availableWeeks={segmentAvailableWeeks}
-                baseDate={date}
-                startHour={startHour}
-                endHour={endHour}
-                enabled={hasCompareBeenActive}
-              />
+              <Suspense fallback={<CompareTabFallback />}>
+                <LocationComparisonSection
+                  token={token}
+                  locations={locations}
+                  period={period}
+                  onPeriodChange={setPeriod}
+                  weekIndex={weekIndex}
+                  onWeekIndexChange={setWeekIndex}
+                  availableWeeks={segmentAvailableWeeks}
+                  baseDate={date}
+                  startHour={startHour}
+                  endHour={endHour}
+                  enabled={hasCompareBeenActive}
+                />
+              </Suspense>
             </div>
           ) : null}
         </Stack>
       </Container>
     </AppShell>
+  );
+}
+
+function SegmentTabFallback() {
+  return (
+    <Card>
+      <Stack gap="lg">
+        <ChartSkeleton heightPreset="standard" withLegend />
+        <ChartSkeleton heightPreset="standard" withLegend />
+      </Stack>
+    </Card>
+  );
+}
+
+function CompareTabFallback() {
+  return (
+    <Card>
+      <Stack gap="lg">
+        <ChartSkeleton heightPreset="detail" withLegend />
+        <ListSkeleton rows={5} />
+      </Stack>
+    </Card>
   );
 }
