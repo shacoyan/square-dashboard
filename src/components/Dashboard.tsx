@@ -12,6 +12,7 @@ import { useCustomerSegment } from '../hooks/useCustomerSegment';
 import type { Location } from '../types';
 import type { PeriodPreset } from '../types';
 import { getBusinessDate } from '../lib/businessDate';
+import { MSG } from '../lib/messages';
 
 const SegmentTabPanel = lazy(() => import('./tabs/SegmentTabPanel'));
 const LocationComparisonSection = lazy(() => import('./LocationComparisonSection'));
@@ -93,7 +94,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) {
-          throw new Error(`店舗一覧の取得に失敗しました (HTTP ${res.status})`);
+          throw new Error(`${MSG.error.locations} (HTTP ${res.status})`);
         }
         const data = await res.json();
         const locs: Location[] = data.locations ?? [];
@@ -102,7 +103,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           setSelectedLocationId(locs[0].id);
         }
       } catch (err) {
-        setLocationsError(err instanceof Error ? err.message : '店舗一覧の取得エラー');
+        setLocationsError(err instanceof Error ? err.message : MSG.error.locations);
       } finally {
         setLocationsLoading(false);
       }
@@ -180,7 +181,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           />
 
           {error && (
-            <ErrorState variant="inline" tone="danger" title="エラーが発生しました" description={error} />
+            <ErrorState variant="inline" tone="danger" title={MSG.error.generic} description={error} />
           )}
 
           {!selectedLocationId && !locationsLoading && locations.length === 0 && (

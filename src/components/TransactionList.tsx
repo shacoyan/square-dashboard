@@ -1,7 +1,9 @@
 import { useState, Fragment } from 'react';
 import type { LineItem, Transaction, Discount } from '../types';
 import { formatYen } from '../utils';
-import { Card, EmptyState, ListSkeleton } from './ui';
+import { Badge, Card, EmptyState, ListSkeleton } from './ui';
+import { MSG } from '../lib/messages';
+import { MOTION } from '../lib/motion';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -76,34 +78,14 @@ function buildCopyText(items: LineItem[], discounts?: Discount[]): string {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  let bgColor: string;
-  let textColor: string;
-  let label: string;
-
   switch (status) {
-    case "COMPLETED":
-      bgColor = "bg-green-100";
-      textColor = "text-green-700";
-      label = "成功";
-      break;
-    case "FAILED":
-      bgColor = "bg-red-100";
-      textColor = "text-red-700";
-      label = "失敗";
-      break;
+    case 'COMPLETED':
+      return <Badge tone="success" size="sm">成功</Badge>;
+    case 'FAILED':
+      return <Badge tone="danger" size="sm">失敗</Badge>;
     default:
-      bgColor = "bg-gray-100";
-      textColor = "text-gray-600";
-      label = status;
+      return <Badge tone="neutral" size="sm">{status}</Badge>;
   }
-
-  return (
-    <span
-      className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full ${bgColor} ${textColor}`}
-    >
-      {label}
-    </span>
-  );
 }
 
 export default function TransactionList({
@@ -150,7 +132,7 @@ export default function TransactionList({
   if (transactions.length === 0) {
     return (
       <Card title="決済済み伝票" padded={false}>
-        <EmptyState title="決済済み伝票はありません" />
+        <EmptyState title={MSG.empty.transactions} />
       </Card>
     );
   }
@@ -172,7 +154,7 @@ export default function TransactionList({
             {transactions.map((tx) => (
               <Fragment key={tx.id}>
                 <tr
-                  className={`block md:table-row border-b border-border md:border-t-0 md:border-b last:border-0 even:bg-surface-muted hover:bg-primary-subtle/50 transition-colors ${tx.line_items.length > 0 ? 'cursor-pointer' : ''}`}
+                  className={`block md:table-row border-b border-border md:border-t-0 md:border-b last:border-0 even:bg-surface-muted hover:bg-primary-subtle/50 ${MOTION.fast} ${tx.line_items.length > 0 ? 'cursor-pointer' : ''}`}
                   onClick={() => tx.line_items.length > 0 && toggleExpand(tx.id)}
                 >
                   <td className="block md:table-cell px-2 py-1 md:px-4 md:py-3 text-text-subtle whitespace-nowrap">
@@ -240,14 +222,14 @@ export default function TransactionList({
                           type="button"
                           onClick={(e) => handleCopy(e, tx)}
                           aria-label="注文内容をコピー"
-                          className="ml-4 text-xs text-text-subtle hover:text-text whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded"
+                          className={`ml-4 text-xs text-text-subtle hover:text-text whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded ${MOTION.fast}`}
                         >
                           {copiedId === tx.id ? (
                             <span role="status" aria-live="polite">
-                              <span aria-hidden="true">✓</span> コピー済
+                              <span aria-hidden="true">✓</span> {MSG.cta.copied}
                             </span>
                           ) : (
-                            'コピー'
+                            MSG.cta.copy
                           )}
                         </button>
                       </div>
@@ -262,4 +244,3 @@ export default function TransactionList({
     </Card>
   );
 }
-

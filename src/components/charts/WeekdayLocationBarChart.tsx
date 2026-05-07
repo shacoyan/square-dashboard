@@ -14,6 +14,7 @@ import type { WeekdayLocationAggregate } from '../../lib/weekdayLocationAggregat
 import { ChartLegend, ChartTooltip, ChartFigure, type ChartLegendItem, EmptyState } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 import { FALLBACK_LOCATION_COLOR } from '../../lib/locationColors';
+import { MSG } from '../../lib/messages';
 
 interface LocationMeta {
   locationId: string;
@@ -55,7 +56,7 @@ export default function WeekdayLocationBarChart({
 
   if (!hasData) {
     return (
-      <EmptyState title="曜日データなし" minHeight={chartTheme.heightPreset.compact} />
+      <EmptyState title={MSG.empty.weekday} minHeight={chartTheme.heightPreset.compact} />
     );
   }
 

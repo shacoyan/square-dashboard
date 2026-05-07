@@ -1,4 +1,5 @@
 import type { PeriodPreset } from '../../types';
+import { MOTION } from '../../lib/motion';
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(' ');
@@ -20,10 +21,10 @@ export interface PeriodSelectorProps {
 }
 
 const tabBaseClass =
-  'px-4 py-2 text-sm font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1';
+  `px-4 py-2 text-sm font-medium rounded-lg ${MOTION.fast} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1`;
 
 const weekTabBaseClass =
-  'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1';
+  `px-3 py-1.5 text-sm font-medium rounded-lg ${MOTION.fast} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1`;
 
 const selectedClass = 'bg-primary text-white';
 const unselectedClass = 'bg-surface-subtle text-text-muted hover:bg-surface-muted';

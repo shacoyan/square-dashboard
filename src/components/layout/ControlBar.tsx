@@ -1,6 +1,7 @@
 import { Card, Stack, Button, DatePicker, ErrorState } from '../ui';
 import StoreSwitcher from '../StoreSwitcher';
 import type { Location } from '../../types';
+import { MSG } from '../../lib/messages';
 
 interface ControlBarProps {
   date: string;
@@ -47,7 +48,7 @@ export default function ControlBar({
           {/* Row 1: 店舗スイッチャー */}
           <div>
             {locationsLoading ? (
-              <p className="text-sm text-text-muted">店舗情報を取得中...</p>
+              <p className="text-sm text-text-muted">{MSG.loading.locations}</p>
             ) : (
               <StoreSwitcher
                 locations={locations}
@@ -151,7 +152,7 @@ export default function ControlBar({
               disabled={loading || !selectedLocationId}
               onClick={onRefresh}
             >
-              {loading ? '読み込み中...' : '更新'}
+              {loading ? MSG.loading.generic : MSG.cta.refresh}
             </Button>
             <div className="text-right">
               <p className="text-xs text-text-muted">{periodLabel}</p>
@@ -180,7 +181,7 @@ export default function ControlBar({
           onClick={onRefresh}
           className="shadow-lg"
         >
-          {loading ? '更新中...' : '更新'}
+          {loading ? MSG.loading.refresh : MSG.cta.refresh}
         </Button>
       </div>
     </>

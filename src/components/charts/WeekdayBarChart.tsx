@@ -14,6 +14,7 @@ import {
   Tooltip,
 } from 'recharts';
 import { FALLBACK_LOCATION_COLOR } from '../../lib/locationColors';
+import { MSG } from '../../lib/messages';
 
 interface Props {
   data: WeekdayAggregate[];
@@ -74,7 +75,7 @@ export default function WeekdayBarChart({ data, metric, stacked = true }: Props)
 
   if (!hasData) {
     return (
-      <EmptyState title="曜日データなし" minHeight={chartTheme.heightPreset.compact} />
+      <EmptyState title={MSG.empty.weekday} minHeight={chartTheme.heightPreset.compact} />
     );
   }
 

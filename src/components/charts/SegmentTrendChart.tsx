@@ -14,6 +14,7 @@ import type { DailySegmentPoint } from '../../types';
 import { ChartTooltip, ChartFigure, type ChartTooltipPayloadItem } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
+import { MSG } from '../../lib/messages';
 
 interface Props {
   data: DailySegmentPoint[];
@@ -180,7 +181,7 @@ export default function SegmentTrendChart({ data }: Props) {
           </ResponsiveContainer>
         </ChartFigure>
         {isEmpty && (
-          <p className="text-center text-gray-500 text-sm -mt-4">推移データなし</p>
+          <p className="text-center text-text-muted text-sm -mt-4">{MSG.empty.trend}</p>
         )}
       </div>
     </div>

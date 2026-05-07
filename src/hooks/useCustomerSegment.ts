@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Transaction, CustomerSegmentAnalysis, PeriodPreset, DailySegmentPoint, OpenOrder } from '../types';
 import { aggregateSegments, allocateSalesByTransaction, countCustomersByTransaction } from '../lib/customerSegment';
+import { MSG } from '../lib/messages';
 
 interface Args {
   token: string;
@@ -196,7 +197,7 @@ export function useCustomerSegment(args: Args): {
       const isOpenFailure = openResult.status === 'rejected';
 
       if (isTxFailure && isOpenFailure) {
-        setError('期間データ取得失敗');
+        setError(MSG.error.period);
         setData(null);
         setTransactions([]);
         setLoading(false);
@@ -213,10 +214,10 @@ export function useCustomerSegment(args: Args): {
       const warningMessages: string[] = [];
 
       if (isTxFailure) {
-        warningMessages.push(`${dates.length}日のデータ取得に失敗しました。一部データが欠落しています。`);
+        warningMessages.push(`${dates.length}日の${MSG.error.transactions} 一部データが欠落しています。`);
       }
       if (isOpenFailure) {
-        warningMessages.push(`${dates.length}日のオープンオーダー取得に失敗しました。`);
+        warningMessages.push(`${dates.length}日の${MSG.error.openOrders}`);
       }
 
       dates.forEach(date => {
@@ -305,7 +306,7 @@ export function useCustomerSegment(args: Args): {
       if (err instanceof DOMException && err.name === 'AbortError') {
         return;
       }
-      setError(err instanceof Error ? err.message : 'データの取得に失敗しました');
+      setError(err instanceof Error ? err.message : MSG.error.fetch);
       setData(null);
       setTransactions([]);
     } finally {

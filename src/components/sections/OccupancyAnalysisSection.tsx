@@ -6,6 +6,7 @@ import { buildOccupancyMatrix, getActiveSlots } from '../../lib/occupancyAggrega
 import OccupancyHeatmap from '../charts/OccupancyHeatmap';
 import OccupancyLineChart from '../charts/OccupancyLineChart';
 import { Card, EmptyState } from '../ui';
+import { MSG } from '../../lib/messages';
 
 interface Props {
   transactions: Transaction[];
@@ -32,7 +33,7 @@ export default function OccupancyAnalysisSection({ transactions, startHour, endH
     >
       <div className="space-y-4">
         {!hasAnyData ? (
-          <EmptyState title="データがありません" minHeight={160} />
+          <EmptyState title={MSG.empty.generic} minHeight={160} />
         ) : (
           <>
             <div className="bg-surface rounded-md border border-border p-3">
@@ -52,7 +53,7 @@ export default function OccupancyAnalysisSection({ transactions, startHour, endH
         )}
 
         {matrix.skippedCount > 0 && (
-          <div className="text-xs text-text-muted">
+          <div className="text-xs text-text-muted tabular-nums">
             ※ 開始時刻不明 {matrix.skippedCount.toLocaleString()} 件をスキップ
           </div>
         )}

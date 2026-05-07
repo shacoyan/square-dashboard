@@ -15,6 +15,7 @@ import {
 import { formatYen } from '../../utils';
 import { chartTheme } from '../../lib/chartTheme';
 import { ChartTooltip, EmptyState, ChartFigure } from '../ui';
+import { MSG } from '../../lib/messages';
 
 interface RowData {
   locationName: string;
@@ -29,7 +30,7 @@ interface Props {
 
 const LocationBarChart: React.FC<Props> = ({ rows }) => {
   if (rows.length === 0) {
-    return <EmptyState title="店舗データなし" minHeight={chartTheme.heightPreset.standard} />;
+    return <EmptyState title={MSG.empty.location} minHeight={chartTheme.heightPreset.standard} />;
   }
 
   return (

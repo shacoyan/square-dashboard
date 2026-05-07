@@ -17,6 +17,7 @@ import { TOTAL_LINE_COLOR } from '../../lib/locationColors';
 import { chartTheme } from '../../lib/chartTheme';
 import { ChartTooltip, type ChartTooltipPayloadItem, ChartFigure, EmptyState } from '../ui';
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
+import { MSG } from '../../lib/messages';
 
 const TOTAL_KEY = '__total__';
 
@@ -181,7 +182,7 @@ export default function LocationTrendChart({
           onAllOff={handleAllOff}
           className="mb-2"
         />
-        <EmptyState title="推移データなし" minHeight={chartTheme.heightPreset.detail} />
+        <EmptyState title={MSG.empty.trend} minHeight={chartTheme.heightPreset.detail} />
       </div>
     );
   }

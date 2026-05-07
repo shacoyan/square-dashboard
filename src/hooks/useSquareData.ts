@@ -1,6 +1,7 @@
 // src/hooks/useSquareData.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Transaction, SalesData } from '../types';
+import { MSG } from '../lib/messages';
 
 interface UseSquareDataArgs {
   token: string;
@@ -48,10 +49,10 @@ export function useSquareData({ token, date, locationId, startHour, endHour }: U
       ]);
 
       if (!salesRes.ok) {
-        throw new Error(`売上データの取得に失敗しました (HTTP ${salesRes.status})`);
+        throw new Error(`${MSG.error.sales} (HTTP ${salesRes.status})`);
       }
       if (!transactionsRes.ok) {
-        throw new Error(`取引データの取得に失敗しました (HTTP ${transactionsRes.status})`);
+        throw new Error(`${MSG.error.transactions} (HTTP ${transactionsRes.status})`);
       }
 
       const salesData: SalesData = await salesRes.json();
@@ -61,7 +62,7 @@ export function useSquareData({ token, date, locationId, startHour, endHour }: U
       setTransactions(transactionsData.transactions ?? []);
       setLastUpdated(new Date());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'データの取得に失敗しました');
+      setError(err instanceof Error ? err.message : MSG.error.fetch);
     } finally {
       setLoading(false);
     }

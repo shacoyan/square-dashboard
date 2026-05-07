@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { OpenOrder } from '../types';
+import { MSG } from '../lib/messages';
 
 interface UseOpenOrdersArgs {
   token: string;
@@ -38,13 +39,13 @@ export function useOpenOrders({
       });
 
       if (!res.ok) {
-        throw new Error(`未決済伝票の取得に失敗 (HTTP ${res.status})`);
+        throw new Error(`${MSG.error.openOrders} (HTTP ${res.status})`);
       }
 
       const data = await res.json();
       setOrders(data.orders ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '取得エラー');
+      setError(err instanceof Error ? err.message : MSG.error.openOrders);
     } finally {
       setLoading(false);
     }

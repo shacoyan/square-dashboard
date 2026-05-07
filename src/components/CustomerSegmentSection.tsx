@@ -2,6 +2,7 @@ import { formatYen } from '../utils';
 import type { CustomerSegmentAnalysis, PeriodPreset, SegmentBreakdown, AcquisitionBreakdown, Transaction } from '../types';
 import { SegmentPieChart, SegmentTrendChart, AcquisitionChart } from './charts';
 import { PeriodSelector, Card, KpiSkeleton, EmptyState, ErrorState } from './ui';
+import { MSG } from '../lib/messages';
 import WeekdayAnalysisSection from './WeekdayAnalysisSection';
 import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
 
@@ -110,11 +111,11 @@ export default function CustomerSegmentSection({
         )}
 
         {error && (
-          <ErrorState variant="inline" tone="danger" title="データの取得に失敗しました" description={error} />
+          <ErrorState variant="inline" tone="danger" title={MSG.error.fetch} description={error} />
         )}
 
         {!loading && !error && !data && (
-          <EmptyState title="データがありません" />
+          <EmptyState title={MSG.empty.generic} />
         )}
 
         {!loading && !error && data && (

@@ -2,6 +2,8 @@ import { useState, Fragment } from 'react';
 import type { OpenOrder, LineItem, Discount } from '../types';
 import { formatYen } from '../utils';
 import { Card, Badge, EmptyState, ErrorState, ListSkeleton } from './ui';
+import { MSG } from '../lib/messages';
+import { MOTION } from '../lib/motion';
 
 interface Props {
   orders: OpenOrder[];
@@ -107,11 +109,11 @@ export default function OpenOrderList({ orders, loading, error }: Props) {
       )}
 
       {error && (
-        <ErrorState title="エラーが発生しました" description={error} />
+        <ErrorState title={MSG.error.generic} description={error} />
       )}
 
       {!loading && !error && orders.length === 0 && (
-        <EmptyState title="未会計の伝票はありません" description="営業時間中の未会計データはここに表示されます" />
+        <EmptyState title={MSG.empty.openOrders} description={MSG.empty.openOrdersHint} />
       )}
 
       {!loading && !error && orders.length > 0 && (
@@ -128,7 +130,7 @@ export default function OpenOrderList({ orders, loading, error }: Props) {
               {orders.map((order) => (
                 <Fragment key={order.id}>
                   <tr
-                    className="block md:table-row border-b border-border last:border-0 even:bg-surface-muted hover:bg-primary-subtle/50 transition-colors cursor-pointer"
+                    className={`block md:table-row border-b border-border last:border-0 even:bg-surface-muted hover:bg-primary-subtle/50 ${MOTION.fast} cursor-pointer`}
                     onClick={() => toggle(order.id)}
                   >
                     <td className="block md:table-cell px-2 py-1 md:px-4 md:py-3">
@@ -192,14 +194,14 @@ export default function OpenOrderList({ orders, loading, error }: Props) {
                             type="button"
                             onClick={(e) => handleCopy(e, order)}
                             aria-label="注文内容をコピー"
-                            className="text-xs text-text-subtle hover:text-text whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded"
+                            className={`text-xs text-text-subtle hover:text-text whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded ${MOTION.fast}`}
                           >
                             {copiedId === order.id ? (
                               <span role="status" aria-live="polite">
-                                <span aria-hidden="true">✓</span> コピー済
+                                <span aria-hidden="true">✓</span> {MSG.cta.copied}
                               </span>
                             ) : (
-                              'コピー'
+                              MSG.cta.copy
                             )}
                           </button>
                         </div>

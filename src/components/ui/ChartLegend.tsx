@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { MOTION } from '../../lib/motion';
 
 export interface ChartLegendItem {
   id: string;
@@ -93,7 +94,7 @@ export const ChartLegend: React.FC<ChartLegendProps> = ({
                 type="button"
                 aria-pressed={!isHidden}
                 onClick={() => onToggle?.(item.id)}
-                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-indigo-500 rounded-sm"
+                className={`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-indigo-500 rounded-sm ${MOTION.fast}`}
               >
                 {renderItemContent(item, isHidden)}
               </button>

@@ -4,6 +4,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import type { AcquisitionBreakdown } from '../../types';
 import { ChartLegend, ChartTooltip, ChartFigure } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
+import { MSG } from '../../lib/messages';
 
 interface Props {
   data: AcquisitionBreakdown;
@@ -24,7 +25,7 @@ export default function AcquisitionChart({ data }: Props) {
     return (
       <div className="w-full min-w-0 space-y-3">
         <div className="w-full min-w-0">
-          <ChartFigure label="新規客なし（円グラフ：獲得経路データなし）">
+          <ChartFigure label={`${MSG.empty.acquisition}（円グラフ）`}>
             <ResponsiveContainer width="100%" height={chartTheme.heightPreset.standard}>
               <PieChart margin={chartTheme.marginPie}>
                 <Pie
@@ -39,7 +40,7 @@ export default function AcquisitionChart({ data }: Props) {
               </PieChart>
             </ResponsiveContainer>
           </ChartFigure>
-          <p className="text-center text-gray-500 text-sm -mt-4">新規客なし</p>
+          <p className="text-center text-text-muted text-sm -mt-4">{MSG.empty.acquisition}</p>
         </div>
       </div>
     );

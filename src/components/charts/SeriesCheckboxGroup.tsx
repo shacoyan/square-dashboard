@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { MOTION } from '../../lib/motion';
 
 export interface SeriesCheckboxItem {
   key: string;
@@ -49,7 +50,7 @@ export const SeriesCheckboxGroup: React.FC<SeriesCheckboxGroupProps> = ({
                 className="sr-only peer"
               />
               <span
-                className="relative w-4 h-4 rounded-sm border-2 flex items-center justify-center transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-offset-1 peer-focus-visible:ring-primary"
+                className={`relative w-4 h-4 rounded-sm border-2 flex items-center justify-center ${MOTION.fast} peer-focus-visible:ring-2 peer-focus-visible:ring-offset-1 peer-focus-visible:ring-primary`}
                 style={{
                   borderColor: item.color,
                   backgroundColor: isVisible ? item.color : 'transparent',

@@ -1,5 +1,6 @@
 import { useState, FormEvent, useCallback } from "react";
 import { Button, ErrorState } from './ui';
+import { MSG } from '../lib/messages';
 
 interface LoginPageProps {
   onLogin: (token: string) => void;
@@ -33,7 +34,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       const data = await res.json();
       onLogin(data.token);
     } catch {
-      setError("通信エラーが発生しました");
+      setError(MSG.error.network);
     } finally {
       setLoading(false);
     }
@@ -91,7 +92,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </div>
 
           {error && (
-            <ErrorState variant="inline" tone="danger" title="ログインに失敗しました" description={error} />
+            <ErrorState variant="inline" tone="danger" title={MSG.error.login} description={error} />
           )}
 
           <Button

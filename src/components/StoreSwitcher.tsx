@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import type { Location } from '../types';
 import { getLocationColor } from '../lib/locationColors';
+import { MOTION } from '../lib/motion';
 
 interface StoreSwitcherProps {
   locations: Location[];
@@ -78,7 +79,7 @@ export default function StoreSwitcher({ locations, selectedId, onChange }: Store
             tabIndex={isActive ? 0 : -1}
             onClick={() => onChange(loc.id)}
             onKeyDown={(e) => handleKeyDown(e, index)}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none ${
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium ${MOTION.fast} focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none ${
               isActive
                 ? 'bg-primary text-white'
                 : 'bg-surface-subtle text-text hover:bg-surface-muted border border-border'

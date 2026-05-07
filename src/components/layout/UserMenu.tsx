@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { MOTION } from '../../lib/motion';
 
 interface UserMenuProps {
   onLogout: () => void;
@@ -64,7 +65,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className={`transition-transform ${open ? 'rotate-180' : ''}`}
+            className={`${MOTION.transform} ${open ? 'rotate-180' : ''}`}
             aria-hidden="true"
           >
             <path d="m6 9 6 6 6-6" />
@@ -76,7 +77,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
         <div
           role="menu"
           aria-orientation="vertical"
-          className="absolute right-0 mt-2 w-48 bg-surface border border-border rounded-card shadow-cardHover py-1 z-30"
+          className="absolute right-0 mt-2 w-48 bg-surface border border-border rounded-card shadow-cardHover py-1 z-30 animate-menu-in"
         >
           <button
             type="button"
@@ -85,7 +86,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onLogout }) => {
               onLogout();
               handleClose();
             }}
-            className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-text hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+            className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-text hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${MOTION.fast}`}
           >
             ログアウト
           </button>

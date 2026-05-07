@@ -78,15 +78,15 @@ export default function WeekdayTable({ data, metric }: Props) {
     <div className="overflow-x-auto">
       <table className="min-w-full border-collapse text-xs sm:text-sm">
         <thead>
-          <tr className="bg-gray-50">
-            <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-600">曜日</th>
-            <th className="border border-gray-200 px-3 py-2 text-right font-medium text-gray-600">新規</th>
-            <th className="border border-gray-200 px-3 py-2 text-right font-medium text-gray-600">リピート</th>
-            <th className="border border-gray-200 px-3 py-2 text-right font-medium text-gray-600">常連</th>
-            <th className="border border-gray-200 px-3 py-2 text-right font-medium text-gray-600">スタッフ</th>
-            <th className="border border-gray-200 px-3 py-2 text-right font-medium text-gray-600">記載なし</th>
-            <th className="border border-gray-200 px-3 py-2 text-right font-medium text-gray-600">合計</th>
-            <th className="border border-gray-200 px-3 py-2 text-right font-medium text-gray-600">サンプル(日数)</th>
+          <tr className="bg-surface-muted">
+            <th className="border border-border px-3 py-2 text-left font-medium text-text-muted">曜日</th>
+            <th className="border border-border px-3 py-2 text-right font-medium text-text-muted">新規</th>
+            <th className="border border-border px-3 py-2 text-right font-medium text-text-muted">リピート</th>
+            <th className="border border-border px-3 py-2 text-right font-medium text-text-muted">常連</th>
+            <th className="border border-border px-3 py-2 text-right font-medium text-text-muted">スタッフ</th>
+            <th className="border border-border px-3 py-2 text-right font-medium text-text-muted">記載なし</th>
+            <th className="border border-border px-3 py-2 text-right font-medium text-text-muted">合計</th>
+            <th className="border border-border px-3 py-2 text-right font-medium text-text-muted">サンプル(日数)</th>
           </tr>
         </thead>
         <tbody>
@@ -95,12 +95,12 @@ export default function WeekdayTable({ data, metric }: Props) {
             const rowTotal = getTotal(d);
 
             return (
-              <tr key={weekdayLabels[i]} className={isZeroSample ? 'text-gray-400' : ''}>
-                <td className="border border-gray-200 px-3 py-2 font-medium">{weekdayLabels[i]}</td>
+              <tr key={weekdayLabels[i]} className={isZeroSample ? 'text-text-subtle' : ''}>
+                <td className="border border-border px-3 py-2 font-medium">{weekdayLabels[i]}</td>
                 {segmentKeys.map((seg) => {
                   const val = getVal(d, seg);
                   return (
-                    <td key={seg} className="border border-gray-200 px-3 py-2 text-right">
+                    <td key={seg} className="border border-border px-3 py-2 text-right tabular-nums">
                       <span>{isZeroSample ? '--' : formatVal(val)}</span>
                       <span className="ml-1 text-[0.65rem] opacity-70">
                         {getPctDisplay(seg, val, rowTotal, isZeroSample)}
@@ -108,22 +108,22 @@ export default function WeekdayTable({ data, metric }: Props) {
                     </td>
                   );
                 })}
-                <td className="border border-gray-200 px-3 py-2 text-right">
+                <td className="border border-border px-3 py-2 text-right tabular-nums">
                   {isZeroSample ? '--' : formatVal(rowTotal)}
                 </td>
-                <td className="border border-gray-200 px-3 py-2 text-right">
+                <td className="border border-border px-3 py-2 text-right tabular-nums">
                   {isZeroSample ? '--' : d.sampleCount}
                 </td>
               </tr>
             );
           })}
 
-          <tr className="bg-gray-50 font-medium">
-            <td className="border border-gray-200 px-3 py-2">合計</td>
+          <tr className="bg-surface-muted font-medium">
+            <td className="border border-border px-3 py-2">合計</td>
             {segmentKeys.map((seg) => {
               const val = totals[seg];
               return (
-                <td key={seg} className="border border-gray-200 px-3 py-2 text-right">
+                <td key={seg} className="border border-border px-3 py-2 text-right tabular-nums">
                   <span>{formatVal(val)}</span>
                   <span className="ml-1 text-[0.65rem] opacity-70">
                     {getPctDisplay(seg, val, totals.total, false)}
@@ -131,8 +131,8 @@ export default function WeekdayTable({ data, metric }: Props) {
                 </td>
               );
             })}
-            <td className="border border-gray-200 px-3 py-2 text-right">{formatVal(totals.total)}</td>
-            <td className="border border-gray-200 px-3 py-2 text-right">{totals.sampleCount}</td>
+            <td className="border border-border px-3 py-2 text-right tabular-nums">{formatVal(totals.total)}</td>
+            <td className="border border-border px-3 py-2 text-right tabular-nums">{totals.sampleCount}</td>
           </tr>
         </tbody>
       </table>

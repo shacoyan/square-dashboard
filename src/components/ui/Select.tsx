@@ -1,5 +1,6 @@
 import type { SelectHTMLAttributes } from 'react';
 import { forwardRef, useId } from 'react';
+import { MOTION } from '../../lib/motion';
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(' ');
@@ -29,7 +30,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             id={id}
             className={cn(
-              'appearance-none w-full pr-8 pl-3 rounded-md border border-border bg-surface text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:border-border-strong',
+              `appearance-none w-full pr-8 pl-3 rounded-md border border-border bg-surface text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed ${MOTION.fast} hover:border-border-strong`,
               sizeClass,
               className,
             )}

@@ -5,6 +5,7 @@ import type { SegmentBreakdown } from '../../types';
 import { ChartLegend, ChartTooltip, ChartFigure } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 import { segmentColors, segmentEmptyColor } from '../../lib/segmentColors';
+import { MSG } from '../../lib/messages';
 
 interface Props {
   sales: SegmentBreakdown;
@@ -79,7 +80,7 @@ export default function SegmentPieChart({ sales }: Props) {
         <ChartLegend items={legendItems} size="sm" align="center" />
       )}
       {total === 0 && (
-        <p className="text-center text-gray-500 text-sm">売上データなし</p>
+        <p className="text-center text-text-muted text-sm">{MSG.empty.sales}</p>
       )}
     </div>
   );

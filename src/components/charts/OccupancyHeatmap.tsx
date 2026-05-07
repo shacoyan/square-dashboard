@@ -10,6 +10,7 @@ import {
   type OccupancyMatrix,
 } from '../../lib/occupancyAggregation';
 import { ChartFigure } from '../ui';
+import { MSG } from '../../lib/messages';
 
 const OCCUPANCY_HEATMAP_FULL_PERSONS = 10;
 
@@ -74,7 +75,7 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
         <div className="min-w-[720px]">
           {/* 列ヘッダ（3h 刻み 8 本） */}
           <div
-            className="grid items-end text-[10px] text-gray-500 mb-1"
+            className="grid items-end text-[10px] text-text-muted mb-1"
             style={{ gridTemplateColumns: gridTemplate }}
           >
             <div aria-hidden="true" />
@@ -113,7 +114,7 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
           ))}
 
           {/* 凡例 */}
-          <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-500">
+          <div className="mt-2 flex items-center gap-2 text-[11px] text-text-muted">
             <span>少</span>
             <div className="flex h-2 w-32">
               {HEATMAP_BUCKET_CLASSES.slice(1).map((cls, i) => (
@@ -126,9 +127,9 @@ export default function OccupancyHeatmap({ matrix, activeSlots }: Props) {
             </div>
             <span>多</span>
             {hasData ? (
-              <span className="ml-2">最濃 10 人 / 実測ピーク {maxPersons.toFixed(1)} 人（平均）</span>
+              <span className="ml-2 tabular-nums">最濃 10 人 / 実測ピーク {maxPersons.toFixed(1)} 人（平均）</span>
             ) : (
-              <span className="ml-2 text-gray-400">データなし</span>
+              <span className="ml-2 text-text-subtle">{MSG.empty.generic}</span>
             )}
           </div>
         </div>

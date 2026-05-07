@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Transaction, OpenOrder, Location, PeriodPreset, DailySegmentPoint, SegmentBreakdown, AcquisitionBreakdown, LocationSegmentRow, LocationComparisonData } from '../types';
 import { aggregateSegments, allocateSalesByTransaction, countCustomersByTransaction } from '../lib/customerSegment';
+import { MSG } from '../lib/messages';
 
 function getJSTDateParts(date: Date): { year: number; month: number; day: number } {
   const jstString = date.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -256,7 +257,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
             salesBySegment: { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0 },
             acquisitionBreakdown: { google: 0, review: 0, signboard: 0, sns: 0, unknown: 0 },
             dailyTrend: [],
-            loadError: '期間データ取得失敗',
+            loadError: MSG.error.period,
             partialFailure: null,
             transactions: [],
           };
@@ -339,14 +340,14 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
       const totalPairs = locations.length * dates.length;
       if (totalFailedPairs === totalPairs) {
         setData(null);
-        setError('期間データ取得失敗');
+        setError(MSG.error.period);
         return;
       }
 
       const fullyFailedCount = rows.filter(r => r.loadError).length;
       let warn: string | null = null;
       if (totalFailedPairs > 0) {
-        warn = `${fullyFailedCount}店舗×${totalFailedPairs}日で取得失敗`;
+        warn = `${fullyFailedCount}店舗×${totalFailedPairs}日で${MSG.error.fetch}`;
       }
 
       setData({
@@ -372,7 +373,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
       if (err instanceof DOMException && err.name === 'AbortError') {
         return;
       }
-      const message = err instanceof Error ? err.message : 'データの取得に失敗しました';
+      const message = err instanceof Error ? err.message : MSG.error.fetch;
       setError(message);
       setData(null);
     } finally {

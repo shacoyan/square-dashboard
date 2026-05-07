@@ -3,6 +3,7 @@ import type { Location, PeriodPreset, LocationSegmentRow } from '../types';
 import { useMultiLocationSegment } from '../hooks/useMultiLocationSegment';
 import { LocationBarChart, LocationStackChart, LocationTrendChart } from './charts';
 import { PeriodSelector, Card, TableSkeleton, ChartSkeleton, EmptyState, ErrorState } from './ui';
+import { MSG } from '../lib/messages';
 import { formatYen } from '../utils';
 import WeekdayLocationAnalysisSection from './WeekdayLocationAnalysisSection';
 import { getLocationColors } from '../lib/locationColors';
@@ -88,7 +89,7 @@ export default function LocationComparisonSection(props: Props) {
       <tr key={isTotal ? 'totals' : rowTyped.locationId} className={`border-b border-gray-200 ${isTotal ? 'font-bold bg-gray-50' : ''} ${hasPartialFailure ? 'bg-amber-50' : ''}`}>
         <td className={`${TD_NAME} ${nameBg}`}>
           {isTotal ? '合計' : rowTyped.locationName}
-          {hasPartialFailure && <span className="text-amber-700 ml-1">※</span>}
+          {hasPartialFailure && <span className="text-warning-800 ml-1">※</span>}
           {hasError && (
             <span className="text-xs text-danger ml-1">({rowTyped.loadError})</span>
           )}
@@ -96,7 +97,7 @@ export default function LocationComparisonSection(props: Props) {
         <td className={TD_NUM}>{formatYen(row.totalSales)}</td>
         <td className={TD_NUM}>
           {row.averageDailySales !== null ? formatYen(Math.round(row.averageDailySales)) : '--'}
-          {hasPartialFailure && <span className="text-xs text-amber-700 block">（{rowTyped.partialFailure!.failedDays}日失敗）</span>}
+          {hasPartialFailure && <span className="text-xs text-warning-800 block">（{rowTyped.partialFailure!.failedDays}日失敗）</span>}
         </td>
         <td className={TD_NUM}>
           {row.overallAveragePerCustomer !== null ? formatYen(Math.round(row.overallAveragePerCustomer)) : '--'}
@@ -144,7 +145,7 @@ export default function LocationComparisonSection(props: Props) {
         )}
 
         {error && !data && (
-          <ErrorState variant="inline" tone="danger" title="データの取得に失敗しました" description={error} />
+          <ErrorState variant="inline" tone="danger" title={MSG.error.fetch} description={error} />
         )}
 
         {error && data && (
@@ -152,7 +153,7 @@ export default function LocationComparisonSection(props: Props) {
         )}
 
         {!loading && !error && !data && (
-          <EmptyState title="店舗データがありません" />
+          <EmptyState title={MSG.empty.locations} />
         )}
 
         {data && (
@@ -184,7 +185,7 @@ export default function LocationComparisonSection(props: Props) {
                 </tbody>
               </table>
               {data.rows.some(r => r.partialFailure !== null) && (
-                <p className="text-xs text-amber-700 mt-2">※ 一部日付のデータ取得に失敗した店舗です。平均日売上は全期間日数で按分しているため実績より低く表示されている可能性があります。</p>
+                <p className="text-xs text-warning-800 mt-2">※ 一部日付のデータ取得に失敗した店舗です。平均日売上は全期間日数で按分しているため実績より低く表示されている可能性があります。</p>
               )}
             </div>
 

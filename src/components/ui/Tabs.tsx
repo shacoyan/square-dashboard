@@ -1,5 +1,6 @@
 import type { ReactNode, KeyboardEvent } from 'react';
 import { useRef } from 'react';
+import { MOTION } from '../../lib/motion';
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(' ');
@@ -24,7 +25,7 @@ export function Tabs({ items, active, onChange, ariaLabel, size = 'md' }: TabsPr
 
   const sizeClass = size === 'sm' ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm';
   const base =
-    'inline-flex items-center gap-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:opacity-40 disabled:cursor-not-allowed';
+    `inline-flex items-center gap-2 rounded-md font-medium ${MOTION.fast} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:opacity-40 disabled:cursor-not-allowed`;
 
   const focusTab = (key: string) => {
     tabRefs.current[key]?.focus();

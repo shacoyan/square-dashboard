@@ -39,22 +39,22 @@ export default function WeekdayLocationTable({ data, locationSeries, metric }: P
     <div className="overflow-x-auto">
       <table className="min-w-full border-collapse text-xs sm:text-sm">
         <thead>
-          <tr className="bg-gray-50">
-            <th className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-600">
+          <tr className="bg-surface-muted">
+            <th className="border border-border px-3 py-2 text-left font-medium text-text-muted">
               曜日
             </th>
             {locationSeries.map((loc) => (
               <th
                 key={loc.locationId}
-                className="border border-gray-200 px-3 py-2 text-right font-medium text-gray-600 whitespace-nowrap"
+                className="border border-border px-3 py-2 text-right font-medium text-text-muted whitespace-nowrap"
               >
                 {loc.locationName}
               </th>
             ))}
-            <th className="border border-gray-200 px-3 py-2 text-right font-medium text-gray-600">
+            <th className="border border-border px-3 py-2 text-right font-medium text-text-muted">
               合計
             </th>
-            <th className="border border-gray-200 px-3 py-2 text-right font-medium text-gray-600">
+            <th className="border border-border px-3 py-2 text-right font-medium text-text-muted">
               サンプル(日数)
             </th>
           </tr>
@@ -65,47 +65,47 @@ export default function WeekdayLocationTable({ data, locationSeries, metric }: P
             const rowTotal = metric === 'customers' ? d.totalCustomers : d.totalSales;
 
             return (
-              <tr key={d.label} className={isZeroSample ? 'text-gray-400' : ''}>
-                <td className="border border-gray-200 px-3 py-2 font-medium">{d.label}</td>
+              <tr key={d.label} className={isZeroSample ? 'text-text-subtle' : ''}>
+                <td className="border border-border px-3 py-2 font-medium">{d.label}</td>
                 {locationSeries.map((loc) => {
                   const cell = d.perLocation.find((c) => c.locationId === loc.locationId);
                   const v = cell ? (metric === 'customers' ? cell.customers : cell.sales) : 0;
                   return (
                     <td
                       key={loc.locationId}
-                      className="border border-gray-200 px-3 py-2 text-right tabular-nums"
+                      className="border border-border px-3 py-2 text-right tabular-nums"
                     >
                       {isZeroSample ? '--' : formatVal(v, metric)}
                     </td>
                   );
                 })}
-                <td className="border border-gray-200 px-3 py-2 text-right tabular-nums">
+                <td className="border border-border px-3 py-2 text-right tabular-nums">
                   {isZeroSample ? '--' : formatVal(rowTotal, metric)}
                 </td>
-                <td className="border border-gray-200 px-3 py-2 text-right tabular-nums">
+                <td className="border border-border px-3 py-2 text-right tabular-nums">
                   {isZeroSample ? '--' : d.sampleCount}
                 </td>
               </tr>
             );
           })}
 
-          <tr className="bg-gray-50 font-medium">
-            <td className="border border-gray-200 px-3 py-2">合計</td>
+          <tr className="bg-surface-muted font-medium">
+            <td className="border border-border px-3 py-2">合計</td>
             {locationSeries.map((loc) => {
               const v = locationTotals.get(loc.locationId) ?? 0;
               return (
                 <td
                   key={loc.locationId}
-                  className="border border-gray-200 px-3 py-2 text-right tabular-nums"
+                  className="border border-border px-3 py-2 text-right tabular-nums"
                 >
                   {formatVal(v, metric)}
                 </td>
               );
             })}
-            <td className="border border-gray-200 px-3 py-2 text-right tabular-nums">
+            <td className="border border-border px-3 py-2 text-right tabular-nums">
               {formatVal(grandTotal, metric)}
             </td>
-            <td className="border border-gray-200 px-3 py-2 text-right tabular-nums">
+            <td className="border border-border px-3 py-2 text-right tabular-nums">
               {sampleTotal}
             </td>
           </tr>
