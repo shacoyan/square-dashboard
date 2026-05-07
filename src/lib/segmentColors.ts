@@ -3,10 +3,10 @@
 import type { CustomerSegment } from '../types';
 
 export const segmentColors: Record<CustomerSegment, string> = {
-  new: '#2563eb',
-  repeat: '#0d9488',
-  regular: '#dc2626',
-  staff: '#7c3aed',
+  new: '#3b82f6',
+  repeat: '#eab308',
+  regular: '#ef4444',
+  staff: '#a855f7',
   unlisted: '#6b7280',
 };
 

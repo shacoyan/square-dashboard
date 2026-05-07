@@ -7,7 +7,7 @@ export interface ChartFigureProps {
 }
 
 export function ChartFigure({ label, className, children }: ChartFigureProps) {
-  const cls = className ? `m-0 ${className}` : 'm-0';
+  const cls = className ? `m-0 h-full w-full ${className}` : 'm-0 h-full w-full';
   return (
     <figure role="img" aria-label={label} className={cls}>
       {children}
