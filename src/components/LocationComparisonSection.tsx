@@ -7,6 +7,7 @@ import { MSG } from '../lib/messages';
 import { formatYen } from '../utils';
 import WeekdayLocationAnalysisSection from './WeekdayLocationAnalysisSection';
 import { getLocationColors } from '../lib/locationColors';
+import { granularityFor, cardTitleByGranularity } from '../lib/trendAggregation';
 
 import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
 
@@ -78,6 +79,9 @@ export default function LocationComparisonSection(props: Props) {
     () => getLocationColors(data ? data.rows.map(r => r.locationId) : []),
     [data]
   );
+
+  const granularity = granularityFor(period);
+  const trendPrefix = cardTitleByGranularity(granularity);
 
   type RowInput = LocationSegmentRow | Omit<LocationSegmentRow, 'locationId' | 'locationName' | 'loadError' | 'partialFailure' | 'transactions'>;
   const renderRow = (row: RowInput, isTotal = false) => {
@@ -356,7 +360,7 @@ export default function LocationComparisonSection(props: Props) {
               </div>
 
               <div className="bg-surface-muted rounded-xl border border-border p-4">
-                <h3 className="text-md font-bold text-text mb-4">日次推移（客数）</h3>
+                <h3 className="text-md font-bold text-text mb-4">{`${trendPrefix}（客数）`}</h3>
                 <LocationTrendChart
                   locationSeries={data.rows.map((r) => ({
                     locationId: r.locationId,
@@ -372,7 +376,7 @@ export default function LocationComparisonSection(props: Props) {
               </div>
 
               <div className="bg-surface-muted rounded-xl border border-border p-4">
-                <h3 className="text-md font-bold text-text mb-4">日次推移（売上）</h3>
+                <h3 className="text-md font-bold text-text mb-4">{`${trendPrefix}（売上）`}</h3>
                 <LocationTrendChart
                   locationSeries={data.rows.map((r) => ({
                     locationId: r.locationId,
@@ -387,16 +391,18 @@ export default function LocationComparisonSection(props: Props) {
                 />
               </div>
 
-              <div className="bg-surface-muted rounded-xl border border-border p-4">
-                <WeekdayLocationAnalysisSection
-                  locationSeries={data.rows.map((r) => ({
-                    locationId: r.locationId,
-                    locationName: r.locationName,
-                    dailyTrend: r.dailyTrend,
-                  }))}
-                  colorMap={barColorsMap}
-                />
-              </div>
+              {granularity === 'daily' && (
+                <div className="bg-surface-muted rounded-xl border border-border p-4">
+                  <WeekdayLocationAnalysisSection
+                    locationSeries={data.rows.map((r) => ({
+                      locationId: r.locationId,
+                      locationName: r.locationName,
+                      dailyTrend: r.dailyTrend,
+                    }))}
+                    colorMap={barColorsMap}
+                  />
+                </div>
+              )}
 
               <div className="bg-surface-muted rounded-xl border border-border p-2 md:p-4">
                 <OccupancyAnalysisSection transactions={data.rows.flatMap((r) => r.transactions ?? [])} startHour={startHour} endHour={endHour} />

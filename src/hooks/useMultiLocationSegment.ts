@@ -2,104 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Transaction, OpenOrder, Location, PeriodPreset, DailySegmentPoint, SegmentBreakdown, AcquisitionBreakdown, LocationSegmentRow, LocationComparisonData } from '../types';
 import { aggregateSegments, allocateSalesByTransaction, countCustomersByTransaction } from '../lib/customerSegment';
 import { aggregateTrendByGranularity, granularityFor } from '../lib/trendAggregation';
+import { calculatePeriodDates } from '../lib/periodDates';
 import { MSG } from '../lib/messages';
-
-function getJSTDateParts(date: Date): { year: number; month: number; day: number } {
-  const jstString = date.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit' });
-  const parts = jstString.split('/').map(Number);
-  return { year: parts[0], month: parts[1], day: parts[2] };
-}
-
-function formatJSTDateString(year: number, month: number, day: number): string {
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-function getMonOffset(date: Date): number {
-  const d = date.getUTCDay();
-  return (d + 6) % 7;
-}
-
-function getFirstWeekMonday(year: number, month: number): Date {
-  const first = new Date(Date.UTC(year, month - 1, 1));
-  const offset = getMonOffset(first);
-  return new Date(Date.UTC(year, month - 1, 1 - offset));
-}
-
-function calculatePeriodDates(
-  period: PeriodPreset,
-  baseDate: string,
-  weekIndex?: number,
-  quarterIndex?: number,
-): string[] {
-  const [by, bm, bd] = baseDate.split('-').map(Number);
-
-  const { year: todayY, month: todayM, day: todayD } = getJSTDateParts(new Date());
-  const todayStr = formatJSTDateString(todayY, todayM, todayD);
-
-  const dates: string[] = [];
-  let startDateObj: Date;
-  let endDateObj: Date;
-
-  if (period === 'today') {
-    startDateObj = new Date(Date.UTC(by, bm - 1, bd));
-    endDateObj = new Date(Date.UTC(by, bm - 1, bd));
-  } else if (period === 'week') {
-    const firstMon = getFirstWeekMonday(by, bm);
-    const baseDateUTC = Date.UTC(by, bm - 1, bd);
-
-    let effectiveIndex: number;
-    if (weekIndex !== undefined) {
-      effectiveIndex = weekIndex;
-    } else {
-      const diff = baseDateUTC - firstMon.getTime();
-      const days = diff / 86400000;
-      effectiveIndex = Math.floor(days / 7) + 1;
-      if (effectiveIndex < 1) effectiveIndex = 1;
-    }
-
-    startDateObj = new Date(firstMon.getTime() + 7 * (effectiveIndex - 1) * 86400000);
-    endDateObj = new Date(firstMon.getTime() + (7 * (effectiveIndex - 1) + 6) * 86400000);
-  } else if (period === 'quarter') {
-    const effectiveQ =
-      quarterIndex !== undefined
-        ? quarterIndex
-        : Math.floor((bm - 1) / 3) + 1;
-    const startMonth = (effectiveQ - 1) * 3 + 1;
-    const endMonth = startMonth + 2;
-    startDateObj = new Date(Date.UTC(by, startMonth - 1, 1));
-    endDateObj = new Date(Date.UTC(by, endMonth, 0));
-  } else if (period === 'year') {
-    startDateObj = new Date(Date.UTC(by, 0, 1));
-    endDateObj = new Date(Date.UTC(by, 12, 0));
-  } else {
-    // month
-    startDateObj = new Date(Date.UTC(by, bm - 1, 1));
-    endDateObj = new Date(Date.UTC(by, bm, 0));
-  }
-
-  const startDateStr = formatJSTDateString(startDateObj.getUTCFullYear(), startDateObj.getUTCMonth() + 1, startDateObj.getUTCDate());
-  if (startDateStr > todayStr) {
-    return dates;
-  }
-
-  const endDateStr = formatJSTDateString(endDateObj.getUTCFullYear(), endDateObj.getUTCMonth() + 1, endDateObj.getUTCDate());
-  if (endDateStr > todayStr) {
-    endDateObj = new Date(Date.UTC(todayY, todayM - 1, todayD));
-  }
-
-  const current = new Date(startDateObj.getTime());
-  while (current.getTime() <= endDateObj.getTime()) {
-    dates.push(formatJSTDateString(current.getUTCFullYear(), current.getUTCMonth() + 1, current.getUTCDate()));
-    current.setUTCDate(current.getUTCDate() + 1);
-  }
-
-  if (period === 'week') {
-    const prefix = `${by}-${String(bm).padStart(2, '0')}-`;
-    return dates.filter(d => d.startsWith(prefix));
-  }
-
-  return dates;
-}
 
 function openOrderToTransaction(o: OpenOrder): Transaction {
   return {
@@ -335,11 +239,12 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
 
       const totalCustomersAll = customersAll.new + customersAll.repeat + customersAll.regular + customersAll.staff;
 
-      // Totals trend: rows の集約済 dailyTrend を date キーでさらに合算
-      const trendMap = new Map<string, DailySegmentPoint>();
-      for (const r of rows) {
-        for (const p of r.dailyTrend) {
-          const e = trendMap.get(p.date) ?? {
+      // Totals trend: locMap の raw daily を date キーで全店舗合算 → 最後に一回だけ granularity 集約
+      // (P2-2: rows[*].dailyTrend は granularity 集約済のため二段集約になっていたのを解消)
+      const rawTotalsByDate = new Map<string, DailySegmentPoint>();
+      for (const [, entry] of locMap) {
+        for (const p of entry.dailyTrend) {
+          const e = rawTotalsByDate.get(p.date) ?? {
             date: p.date,
             new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0,
             newSales: 0, repeatSales: 0, regularSales: 0, staffSales: 0, unlistedSales: 0,
@@ -354,10 +259,11 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
           e.regularSales += p.regularSales;
           e.staffSales += p.staffSales;
           e.unlistedSales += p.unlistedSales;
-          trendMap.set(p.date, e);
+          rawTotalsByDate.set(p.date, e);
         }
       }
-      const totalsDailyTrend = Array.from(trendMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+      const rawTotalsSorted = Array.from(rawTotalsByDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+      const totalsDailyTrend = aggregateTrendByGranularity(rawTotalsSorted, granularity);
       const totalsAvgDaily = period === 'today' ? totalSalesAll : (elapsedDays > 0 ? totalSalesAll / elapsedDays : null);
       const totalsAvgPerCustomer = totalCustomersAll > 0 ? totalSalesAll / totalCustomersAll : null;
 

@@ -19,10 +19,82 @@ export function granularityFor(period: PeriodPreset): Granularity {
       return 'weekly';
     case 'month':
     case 'week':
+      return 'daily';
     case 'today':
+      // 'today' は 1 日のみのため将来 hourly 集約に切替予定 (Phase 3 候補)。
+      // 現状は daily 1 ポイント返却で chart 側はラベルなし扱い。
+      // hourly 自体は今日タブ等の時間粒度向け（quarter/year では未使用）。
+      return 'daily';
     default:
       return 'daily';
   }
+}
+
+/**
+ * trend chart の X 軸ラベル整形。granularity 別に表記を切替。
+ * - daily / hourly: `MM/DD`
+ * - weekly: `MM/DD週`（週初日 = 月曜）
+ * - monthly: `YYYY/MM`
+ *
+ * Recharts の tickFormatter / Tooltip labelFormatter から
+ * `string | number | undefined` で渡されるため許容する。
+ */
+export function formatDateLabel(
+  label: string | number | undefined,
+  granularity: Granularity,
+): string {
+  if (label === undefined || label === null || label === '') return '';
+  const parts = String(label).split('-');
+  if (parts.length < 3) return String(label);
+  const [y, m, d] = parts;
+  switch (granularity) {
+    case 'monthly':
+      return `${y}/${m}`;
+    case 'weekly':
+      return `${m}/${d}週`;
+    case 'daily':
+    case 'hourly':
+    default:
+      return `${m}/${d}`;
+  }
+}
+
+/**
+ * バケット先頭日付を「人間に読みやすい」サイドリスト用ラベルへ変換。
+ * - daily:   `MM/DD(曜)`  例: 04/06(月)
+ * - weekly:  `MM/DD週`    例: 04/06週
+ * - monthly: `YYYY/MM`    例: 2026/04
+ * - hourly:  `MM/DD`      予約（hourly 拡張時に上書き予定）
+ */
+export function formatBucketRangeLabel(
+  dateStr: string,
+  granularity: Granularity,
+): string {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length < 3) return dateStr;
+  const [y, m, d] = parts;
+
+  if (granularity === 'monthly') return `${y}/${m}`;
+  if (granularity === 'weekly') return `${m}/${d}週`;
+  if (granularity === 'hourly') return `${m}/${d}`;
+
+  const yy = Number(y);
+  const mm = Number(m);
+  const dd = Number(d);
+  const wd = new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
+  const labels = ['日', '月', '火', '水', '木', '金', '土'];
+  return `${m}/${d}(${labels[wd]})`;
+}
+
+/**
+ * 推移カード title。granularity に応じて切替。
+ * Phase 2 で `日次推移` 固定だった Card title / chart prefix の動的化に使用。
+ */
+export function cardTitleByGranularity(granularity: Granularity): string {
+  if (granularity === 'monthly') return '月次推移';
+  if (granularity === 'weekly') return '週次推移';
+  return '日次推移';
 }
 
 /**

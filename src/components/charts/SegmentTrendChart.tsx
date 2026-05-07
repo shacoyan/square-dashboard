@@ -14,7 +14,7 @@ import type { DailySegmentPoint, PeriodPreset } from '../../types';
 import { ChartTooltip, ChartFigure, type ChartTooltipPayloadItem } from '../ui';
 import { chartTheme } from '../../lib/chartTheme';
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
-import { granularityFor, type Granularity } from '../../lib/trendAggregation';
+import { granularityFor, formatDateLabel } from '../../lib/trendAggregation';
 import { MSG } from '../../lib/messages';
 
 interface Props {
@@ -46,23 +46,6 @@ const SERIES: SeriesDef[] = [
 ];
 
 const COUNT_KEYS: ReadonlySet<string> = new Set<string>(SERIES.map(s => s.key));
-
-function formatDateLabel(label: string | number | undefined, granularity: Granularity): string {
-  if (label === undefined || label === null || label === '') return '';
-  const parts = String(label).split('-');
-  if (parts.length < 3) return String(label);
-  const [y, m, d] = parts;
-  switch (granularity) {
-    case 'monthly':
-      return `${y}/${m}`;
-    case 'weekly':
-      return `${m}/${d}週`;
-    case 'daily':
-    case 'hourly':
-    default:
-      return `${m}/${d}`;
-  }
-}
 
 const INITIAL_VISIBLE_KEYS: Record<CountKey, boolean> = {
   new: true,

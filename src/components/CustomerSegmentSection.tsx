@@ -3,6 +3,7 @@ import type { CustomerSegmentAnalysis, PeriodPreset, SegmentBreakdown, Acquisiti
 import { SegmentPieChart, SegmentTrendChart, AcquisitionChart } from './charts';
 import { PeriodSelector, Card, KpiSkeleton, EmptyState, ErrorState } from './ui';
 import { MSG } from '../lib/messages';
+import { granularityFor, cardTitleByGranularity, formatBucketRangeLabel } from '../lib/trendAggregation';
 import WeekdayAnalysisSection from './WeekdayAnalysisSection';
 import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
 
@@ -178,7 +179,10 @@ export default function CustomerSegmentSection({
         )}
       </Card>
 
-      {!loading && !error && data && (
+      {!loading && !error && data && (() => {
+        const granularity = granularityFor(period);
+        const trendCardTitle = cardTitleByGranularity(granularity);
+        return (
         <>
           <Card title="売上構成">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
@@ -200,7 +204,7 @@ export default function CustomerSegmentSection({
             </div>
           </Card>
 
-          <Card title="日次推移">
+          <Card title={trendCardTitle}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
               <div className="md:col-span-2">
                 <SegmentTrendChart data={data.dailyTrend} period={period} />
@@ -208,14 +212,16 @@ export default function CustomerSegmentSection({
               <div className="max-h-[280px] overflow-y-auto space-y-2">
                 {data.dailyTrend.map((day) => (
                   <div key={day.date} className="text-sm text-text-muted">
-                    {day.date}: 合計{day.new + day.repeat + day.regular + day.staff}人（新{day.new}/リ{day.repeat}/常{day.regular}/ス{day.staff}/記{day.unlisted}）
+                    {formatBucketRangeLabel(day.date, granularity)}: 合計{day.new + day.repeat + day.regular + day.staff}人（新{day.new}/リ{day.repeat}/常{day.regular}/ス{day.staff}/記{day.unlisted}）
                   </div>
                 ))}
               </div>
             </div>
           </Card>
 
-          <WeekdayAnalysisSection dailyTrend={data.dailyTrend} />
+          {granularity === 'daily' && (
+            <WeekdayAnalysisSection dailyTrend={data.dailyTrend} />
+          )}
 
           <OccupancyAnalysisSection transactions={transactions} startHour={startHour} endHour={endHour} />
 
@@ -239,7 +245,8 @@ export default function CustomerSegmentSection({
             </div>
           </Card>
         </>
-      )}
+        );
+      })()}
     </div>
   );
 }

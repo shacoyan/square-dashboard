@@ -17,7 +17,7 @@ import { TOTAL_LINE_COLOR } from '../../lib/locationColors';
 import { chartTheme } from '../../lib/chartTheme';
 import { ChartTooltip, type ChartTooltipPayloadItem, ChartFigure, EmptyState } from '../ui';
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
-import { granularityFor, type Granularity } from '../../lib/trendAggregation';
+import { granularityFor, formatDateLabel } from '../../lib/trendAggregation';
 import { MSG } from '../../lib/messages';
 
 const TOTAL_KEY = '__total__';
@@ -34,23 +34,6 @@ function getTotalSales(point: DailySegmentPoint): number {
     (point.staffSales ?? 0) +
     (point.unlistedSales ?? 0)
   );
-}
-
-function formatDateLabel(label: string | number | undefined, granularity: Granularity): string {
-  if (label === undefined || label === null || label === '') return '';
-  const parts = String(label).split('-');
-  if (parts.length < 3) return String(label);
-  const [y, m, d] = parts;
-  switch (granularity) {
-    case 'monthly':
-      return `${y}/${m}`;
-    case 'weekly':
-      return `${m}/${d}週`;
-    case 'daily':
-    case 'hourly':
-    default:
-      return `${m}/${d}`;
-  }
 }
 
 interface Props {
