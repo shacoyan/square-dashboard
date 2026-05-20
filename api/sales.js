@@ -1,4 +1,4 @@
-import { setCors, validateToken, squareHeaders, parseTimeRange } from './_shared.js';
+import { setCors, validateToken, squareHeaders, parseTimeRange, normalizePaymentsForReporting } from './_shared.js';
 
 export default async (req, res) => {
   if (setCors(req, res)) {
@@ -52,14 +52,14 @@ export default async (req, res) => {
       cursor = data.cursor || undefined;
     } while (cursor);
 
+    allPayments = normalizePaymentsForReporting(allPayments);
+
     let totalAmount = 0;
     let transactionCount = 0;
 
     for (const payment of allPayments) {
-      if (payment.status === 'COMPLETED') {
-        totalAmount += payment.amount_money?.amount ?? 0;
-        transactionCount++;
-      }
+      totalAmount += payment.amount_money?.amount ?? 0;
+      transactionCount++;
     }
 
     return res.status(200).json({

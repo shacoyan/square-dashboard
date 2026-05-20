@@ -263,3 +263,25 @@ export async function fetchCatalogVariationCategoryMap(ordersMap) {
 
   return localVariationCategoryMap;
 }
+
+/**
+ * Square Web レポートと整合するため、payments を正規化する:
+ * - COMPLETED 以外を除外（FAILED/CANCELED など）
+ * - 全額返金済みを除外
+ * - 部分返金は amount_money.amount を純額に差し替え
+ *
+ * @param {Array} payments - Square API /v2/payments のレスポンス payments 配列
+ * @returns {Array} 正規化後の payments
+ */
+export function normalizePaymentsForReporting(payments) {
+  return payments
+    .filter(p => p.status === 'COMPLETED')
+    .flatMap(p => {
+      const gross = p.amount_money?.amount ?? 0;
+      const refunded = p.refunded_money?.amount ?? 0;
+      if (refunded <= 0) return [p];
+      if (refunded >= gross) return []; // 全額返金 → 除外
+      // 部分返金 → 売上を純額に差し替え
+      return [{ ...p, amount_money: { ...p.amount_money, amount: gross - refunded } }];
+    });
+}

@@ -1,4 +1,4 @@
-import { setCors, validateToken, parseRangeTimeRange, computeBusinessDate, fetchAllPayments, fetchOrdersBatch, fetchCatalogVariationCategoryMap, fetchCustomers } from './_shared.js';
+import { setCors, validateToken, parseRangeTimeRange, computeBusinessDate, fetchAllPayments, fetchOrdersBatch, fetchCatalogVariationCategoryMap, fetchCustomers, normalizePaymentsForReporting } from './_shared.js';
 
 export default async (req, res) => {
   if (setCors(req, res)) return res.status(200).end();
@@ -17,15 +17,8 @@ export default async (req, res) => {
     const { beginTimeJST, endTimeJST } = parseRangeTimeRange({ start_date, end_date, start_hour, end_hour });
     const allPayments0 = await fetchAllPayments({ beginTimeJST, endTimeJST, location_id });
 
-    const completedPayments = allPayments0.filter(p => p.status === 'COMPLETED');
-
-    const allPayments = completedPayments.flatMap(p => {
-      const gross = p.amount_money?.amount ?? 0;
-      const refunded = p.refunded_money?.amount ?? 0;
-      if (refunded <= 0) return [p];
-      if (refunded >= gross) return [];
-      return [{ ...p, amount_money: { ...p.amount_money, amount: gross - refunded } }];
-    });
+    // COMPLETED 抽出 + 返金正規化（Square Web レポート整合）
+    const allPayments = normalizePaymentsForReporting(allPayments0);
 
     const orderIds = [...new Set(allPayments.filter(p => p.order_id).map(p => p.order_id))];
     const ordersMap = await fetchOrdersBatch(orderIds);
