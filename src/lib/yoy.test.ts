@@ -219,6 +219,42 @@ describe('formatYoY', () => {
   it('compact=true でも no_data は「前年データなし」で統一', () => {
     expect(formatYoY(baseNoData, { compact: true })).toBe('前年データなし');
   });
+
+  it('formatLastYear 付き up (フル)', () => {
+    const delta = calculateYoY(5000000, 4000000);
+    const opts = { formatLastYear: (v: number) => `¥${v.toLocaleString()}` };
+    expect(formatYoY(delta, opts)).toBe('↑ +25.0% vs 前年 (前年: ¥4,000,000)');
+  });
+
+  it('formatLastYear 付き up (compact)', () => {
+    const delta = calculateYoY(5000000, 4000000);
+    const opts = { compact: true, formatLastYear: (v: number) => `¥${v.toLocaleString()}` };
+    expect(formatYoY(delta, opts)).toBe('↑ +25.0% (前年: ¥4,000,000)');
+  });
+
+  it('formatLastYear 付き down (フル)', () => {
+    const delta = calculateYoY(80, 100);
+    const opts = { formatLastYear: (v: number) => `${v}人` };
+    expect(formatYoY(delta, opts)).toBe('↓ -20.0% vs 前年 (前年: 100人)');
+  });
+
+  it('formatLastYear 付き flat (フル)', () => {
+    const delta = calculateYoY(102, 100);
+    const opts = { formatLastYear: (v: number) => `¥${v.toLocaleString()}` };
+    expect(formatYoY(delta, opts)).toBe('±0.0% 変化なし (前年: ¥100)');
+  });
+
+  it('formatLastYear 付き flat (compact)', () => {
+    const delta = calculateYoY(102, 100);
+    const opts = { compact: true, formatLastYear: (v: number) => `¥${v.toLocaleString()}` };
+    expect(formatYoY(delta, opts)).toBe('±0.0% (前年: ¥100)');
+  });
+
+  it('formatLastYear 付き no_data は併記なし', () => {
+    const delta = calculateYoY(100, null);
+    const opts = { formatLastYear: (v: number) => `¥${v}` };
+    expect(formatYoY(delta, opts)).toBe('前年データなし');
+  });
 });
 
 describe('yoyClassToColorClass', () => {

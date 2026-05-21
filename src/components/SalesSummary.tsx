@@ -38,7 +38,7 @@ function getYoYAriaLabel(
 }
 
 function YoYRow({ delta, yoy }: { delta: YoYDelta; yoy: SalesRangeYoYResult }) {
-  const text = formatYoY(delta);
+  const text = formatYoY(delta, { formatLastYear: formatYen });
   const colorClass = yoyClassToColorClass(delta.classification);
   const baseAriaLabel = getYoYAriaLabel(delta.classification, delta.deltaPercent);
 

@@ -135,15 +135,22 @@ export default function LocationComparisonSection(props: Props) {
     };
   };
 
-  // YoY 小行 (数値セルの下に「↑ +12.3%」を表示)
-  const renderYoyHint = (delta: YoYDelta | undefined) => {
+  // YoY 小行 (数値セルの下に「↑ +12.3% (前年: ¥4,000,000)」を表示)
+  const renderYoyHint = (
+    delta: YoYDelta | undefined,
+    formatLastYear?: (value: number) => string
+  ) => {
     if (!delta) return null;
     return (
       <div className={`text-[10px] ${yoyClassToColorClass(delta.classification)} leading-tight`}>
-        {formatYoY(delta, { compact: true })}
+        {formatYoY(delta, { compact: true, formatLastYear })}
       </div>
     );
   };
+
+  // テーブル列ごとの前年値 formatter
+  const yenLY = (v: number) => formatYen(Math.round(v));
+  const peopleLY = (v: number) => v.toLocaleString();
 
   type RowInput = LocationSegmentRow | Omit<LocationSegmentRow, 'locationId' | 'locationName' | 'loadError' | 'partialFailure' | 'transactions'>;
   const renderRow = (row: RowInput, isTotal = false) => {
@@ -169,20 +176,20 @@ export default function LocationComparisonSection(props: Props) {
         </td>
         <td className={TD_NUM}>
           {formatYen(row.totalSales)}
-          {renderYoyHint(rowYoy?.totalSales)}
+          {renderYoyHint(rowYoy?.totalSales, yenLY)}
         </td>
         <td className={TD_NUM}>
           {row.averageDailySales !== null ? formatYen(Math.round(row.averageDailySales)) : '--'}
           {hasPartialFailure && <span className="text-xs text-warning-800 block">（{rowTyped.partialFailure!.failedDays}日失敗）</span>}
-          {renderYoyHint(rowYoy?.avgDailySales)}
+          {renderYoyHint(rowYoy?.avgDailySales, yenLY)}
         </td>
         <td className={TD_NUM}>
           {row.overallAveragePerCustomer !== null ? formatYen(Math.round(row.overallAveragePerCustomer)) : '--'}
-          {renderYoyHint(rowYoy?.perCustomer)}
+          {renderYoyHint(rowYoy?.perCustomer, yenLY)}
         </td>
         <td className={TD_NUM}>
           {row.totalCustomers.toLocaleString()}
-          {renderYoyHint(rowYoy?.customers)}
+          {renderYoyHint(rowYoy?.customers, peopleLY)}
         </td>
         <td className={TD_NUM}>{row.customersBySegment.new.toLocaleString()}</td>
         <td className={TD_NUM}>{row.customersBySegment.repeat.toLocaleString()}</td>
@@ -332,15 +339,15 @@ export default function LocationComparisonSection(props: Props) {
                             <td className={detailTdNameClassName}>{r.locationName}</td>
                             <td className={detailTdNumClassName}>
                               {formatYen(r.totalSales)}
-                              {renderYoyHint(ry?.totalSales)}
+                              {renderYoyHint(ry?.totalSales, yenLY)}
                             </td>
                             <td className={detailTdNumClassName}>
                               {r.totalCustomers.toLocaleString()}
-                              {renderYoyHint(ry?.customers)}
+                              {renderYoyHint(ry?.customers, peopleLY)}
                             </td>
                             <td className={detailTdNumClassName}>
                               {r.overallAveragePerCustomer !== null ? formatYen(Math.round(r.overallAveragePerCustomer)) : '--'}
-                              {renderYoyHint(ry?.perCustomer)}
+                              {renderYoyHint(ry?.perCustomer, yenLY)}
                             </td>
                           </tr>
                         );
@@ -352,15 +359,15 @@ export default function LocationComparisonSection(props: Props) {
                             <td className={detailTdNameClassName}>合計</td>
                             <td className={detailTdNumClassName}>
                               {formatYen(data.totals.totalSales)}
-                              {renderYoyHint(ty?.totalSales)}
+                              {renderYoyHint(ty?.totalSales, yenLY)}
                             </td>
                             <td className={detailTdNumClassName}>
                               {data.totals.totalCustomers.toLocaleString()}
-                              {renderYoyHint(ty?.customers)}
+                              {renderYoyHint(ty?.customers, peopleLY)}
                             </td>
                             <td className={detailTdNumClassName}>
                               {data.totals.overallAveragePerCustomer !== null ? formatYen(Math.round(data.totals.overallAveragePerCustomer)) : '--'}
-                              {renderYoyHint(ty?.perCustomer)}
+                              {renderYoyHint(ty?.perCustomer, yenLY)}
                             </td>
                           </tr>
                         );

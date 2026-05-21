@@ -79,16 +79,27 @@ export function shiftRangeOneYearBack(args: { start_date: string; end_date: stri
   };
 }
 
-export function formatYoY(delta: YoYDelta, opts?: { compact?: boolean }): string {
+export function formatYoY(
+  delta: YoYDelta,
+  opts?: {
+    compact?: boolean;
+    formatLastYear?: (value: number) => string;
+  }
+): string {
   const suffix = opts?.compact ? '' : ' vs 前年';
+  const lastYearSuffix =
+    opts?.formatLastYear && delta.lastYear !== null
+      ? ` (前年: ${opts.formatLastYear(delta.lastYear)})`
+      : '';
+
   switch (delta.classification) {
     case 'up':
-      return `↑ +${delta.deltaPercent!.toFixed(1)}%${suffix}`;
+      return `↑ +${delta.deltaPercent!.toFixed(1)}%${suffix}${lastYearSuffix}`;
     case 'down':
-      return `↓ ${delta.deltaPercent!.toFixed(1)}%${suffix}`;
+      return `↓ ${delta.deltaPercent!.toFixed(1)}%${suffix}${lastYearSuffix}`;
     case 'flat': {
       const flatSuffix = opts?.compact ? '' : ' 変化なし';
-      return `±0.0%${flatSuffix}`;
+      return `±0.0%${flatSuffix}${lastYearSuffix}`;
     }
     case 'no_data':
       return `前年データなし`;

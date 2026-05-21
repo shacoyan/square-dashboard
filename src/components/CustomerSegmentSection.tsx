@@ -61,7 +61,11 @@ function SegmentCustomerCard({
       )}
       {showYoY && yoyDelta && (
         <p className={`text-xs mt-1 ${yoyClassToColorClass(yoyDelta.classification)}`}>
-          {formatYoY(yoyDelta)}
+          {formatYoY(yoyDelta, {
+            formatLastYear: showCount
+              ? (v) => `${v.toLocaleString()}人`
+              : formatYen,
+          })}
         </p>
       )}
     </div>
@@ -207,7 +211,7 @@ export default function CustomerSegmentSection({
                 </p>
                 {showYoY && yoy?.yoy.total_amount && (
                   <p className={`text-xs mt-1 ${yoyClassToColorClass(yoy.yoy.total_amount.classification)}`}>
-                    {formatYoY(yoy.yoy.total_amount)}
+                    {formatYoY(yoy.yoy.total_amount, { formatLastYear: formatYen })}
                   </p>
                 )}
               </div>
@@ -219,7 +223,7 @@ export default function CustomerSegmentSection({
                 </p>
                 {showYoY && derivedYoY.avgDaily && (
                   <p className={`text-xs mt-1 ${yoyClassToColorClass(derivedYoY.avgDaily.classification)}`}>
-                    {formatYoY(derivedYoY.avgDaily)}
+                    {formatYoY(derivedYoY.avgDaily, { formatLastYear: (v) => formatYen(Math.round(v)) })}
                   </p>
                 )}
               </div>
@@ -231,7 +235,7 @@ export default function CustomerSegmentSection({
                 </p>
                 {showYoY && derivedYoY.perCustomer && (
                   <p className={`text-xs mt-1 ${yoyClassToColorClass(derivedYoY.perCustomer.classification)}`}>
-                    {formatYoY(derivedYoY.perCustomer)}
+                    {formatYoY(derivedYoY.perCustomer, { formatLastYear: (v) => formatYen(Math.round(v)) })}
                   </p>
                 )}
               </div>
@@ -246,7 +250,7 @@ export default function CustomerSegmentSection({
                 </p>
                 {showYoY && yoy?.yoy.customer_count && (
                   <p className={`text-xs mt-1 ${yoyClassToColorClass(yoy.yoy.customer_count.classification)}`}>
-                    {formatYoY(yoy.yoy.customer_count)}
+                    {formatYoY(yoy.yoy.customer_count, { formatLastYear: (v) => `${v.toLocaleString()}人` })}
                   </p>
                 )}
               </div>
