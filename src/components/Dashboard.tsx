@@ -47,7 +47,7 @@ function getWeekIndexForDate(dateStr: string): number {
 export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [startHour, setStartHour] = useState<number>(() => {
     const saved = localStorage.getItem('sq_start_hour');
-    return saved ? parseInt(saved, 10) : 10;
+    return saved ? parseInt(saved, 10) : 13;
   });
   const [endHour, setEndHour] = useState<number>(() => {
     const saved = localStorage.getItem('sq_end_hour');
