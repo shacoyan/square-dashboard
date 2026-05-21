@@ -47,7 +47,7 @@ function getWeekIndexForDate(dateStr: string): number {
 export default function Dashboard({ token, onLogout }: DashboardProps) {
   const [startHour, setStartHour] = useState<number>(() => {
     const saved = localStorage.getItem('sq_start_hour');
-    return saved ? parseInt(saved, 10) : 13;
+    return saved ? parseInt(saved, 10) : 10;
   });
   const [endHour, setEndHour] = useState<number>(() => {
     const saved = localStorage.getItem('sq_end_hour');
@@ -79,9 +79,9 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     localStorage.setItem('sq_dashboard_tab', t);
   };
 
-  const [weekIndex, setWeekIndex] = useState<number>(() => getWeekIndexForDate(getBusinessDate(13)));
+  const [weekIndex, setWeekIndex] = useState<number>(() => getWeekIndexForDate(getBusinessDate(startHour)));
   const [quarterIndex, setQuarterIndex] = useState<number>(() => {
-    const m = parseInt(getBusinessDate(13).split('-')[1], 10);
+    const m = parseInt(getBusinessDate(startHour).split('-')[1], 10);
     return Math.floor((m - 1) / 3) + 1;
   });
 
@@ -109,7 +109,19 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
         const locs: Location[] = data.locations ?? [];
         setLocations(locs);
         if (locs.length > 0) {
-          setSelectedLocationId(locs[0].id);
+          // ALL モード (locs.length > 1) 時のみ localStorage 復元、なければ先頭フォールバック
+          let restored: string | null = null;
+          if (locs.length > 1 && typeof window !== 'undefined') {
+            try {
+              const saved = localStorage.getItem('sq_default_location_id');
+              if (saved && locs.some((l) => l.id === saved)) {
+                restored = saved;
+              }
+            } catch {
+              // private mode 等で localStorage 例外 → サイレントにフォールバック
+            }
+          }
+          setSelectedLocationId(restored ?? locs[0].id);
         }
       } catch (err) {
         setLocationsError(err instanceof Error ? err.message : MSG.error.locations);
@@ -119,6 +131,18 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     };
     fetchLocations();
   }, [token]);
+
+  // 店舗切替時に localStorage 保存 (ALL モード: locations.length > 1 のときのみ)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!selectedLocationId) return;
+    if (locations.length <= 1) return;
+    try {
+      localStorage.setItem('sq_default_location_id', selectedLocationId);
+    } catch {
+      // private mode 等で localStorage 例外 → サイレントに無視
+    }
+  }, [selectedLocationId, locations.length]);
 
   const { sales, transactions, loading, error, lastUpdated, refresh } = useSquareData({
     token,
