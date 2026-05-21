@@ -15,6 +15,10 @@ interface Props {
   onQuarterIndexChange: (n: number) => void;
   startHour?: number;
   endHour?: number;
+  // Phase 3 Team B: 2 段階ロード対応 (optional pass-through)
+  detailAvailable?: boolean;
+  detailLoading?: boolean;
+  detailError?: string | null;
 }
 
 export default function SegmentTabPanel(props: Props) {

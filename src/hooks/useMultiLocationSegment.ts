@@ -4,6 +4,11 @@ import { aggregateSegments, allocateSalesByTransaction, countCustomersByTransact
 import { aggregateTrendByGranularity, granularityFor } from '../lib/trendAggregation';
 import { calculatePeriodDates } from '../lib/periodDates';
 import { MSG } from '../lib/messages';
+import { fetchSalesRange, dayMetricsToTrendPoint } from '../lib/salesRangeAdapter';
+import type { SalesRangeMeta, SalesRangeResponse } from '../lib/salesRangeAdapter';
+import { useSalesRange } from '../lib/featureFlags';
+
+const DETAIL_MAX_DAYS = 35;
 
 function openOrderToTransaction(o: OpenOrder): Transaction {
   return {
@@ -35,6 +40,10 @@ export interface UseMultiLocationSegmentResult {
   loading: boolean;
   error: string | null;
   refresh: () => void;
+  detailLoading: boolean;
+  detailError: string | null;
+  detailAvailable: boolean;
+  meta: SalesRangeMeta | null;
 }
 
 type RangeFetchResult = {
@@ -45,12 +54,20 @@ type RangeFetchResult = {
   openFailed: boolean;
 };
 
+const ZERO_SEGMENT: SegmentBreakdown = { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0 };
+const ZERO_ACQUISITION: AcquisitionBreakdown = { google: 0, review: 0, signboard: 0, sns: 0, unknown: 0 };
+
 export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseMultiLocationSegmentResult {
   const { token, locations, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled } = args;
 
   const [data, setData] = useState<LocationComparisonData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailLoading, setDetailLoading] = useState<boolean>(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailAvailable, setDetailAvailable] = useState<boolean>(true);
+  const [meta, setMeta] = useState<SalesRangeMeta | null>(null);
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const locationIdsKey = locations.map(l => l.id).join(',');
@@ -68,6 +85,10 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
     setLoading(true);
     setError(null);
     setData(null);
+    setDetailLoading(false);
+    setDetailError(null);
+    setMeta(null);
+    setDetailAvailable(true);
 
     try {
       const dates = calculatePeriodDates(period, baseDate, weekIndex, quarterIndex);
@@ -86,92 +107,289 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
       const start_date = dates[0];
       const end_date = dates[dates.length - 1];
 
-      const tasks: Promise<RangeFetchResult>[] = [];
-
-      for (const loc of locations) {
-        const txUrl = `/api/transactions-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(loc.id)}&start_hour=${startHour}&end_hour=${endHour}`;
-        const openUrl = `/api/open-orders-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(loc.id)}&start_hour=${startHour}&end_hour=${endHour}`;
-
-        const txPromise = fetch(txUrl, { signal: controller.signal, headers });
-        const openPromise = fetch(openUrl, { signal: controller.signal, headers });
-
-        const locationId = loc.id;
-
-        const task = Promise.allSettled([txPromise, openPromise]).then(async (results): Promise<RangeFetchResult> => {
-          const txResult = results[0];
-          const openResult = results[1];
-
-          let txByDate: Record<string, { transactions: Transaction[] }> | null = null;
-          let openByDate: Record<string, { orders: OpenOrder[] }> | null = null;
-          let txFailed = false;
-          let openFailed = false;
-
-          if (txResult.status === 'fulfilled' && txResult.value.ok) {
-            const data = await txResult.value.json();
-            txByDate = data.byDate ?? {};
-          } else {
-            txFailed = true;
-          }
-
-          if (openResult.status === 'fulfilled' && openResult.value.ok) {
-            const data = await openResult.value.json();
-            openByDate = data.byDate ?? {};
-          } else {
-            openFailed = true;
-          }
-
-          return { locationId, txByDate, openByDate, txFailed, openFailed };
-        });
-
-        tasks.push(task);
-      }
-
-      const allResults = await Promise.all(tasks);
-      if (controller.signal.aborted) return;
-
-      const locMap = new Map<string, { transactions: Transaction[]; dailyTrend: DailySegmentPoint[]; failedDays: number; totalDays: number }>();
-      locations.forEach(loc => locMap.set(loc.id, { transactions: [], dailyTrend: [], failedDays: 0, totalDays: dates.length }));
-
-      let totalFailedPairs = 0;
-
-      for (const { locationId, txByDate, openByDate, txFailed, openFailed } of allResults) {
-        const entry = locMap.get(locationId);
-        if (!entry) continue;
-        if (txFailed && openFailed) {
-          entry.failedDays = dates.length;
-          totalFailedPairs += dates.length;
-          continue;
-        }
-        for (const date of dates) {
-          const transactions = txByDate?.[date]?.transactions ?? [];
-          const openOrders = openByDate?.[date]?.orders ?? [];
-          const mappedOpen = openOrders.map(openOrderToTransaction);
-          const combined = [...transactions, ...mappedOpen];
-          entry.transactions.push(...combined);
-
-          let n = 0, rp = 0, rg = 0, st = 0, ul = 0;
-          let nS = 0, rpS = 0, rgS = 0, stS = 0, ulS = 0;
-          for (const tx of combined) {
-            const c = countCustomersByTransaction(tx);
-            n += c.new; rp += c.repeat; rg += c.regular; st += c.staff; ul += c.unlisted;
-            const s = allocateSalesByTransaction(tx);
-            nS += s.new; rpS += s.repeat; rgS += s.regular; stS += s.staff; ulS += s.unlisted;
-          }
-          entry.dailyTrend.push({
-            date,
-            new: n, repeat: rp, regular: rg, staff: st, unlisted: ul,
-            newSales: nS, repeatSales: rpS, regularSales: rgS, staffSales: stS, unlistedSales: ulS,
-          });
-        }
-      }
+      const useSalesRangeFlag = useSalesRange();
+      const isDetailAvailable = dates.length <= DETAIL_MAX_DAYS;
+      setDetailAvailable(useSalesRangeFlag ? isDetailAvailable : true);
 
       const elapsedDays = dates.length;
       const granularity = granularityFor(period);
 
+      if (!useSalesRangeFlag) {
+        // 分岐 A: 旧コードパス (transactions-range + open-orders-range のみ)
+        const tasks: Promise<RangeFetchResult>[] = [];
+
+        for (const loc of locations) {
+          const txUrl = `/api/transactions-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(loc.id)}&start_hour=${startHour}&end_hour=${endHour}`;
+          const openUrl = `/api/open-orders-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(loc.id)}&start_hour=${startHour}&end_hour=${endHour}`;
+
+          const txPromise = fetch(txUrl, { signal: controller.signal, headers });
+          const openPromise = fetch(openUrl, { signal: controller.signal, headers });
+
+          const locationId = loc.id;
+
+          const task = Promise.allSettled([txPromise, openPromise]).then(async (results): Promise<RangeFetchResult> => {
+            const txResult = results[0];
+            const openResult = results[1];
+
+            let txByDate: Record<string, { transactions: Transaction[] }> | null = null;
+            let openByDate: Record<string, { orders: OpenOrder[] }> | null = null;
+            let txFailed = false;
+            let openFailed = false;
+
+            if (txResult.status === 'fulfilled' && txResult.value.ok) {
+              const d = await txResult.value.json();
+              txByDate = d.byDate ?? {};
+            } else {
+              txFailed = true;
+            }
+
+            if (openResult.status === 'fulfilled' && openResult.value.ok) {
+              const d = await openResult.value.json();
+              openByDate = d.byDate ?? {};
+            } else {
+              openFailed = true;
+            }
+
+            return { locationId, txByDate, openByDate, txFailed, openFailed };
+          });
+
+          tasks.push(task);
+        }
+
+        const allResults = await Promise.all(tasks);
+        if (controller.signal.aborted) return;
+
+        const locMap = new Map<string, { transactions: Transaction[]; dailyTrend: DailySegmentPoint[]; failedDays: number; totalDays: number }>();
+        locations.forEach(loc => locMap.set(loc.id, { transactions: [], dailyTrend: [], failedDays: 0, totalDays: dates.length }));
+
+        let totalFailedPairs = 0;
+
+        for (const { locationId, txByDate, openByDate, txFailed, openFailed } of allResults) {
+          const entry = locMap.get(locationId);
+          if (!entry) continue;
+          if (txFailed && openFailed) {
+            entry.failedDays = dates.length;
+            totalFailedPairs += dates.length;
+            continue;
+          }
+          for (const date of dates) {
+            const transactions = txByDate?.[date]?.transactions ?? [];
+            const openOrders = openByDate?.[date]?.orders ?? [];
+            const mappedOpen = openOrders.map(openOrderToTransaction);
+            const combined = [...transactions, ...mappedOpen];
+            entry.transactions.push(...combined);
+
+            let n = 0, rp = 0, rg = 0, st = 0, ul = 0;
+            let nS = 0, rpS = 0, rgS = 0, stS = 0, ulS = 0;
+            for (const tx of combined) {
+              const c = countCustomersByTransaction(tx);
+              n += c.new; rp += c.repeat; rg += c.regular; st += c.staff; ul += c.unlisted;
+              const s = allocateSalesByTransaction(tx);
+              nS += s.new; rpS += s.repeat; rgS += s.regular; stS += s.staff; ulS += s.unlisted;
+            }
+            entry.dailyTrend.push({
+              date,
+              new: n, repeat: rp, regular: rg, staff: st, unlisted: ul,
+              newSales: nS, repeatSales: rpS, regularSales: rgS, staffSales: stS, unlistedSales: ulS,
+            });
+          }
+        }
+
+        const rows: LocationSegmentRow[] = locations.map(loc => {
+          const entry = locMap.get(loc.id)!;
+          const fullyFailed = entry.failedDays === entry.totalDays;
+          if (fullyFailed) {
+            return {
+              locationId: loc.id,
+              locationName: loc.name,
+              totalSales: 0,
+              averageDailySales: null,
+              overallAveragePerCustomer: null,
+              totalCustomers: 0,
+              customersBySegment: { ...ZERO_SEGMENT },
+              salesBySegment: { ...ZERO_SEGMENT },
+              acquisitionBreakdown: { ...ZERO_ACQUISITION },
+              dailyTrend: [],
+              loadError: MSG.error.period,
+              partialFailure: null,
+              transactions: [],
+            };
+          }
+          const agg = aggregateSegments(entry.transactions);
+          const totalSales = entry.transactions.reduce((sum, t) => sum + (t.amount ?? 0), 0);
+          const totalCustomers = agg.customers.new + agg.customers.repeat + agg.customers.regular + agg.customers.staff;
+          const averageDailySales = period === 'today' ? totalSales : (elapsedDays > 0 ? totalSales / elapsedDays : null);
+          const overallAveragePerCustomer = totalCustomers > 0 ? totalSales / totalCustomers : null;
+          const sortedDailyTrend = [...entry.dailyTrend].sort((a, b) => a.date.localeCompare(b.date));
+          const aggregatedDailyTrend = aggregateTrendByGranularity(sortedDailyTrend, granularity);
+          return {
+            locationId: loc.id,
+            locationName: loc.name,
+            totalSales,
+            averageDailySales,
+            overallAveragePerCustomer,
+            totalCustomers,
+            customersBySegment: agg.customers,
+            salesBySegment: agg.sales,
+            acquisitionBreakdown: agg.acquisition,
+            dailyTrend: aggregatedDailyTrend,
+            loadError: null,
+            partialFailure: entry.failedDays > 0 ? { failedDays: entry.failedDays, totalDays: entry.totalDays } : null,
+            transactions: entry.transactions,
+          };
+        });
+
+        const totalSalesAll = rows.reduce((s, r) => s + r.totalSales, 0);
+        const customersAll = rows.reduce<SegmentBreakdown>((acc, r) => ({
+          new: acc.new + r.customersBySegment.new,
+          repeat: acc.repeat + r.customersBySegment.repeat,
+          regular: acc.regular + r.customersBySegment.regular,
+          staff: acc.staff + r.customersBySegment.staff,
+          unlisted: acc.unlisted + r.customersBySegment.unlisted,
+        }), { ...ZERO_SEGMENT });
+
+        const salesAll = rows.reduce<SegmentBreakdown>((acc, r) => ({
+          new: acc.new + r.salesBySegment.new,
+          repeat: acc.repeat + r.salesBySegment.repeat,
+          regular: acc.regular + r.salesBySegment.regular,
+          staff: acc.staff + r.salesBySegment.staff,
+          unlisted: acc.unlisted + r.salesBySegment.unlisted,
+        }), { ...ZERO_SEGMENT });
+
+        const acqAll = rows.reduce<AcquisitionBreakdown>((acc, r) => ({
+          google: acc.google + r.acquisitionBreakdown.google,
+          review: acc.review + r.acquisitionBreakdown.review,
+          signboard: acc.signboard + r.acquisitionBreakdown.signboard,
+          sns: acc.sns + r.acquisitionBreakdown.sns,
+          unknown: acc.unknown + r.acquisitionBreakdown.unknown,
+        }), { ...ZERO_ACQUISITION });
+
+        const totalCustomersAll = customersAll.new + customersAll.repeat + customersAll.regular + customersAll.staff;
+
+        const rawTotalsByDate = new Map<string, DailySegmentPoint>();
+        for (const [, entry] of locMap) {
+          for (const p of entry.dailyTrend) {
+            const e = rawTotalsByDate.get(p.date) ?? {
+              date: p.date,
+              new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0,
+              newSales: 0, repeatSales: 0, regularSales: 0, staffSales: 0, unlistedSales: 0,
+            };
+            e.new += p.new;
+            e.repeat += p.repeat;
+            e.regular += p.regular;
+            e.staff += p.staff;
+            e.unlisted += p.unlisted;
+            e.newSales += p.newSales;
+            e.repeatSales += p.repeatSales;
+            e.regularSales += p.regularSales;
+            e.staffSales += p.staffSales;
+            e.unlistedSales += p.unlistedSales;
+            rawTotalsByDate.set(p.date, e);
+          }
+        }
+        const rawTotalsSorted = Array.from(rawTotalsByDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+        const totalsDailyTrend = aggregateTrendByGranularity(rawTotalsSorted, granularity);
+        const totalsAvgDaily = period === 'today' ? totalSalesAll : (elapsedDays > 0 ? totalSalesAll / elapsedDays : null);
+        const totalsAvgPerCustomer = totalCustomersAll > 0 ? totalSalesAll / totalCustomersAll : null;
+
+        const totalPairs = locations.length * dates.length;
+        if (totalFailedPairs === totalPairs) {
+          setData(null);
+          setError(MSG.error.period);
+          return;
+        }
+
+        const fullyFailedCount = rows.filter(r => r.loadError).length;
+        let warn: string | null = null;
+        if (totalFailedPairs > 0) {
+          warn = `${fullyFailedCount}${MSG.warning.partialFailureMultiLocation.replace('{n}', String(totalFailedPairs))}`;
+        }
+
+        const allDates = totalsDailyTrend.map(p => p.date);
+
+        setData({
+          period,
+          periodStart: dates[0],
+          periodEnd: dates[dates.length - 1],
+          elapsedDays,
+          rows,
+          totals: {
+            totalSales: totalSalesAll,
+            averageDailySales: totalsAvgDaily,
+            overallAveragePerCustomer: totalsAvgPerCustomer,
+            totalCustomers: totalCustomersAll,
+            customersBySegment: customersAll,
+            salesBySegment: salesAll,
+            acquisitionBreakdown: acqAll,
+            dailyTrend: totalsDailyTrend,
+          },
+          allDates,
+        });
+        setError(warn);
+        return;
+      }
+
+      // 分岐 B: 新コードパス (Layer 1 sales-range × N 並列)
+      const layer1Promises = locations.map(loc =>
+        fetchSalesRange({
+          start_date,
+          end_date,
+          location_id: loc.id,
+          start_hour: startHour,
+          token,
+          signal: controller.signal,
+        })
+      );
+
+      const layer1Results = await Promise.allSettled(layer1Promises);
+      if (controller.signal.aborted) return;
+
+      const layer1Map = new Map<string, SalesRangeResponse | null>();
+      let allFailed = true;
+      locations.forEach((loc, idx) => {
+        const result = layer1Results[idx];
+        if (result.status === 'fulfilled') {
+          layer1Map.set(loc.id, result.value);
+          allFailed = false;
+        } else {
+          layer1Map.set(loc.id, null);
+        }
+      });
+
+      if (allFailed) {
+        setError(MSG.error.period);
+        setData(null);
+        return;
+      }
+
+      // 代表 meta (最初の成功 response から)
+      let representativeMeta: SalesRangeMeta | null = null;
+      for (const loc of locations) {
+        const r = layer1Map.get(loc.id);
+        if (r) {
+          representativeMeta = r.meta;
+          break;
+        }
+      }
+      if (representativeMeta) {
+        setMeta(representativeMeta);
+        if (representativeMeta.warnings && representativeMeta.warnings.length > 0) {
+          console.warn('[useMultiLocationSegment] sales-range meta.warnings:', representativeMeta.warnings);
+        }
+        if (representativeMeta.partial_failures && representativeMeta.partial_failures.length > 0) {
+          console.warn('[useMultiLocationSegment] sales-range meta.partial_failures:', representativeMeta.partial_failures);
+        }
+        if (representativeMeta.missing_combinations && representativeMeta.missing_combinations.length > 0) {
+          console.warn('[useMultiLocationSegment] sales-range meta.missing_combinations:', representativeMeta.missing_combinations);
+        }
+      }
+
+      // 各店舗の row を構築 (acquisitionBreakdown は zeros 初期化)
+      const locRawTrendMap = new Map<string, DailySegmentPoint[]>();
       const rows: LocationSegmentRow[] = locations.map(loc => {
-        const entry = locMap.get(loc.id)!;
-        const fullyFailed = entry.failedDays === entry.totalDays;
-        if (fullyFailed) {
+        const response = layer1Map.get(loc.id);
+        if (!response) {
+          locRawTrendMap.set(loc.id, []);
           return {
             locationId: loc.id,
             locationName: loc.name,
@@ -179,22 +397,54 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
             averageDailySales: null,
             overallAveragePerCustomer: null,
             totalCustomers: 0,
-            customersBySegment: { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0 },
-            salesBySegment: { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0 },
-            acquisitionBreakdown: { google: 0, review: 0, signboard: 0, sns: 0, unknown: 0 },
+            customersBySegment: { ...ZERO_SEGMENT },
+            salesBySegment: { ...ZERO_SEGMENT },
+            acquisitionBreakdown: { ...ZERO_ACQUISITION },
             dailyTrend: [],
             loadError: MSG.error.period,
             partialFailure: null,
             transactions: [],
           };
         }
-        const agg = aggregateSegments(entry.transactions);
-        const totalSales = entry.transactions.reduce((sum, t) => sum + (t.amount ?? 0), 0);
-        const totalCustomers = agg.customers.new + agg.customers.repeat + agg.customers.regular + agg.customers.staff;
+
+        let totalSales = 0;
+        const customers: SegmentBreakdown = { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0 };
+        const sales: SegmentBreakdown = { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0 };
+        const rawTrend: DailySegmentPoint[] = [];
+
+        for (const date of dates) {
+          const day = response.byDate[date];
+          if (!day) {
+            rawTrend.push({
+              date,
+              new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0,
+              newSales: 0, repeatSales: 0, regularSales: 0, staffSales: 0, unlistedSales: 0,
+            });
+            continue;
+          }
+          totalSales += day.total_amount + day.open_total_amount;
+          customers.new += day.new_customer_count;
+          customers.repeat += day.repeat_customer_count;
+          customers.regular += day.regular_customer_count;
+          customers.staff += day.staff_customer_count;
+          customers.unlisted += day.unlisted_customer_count;
+          sales.new += day.new_sales;
+          sales.repeat += day.repeat_sales;
+          sales.regular += day.regular_sales;
+          sales.staff += day.staff_sales;
+          sales.unlisted += day.unlisted_sales;
+          rawTrend.push(dayMetricsToTrendPoint(date, day));
+        }
+
+        locRawTrendMap.set(loc.id, rawTrend);
+
+        const totalCustomers = customers.new + customers.repeat + customers.regular + customers.staff;
         const averageDailySales = period === 'today' ? totalSales : (elapsedDays > 0 ? totalSales / elapsedDays : null);
         const overallAveragePerCustomer = totalCustomers > 0 ? totalSales / totalCustomers : null;
-        const sortedDailyTrend = [...entry.dailyTrend].sort((a, b) => a.date.localeCompare(b.date));
-        const aggregatedDailyTrend = aggregateTrendByGranularity(sortedDailyTrend, granularity);
+
+        const sortedRawTrend = [...rawTrend].sort((a, b) => a.date.localeCompare(b.date));
+        const aggregatedDailyTrend = aggregateTrendByGranularity(sortedRawTrend, granularity);
+
         return {
           locationId: loc.id,
           locationName: loc.name,
@@ -202,16 +452,17 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
           averageDailySales,
           overallAveragePerCustomer,
           totalCustomers,
-          customersBySegment: agg.customers,
-          salesBySegment: agg.sales,
-          acquisitionBreakdown: agg.acquisition,
+          customersBySegment: customers,
+          salesBySegment: sales,
+          acquisitionBreakdown: { ...ZERO_ACQUISITION },
           dailyTrend: aggregatedDailyTrend,
           loadError: null,
-          partialFailure: entry.failedDays > 0 ? { failedDays: entry.failedDays, totalDays: entry.totalDays } : null,
-          transactions: entry.transactions,
+          partialFailure: null,
+          transactions: [],
         };
       });
 
+      // totals 集計 (raw daily trend を全店舗合算 → granularity 集約)
       const totalSalesAll = rows.reduce((s, r) => s + r.totalSales, 0);
       const customersAll = rows.reduce<SegmentBreakdown>((acc, r) => ({
         new: acc.new + r.customersBySegment.new,
@@ -219,7 +470,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
         regular: acc.regular + r.customersBySegment.regular,
         staff: acc.staff + r.customersBySegment.staff,
         unlisted: acc.unlisted + r.customersBySegment.unlisted,
-      }), { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0 });
+      }), { ...ZERO_SEGMENT });
 
       const salesAll = rows.reduce<SegmentBreakdown>((acc, r) => ({
         new: acc.new + r.salesBySegment.new,
@@ -227,23 +478,13 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
         regular: acc.regular + r.salesBySegment.regular,
         staff: acc.staff + r.salesBySegment.staff,
         unlisted: acc.unlisted + r.salesBySegment.unlisted,
-      }), { new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0 });
-
-      const acqAll = rows.reduce<AcquisitionBreakdown>((acc, r) => ({
-        google: acc.google + r.acquisitionBreakdown.google,
-        review: acc.review + r.acquisitionBreakdown.review,
-        signboard: acc.signboard + r.acquisitionBreakdown.signboard,
-        sns: acc.sns + r.acquisitionBreakdown.sns,
-        unknown: acc.unknown + r.acquisitionBreakdown.unknown,
-      }), { google: 0, review: 0, signboard: 0, sns: 0, unknown: 0 });
+      }), { ...ZERO_SEGMENT });
 
       const totalCustomersAll = customersAll.new + customersAll.repeat + customersAll.regular + customersAll.staff;
 
-      // Totals trend: locMap の raw daily を date キーで全店舗合算 → 最後に一回だけ granularity 集約
-      // (P2-2: rows[*].dailyTrend は granularity 集約済のため二段集約になっていたのを解消)
       const rawTotalsByDate = new Map<string, DailySegmentPoint>();
-      for (const [, entry] of locMap) {
-        for (const p of entry.dailyTrend) {
+      for (const [, rawTrend] of locRawTrendMap) {
+        for (const p of rawTrend) {
           const e = rawTotalsByDate.get(p.date) ?? {
             date: p.date,
             new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0,
@@ -266,22 +507,12 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
       const totalsDailyTrend = aggregateTrendByGranularity(rawTotalsSorted, granularity);
       const totalsAvgDaily = period === 'today' ? totalSalesAll : (elapsedDays > 0 ? totalSalesAll / elapsedDays : null);
       const totalsAvgPerCustomer = totalCustomersAll > 0 ? totalSalesAll / totalCustomersAll : null;
-
-      const totalPairs = locations.length * dates.length;
-      if (totalFailedPairs === totalPairs) {
-        setData(null);
-        setError(MSG.error.period);
-        return;
-      }
+      const allDates = totalsDailyTrend.map(p => p.date);
 
       const fullyFailedCount = rows.filter(r => r.loadError).length;
-      let warn: string | null = null;
-      if (totalFailedPairs > 0) {
-        warn = `${fullyFailedCount}${MSG.warning.partialFailureMultiLocation.replace('{n}', String(totalFailedPairs))}`;
-      }
-
-      // allDates: chart の bucket key 配列。粒度集約後の date 列を採用（昇順）。
-      const allDates = totalsDailyTrend.map(p => p.date);
+      const warn = fullyFailedCount > 0
+        ? `${fullyFailedCount}${MSG.warning.partialFailureMultiLocation.replace('{n}', String(fullyFailedCount * dates.length))}`
+        : null;
 
       setData({
         period,
@@ -296,12 +527,126 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
           totalCustomers: totalCustomersAll,
           customersBySegment: customersAll,
           salesBySegment: salesAll,
-          acquisitionBreakdown: acqAll,
+          acquisitionBreakdown: { ...ZERO_ACQUISITION },
           dailyTrend: totalsDailyTrend,
         },
         allDates,
       });
       setError(warn);
+      setLoading(false);
+
+      if (!isDetailAvailable) {
+        return;
+      }
+
+      // Layer 2: transactions / open-orders を店舗ごとに並列ロード (期間 ≤ 35 日のみ)
+      setDetailLoading(true);
+
+      const layer2Tasks: Promise<RangeFetchResult>[] = locations.map(loc => {
+        const txUrl = `/api/transactions-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(loc.id)}&start_hour=${startHour}&end_hour=${endHour}`;
+        const openUrl = `/api/open-orders-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(loc.id)}&start_hour=${startHour}&end_hour=${endHour}`;
+
+        const txPromise = fetch(txUrl, { signal: controller.signal, headers });
+        const openPromise = fetch(openUrl, { signal: controller.signal, headers });
+
+        const locationId = loc.id;
+        return Promise.allSettled([txPromise, openPromise]).then(async (results): Promise<RangeFetchResult> => {
+          const txResult = results[0];
+          const openResult = results[1];
+
+          let txByDate: Record<string, { transactions: Transaction[] }> | null = null;
+          let openByDate: Record<string, { orders: OpenOrder[] }> | null = null;
+          let txFailed = false;
+          let openFailed = false;
+
+          if (txResult.status === 'fulfilled' && txResult.value.ok) {
+            const d = await txResult.value.json();
+            txByDate = d.byDate ?? {};
+          } else {
+            txFailed = true;
+          }
+
+          if (openResult.status === 'fulfilled' && openResult.value.ok) {
+            const d = await openResult.value.json();
+            openByDate = d.byDate ?? {};
+          } else {
+            openFailed = true;
+          }
+
+          return { locationId, txByDate, openByDate, txFailed, openFailed };
+        });
+      });
+
+      try {
+        const layer2Results = await Promise.all(layer2Tasks);
+        if (controller.signal.aborted) return;
+
+        const txByLocation = new Map<string, Transaction[]>();
+        const acqByLocation = new Map<string, AcquisitionBreakdown>();
+        let allLayer2Failed = true;
+
+        for (const { locationId, txByDate, openByDate, txFailed, openFailed } of layer2Results) {
+          if (txFailed && openFailed) {
+            txByLocation.set(locationId, []);
+            acqByLocation.set(locationId, { ...ZERO_ACQUISITION });
+            continue;
+          }
+          allLayer2Failed = false;
+          const txs: Transaction[] = [];
+          for (const date of dates) {
+            const dayTx = txByDate?.[date]?.transactions ?? [];
+            const dayOpen = openByDate?.[date]?.orders ?? [];
+            txs.push(...dayTx, ...dayOpen.map(openOrderToTransaction));
+          }
+          txByLocation.set(locationId, txs);
+          const agg = aggregateSegments(txs);
+          acqByLocation.set(locationId, agg.acquisition);
+        }
+
+        if (allLayer2Failed) {
+          setDetailError(MSG.error.period);
+          return;
+        }
+
+        setData(prev => {
+          if (!prev) return prev;
+          const updatedRows = prev.rows.map(row => {
+            const txs = txByLocation.get(row.locationId) ?? [];
+            const acq = acqByLocation.get(row.locationId) ?? { ...ZERO_ACQUISITION };
+            return {
+              ...row,
+              acquisitionBreakdown: acq,
+              transactions: txs,
+            };
+          });
+
+          const acqAll = updatedRows.reduce<AcquisitionBreakdown>((acc, r) => ({
+            google: acc.google + r.acquisitionBreakdown.google,
+            review: acc.review + r.acquisitionBreakdown.review,
+            signboard: acc.signboard + r.acquisitionBreakdown.signboard,
+            sns: acc.sns + r.acquisitionBreakdown.sns,
+            unknown: acc.unknown + r.acquisitionBreakdown.unknown,
+          }), { ...ZERO_ACQUISITION });
+
+          return {
+            ...prev,
+            rows: updatedRows,
+            totals: {
+              ...prev.totals,
+              acquisitionBreakdown: acqAll,
+            },
+          };
+        });
+      } catch (layer2Err) {
+        if (layer2Err instanceof DOMException && layer2Err.name === 'AbortError') {
+          return;
+        }
+        setDetailError(layer2Err instanceof Error ? layer2Err.message : MSG.error.fetch);
+      } finally {
+        if (!controller.signal.aborted) {
+          setDetailLoading(false);
+        }
+      }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         return;
@@ -335,5 +680,9 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
     loading,
     error,
     refresh,
+    detailLoading,
+    detailError,
+    detailAvailable,
+    meta,
   };
 }

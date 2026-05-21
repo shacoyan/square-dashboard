@@ -21,7 +21,14 @@ interface Props {
   onQuarterIndexChange: (n: number) => void;
   startHour?: number;
   endHour?: number;
+  // Phase 3 Team B: 2 段階ロード対応
+  // detailAvailable === false のとき、着座分析・集客経路は非表示にする
+  detailAvailable?: boolean;
+  detailLoading?: boolean;
+  detailError?: string | null;
 }
+
+const DETAIL_GUARD_MESSAGE = '期間が 35 日を超えるため、着座分析・集客経路は表示されません。詳細を確認したい場合は 月間 / 週間 / 当日 に切り替えてください。';
 
 function SegmentCustomerCard({ label, count, sales, showCount = true }: { label: string; count: number; sales: number; showCount?: boolean }) {
   return (
@@ -77,6 +84,8 @@ export default function CustomerSegmentSection({
   onQuarterIndexChange,
   startHour,
   endHour,
+  detailAvailable = true,
+  detailError = null,
 }: Props) {
   const totalSales = data ? data.totalSales : 0;
   const totalAcquisition = data
@@ -223,27 +232,51 @@ export default function CustomerSegmentSection({
             <WeekdayAnalysisSection dailyTrend={data.dailyTrend} />
           )}
 
-          <OccupancyAnalysisSection transactions={transactions} startHour={startHour} endHour={endHour} />
+          {!detailAvailable && (
+            <ErrorState
+              variant="inline"
+              tone="warning"
+              role="status"
+              title="長期間モード"
+              description={DETAIL_GUARD_MESSAGE}
+            />
+          )}
 
-          <Card title="新規獲得経路">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-              <div className="md:col-span-2">
-                <AcquisitionChart data={data.acquisitionBreakdown} />
-              </div>
-              <div className="space-y-2">
-                {ACQUISITION_CONFIG.map(({ key, label, color }) => {
-                  const count = data.acquisitionBreakdown[key] || 0;
-                  const percent = totalAcquisition > 0 ? Math.round((count / totalAcquisition) * 100) : 0;
-                  return (
-                    <div key={key} className="text-sm text-text-muted flex items-center">
-                      <span className="inline-block w-3 h-3 rounded-full mr-2 flex-shrink-0" style={{ backgroundColor: color }} />
-                      <span>{label}: {count}件 ({percent}%)</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </Card>
+          {detailAvailable && (
+            <>
+              <OccupancyAnalysisSection transactions={transactions} startHour={startHour} endHour={endHour} />
+
+              <Card title="新規獲得経路">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                  <div className="md:col-span-2">
+                    <AcquisitionChart data={data.acquisitionBreakdown} />
+                  </div>
+                  <div className="space-y-2">
+                    {ACQUISITION_CONFIG.map(({ key, label, color }) => {
+                      const count = data.acquisitionBreakdown[key] || 0;
+                      const percent = totalAcquisition > 0 ? Math.round((count / totalAcquisition) * 100) : 0;
+                      return (
+                        <div key={key} className="text-sm text-text-muted flex items-center">
+                          <span className="inline-block w-3 h-3 rounded-full mr-2 flex-shrink-0" style={{ backgroundColor: color }} />
+                          <span>{label}: {count}件 ({percent}%)</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Card>
+
+              {detailError && (
+                <ErrorState
+                  variant="inline"
+                  tone="warning"
+                  role="status"
+                  title="明細データの一部取得に失敗しました"
+                  description={detailError}
+                />
+              )}
+            </>
+          )}
         </>
         );
       })()}

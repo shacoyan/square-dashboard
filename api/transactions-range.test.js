@@ -1,0 +1,132 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+vi.mock('./_shared.js', () => ({
+  setCors: vi.fn(() => false),
+  validateToken: vi.fn(() => ({ user: 'test' })),
+  parseRangeTimeRange: vi.fn(() => ({ beginTimeJST: 'b', endTimeJST: 'e' })),
+  computeBusinessDate: vi.fn(() => '2026-04-01'),
+  fetchAllPayments: vi.fn(async () => []),
+  fetchOrdersBatch: vi.fn(async () => ({})),
+  fetchCatalogVariationCategoryMap: vi.fn(async () => ({})),
+  fetchCustomers: vi.fn(async () => ({})),
+  normalizePaymentsForReporting: vi.fn((payments) => payments),
+}));
+
+const { default: handler } = await import('./transactions-range.js');
+
+function makeRes() {
+  return {
+    statusCode: 200,
+    body: null,
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      this.body = payload;
+      return this;
+    },
+    end() {
+      return this;
+    },
+  };
+}
+
+function makeReq(query) {
+  return { method: 'GET', query, headers: {} };
+}
+
+describe('api/transactions-range — 入力検証ガード', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('期間 36 日で 400 + period_too_long を返す', async () => {
+    const req = makeReq({
+      start_date: '2026-04-01',
+      end_date: '2026-05-06', // 36 日
+      location_id: 'L1',
+    });
+    const res = makeRes();
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toBe('period_too_long');
+    expect(res.body.max_days).toBe(35);
+    expect(res.body.requested_days).toBe(36);
+  });
+
+  it('期間 35 日 (境界 OK) は 200 を返す', async () => {
+    const req = makeReq({
+      start_date: '2026-04-01',
+      end_date: '2026-05-05', // 35 日
+      location_id: 'L1',
+    });
+    const res = makeRes();
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ byDate: {} });
+  });
+
+  it('start_date > end_date で 400 + invalid_date_range を返す', async () => {
+    const req = makeReq({
+      start_date: '2026-04-30',
+      end_date: '2026-04-01',
+      location_id: 'L1',
+    });
+    const res = makeRes();
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toBe('invalid_date_range');
+  });
+
+  it('不正日付 2026-02-31 で 400 + invalid_date を返す', async () => {
+    const req = makeReq({
+      start_date: '2026-02-31',
+      end_date: '2026-03-01',
+      location_id: 'L1',
+    });
+    const res = makeRes();
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toBe('invalid_date');
+  });
+
+  it('日付フォーマット不正 (2026/04/01) で 400 + invalid_date', async () => {
+    const req = makeReq({
+      start_date: '2026/04/01',
+      end_date: '2026/04/05',
+      location_id: 'L1',
+    });
+    const res = makeRes();
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toBe('invalid_date');
+  });
+
+  it('120 日のリクエストで requested_days=120 を返す', async () => {
+    const req = makeReq({
+      start_date: '2026-01-01',
+      end_date: '2026-04-30',
+      location_id: 'L1',
+    });
+    const res = makeRes();
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toBe('period_too_long');
+    expect(res.body.requested_days).toBe(120);
+  });
+
+  it('必須パラメータ未指定で 400 を返す (既存挙動)', async () => {
+    const req = makeReq({});
+    const res = makeRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toMatch(/start_date/);
+  });
+});

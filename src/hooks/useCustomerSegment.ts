@@ -4,6 +4,9 @@ import { aggregateSegments, allocateSalesByTransaction, countCustomersByTransact
 import { aggregateTrendByGranularity, granularityFor } from '../lib/trendAggregation';
 import { calculatePeriodDates, getMonthWeekCount } from '../lib/periodDates';
 import { MSG } from '../lib/messages';
+import { fetchSalesRange, buildSegmentAnalysisFromSalesRange } from '../lib/salesRangeAdapter';
+import type { SalesRangeMeta } from '../lib/salesRangeAdapter';
+import { useSalesRange } from '../lib/featureFlags';
 
 interface Args {
   token: string;
@@ -16,6 +19,21 @@ interface Args {
   quarterIndex?: number;
   enabled: boolean;
 }
+
+export interface UseCustomerSegmentResult {
+  data: CustomerSegmentAnalysis | null;
+  transactions: Transaction[];
+  loading: boolean;
+  error: string | null;
+  refresh: () => void;
+  availableWeeks: number;
+  detailLoading: boolean;
+  detailError: string | null;
+  detailAvailable: boolean;
+  meta: SalesRangeMeta | null;
+}
+
+const DETAIL_MAX_DAYS = 35;
 
 function openOrderToTransaction(o: OpenOrder): Transaction {
   return {
@@ -30,20 +48,17 @@ function openOrderToTransaction(o: OpenOrder): Transaction {
   };
 }
 
-export function useCustomerSegment(args: Args): {
-  data: CustomerSegmentAnalysis | null;
-  transactions: Transaction[];
-  loading: boolean;
-  error: string | null;
-  refresh: () => void;
-  availableWeeks: number;
-} {
+export function useCustomerSegment(args: Args): UseCustomerSegmentResult {
   const { token, locationId, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled } = args;
 
   const [data, setData] = useState<CustomerSegmentAnalysis | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailAvailable, setDetailAvailable] = useState(true);
+  const [meta, setMeta] = useState<SalesRangeMeta | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -54,7 +69,6 @@ export function useCustomerSegment(args: Args): {
 
   const fetchData = useCallback(async () => {
     if (!enabled) return;
-
     if (!locationId) return;
 
     if (abortControllerRef.current) {
@@ -67,6 +81,9 @@ export function useCustomerSegment(args: Args): {
     setError(null);
     setData(null);
     setTransactions([]);
+    setDetailLoading(false);
+    setDetailError(null);
+    setMeta(null);
 
     const dates = calculatePeriodDates(period, baseDate, weekIndex, quarterIndex);
 
@@ -75,8 +92,13 @@ export function useCustomerSegment(args: Args): {
       setData(null);
       setTransactions([]);
       setError('この週はまだ経過していません');
+      setDetailAvailable(true);
       return;
     }
+
+    const useSalesRangeFlag = useSalesRange();
+    const isDetailAvailable = dates.length <= DETAIL_MAX_DAYS;
+    setDetailAvailable(useSalesRangeFlag ? isDetailAvailable : true);
 
     const headers: HeadersInit = {
       Authorization: `Bearer ${token}`,
@@ -85,6 +107,213 @@ export function useCustomerSegment(args: Args): {
 
     const start_date = dates[0];
     const end_date = dates[dates.length - 1];
+
+    if (!useSalesRangeFlag) {
+      // 旧コードパス (transactions-range + open-orders-range 直叩き、フォールバック)
+      const txUrl = `/api/transactions-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(locationId)}&start_hour=${startHour}&end_hour=${endHour}`;
+      const openUrl = `/api/open-orders-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(locationId)}&start_hour=${startHour}&end_hour=${endHour}`;
+
+      const txPromise = fetch(txUrl, {
+        headers,
+        signal: currentAbortController.signal,
+      }).then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<{ byDate: Record<string, { transactions?: Transaction[] }> }>;
+      });
+
+      const openPromise = fetch(openUrl, {
+        headers,
+        signal: currentAbortController.signal,
+      }).then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<{ byDate: Record<string, { orders?: OpenOrder[] }> }>;
+      });
+
+      try {
+        const [txResult, openResult] = await Promise.allSettled([txPromise, openPromise]);
+
+        if (currentAbortController.signal.aborted) return;
+
+        const isTxFailure = txResult.status === 'rejected';
+        const isOpenFailure = openResult.status === 'rejected';
+
+        if (isTxFailure && isOpenFailure) {
+          setError(MSG.error.period);
+          setData(null);
+          setTransactions([]);
+          setLoading(false);
+          return;
+        }
+
+        const txByDate = !isTxFailure ? txResult.value.byDate : {};
+        const openByDate = !isOpenFailure ? openResult.value.byDate : {};
+
+        const allTransactions: Transaction[] = [];
+        let dailySalesTotal = 0;
+        let dailyCustomersTotal = 0;
+        const dailyTrend: DailySegmentPoint[] = [];
+        const warningMessages: string[] = [];
+
+        if (isTxFailure) {
+          warningMessages.push(`${dates.length}${MSG.warning.partialFailureTransactions}`);
+        }
+        if (isOpenFailure) {
+          warningMessages.push(`${dates.length}${MSG.warning.partialFailureOpenOrders}`);
+        }
+
+        dates.forEach(date => {
+          const dateTransactions = txByDate[date]?.transactions ?? [];
+          const openOrders = openByDate[date]?.orders ?? [];
+
+          const mappedOpenOrders = openOrders.map(openOrderToTransaction);
+          const combinedTransactions = [...dateTransactions, ...mappedOpenOrders];
+
+          allTransactions.push(...combinedTransactions);
+
+          let dayNew = 0;
+          let dayRepeat = 0;
+          let dayRegular = 0;
+          let dayStaff = 0;
+          let dayUnlisted = 0;
+          let dayNewSales = 0;
+          let dayRepeatSales = 0;
+          let dayRegularSales = 0;
+          let dayStaffSales = 0;
+          let dayUnlistedSales = 0;
+
+          combinedTransactions.forEach(tx => {
+            const dayCounts = countCustomersByTransaction(tx);
+            dayNew += dayCounts.new;
+            dayRepeat += dayCounts.repeat;
+            dayRegular += dayCounts.regular;
+            dayStaff += dayCounts.staff;
+            dayUnlisted += dayCounts.unlisted;
+
+            const daySales = allocateSalesByTransaction(tx);
+            dayNewSales += daySales.new;
+            dayRepeatSales += daySales.repeat;
+            dayRegularSales += daySales.regular;
+            dayStaffSales += daySales.staff;
+            dayUnlistedSales += daySales.unlisted;
+          });
+
+          dailyTrend.push({
+            date,
+            new: dayNew,
+            repeat: dayRepeat,
+            regular: dayRegular,
+            staff: dayStaff,
+            unlisted: dayUnlisted,
+            newSales: dayNewSales,
+            repeatSales: dayRepeatSales,
+            regularSales: dayRegularSales,
+            staffSales: dayStaffSales,
+            unlistedSales: dayUnlistedSales,
+          });
+
+          const dayTotalCustomers = dayNew + dayRepeat + dayRegular + dayStaff;
+          dailyCustomersTotal += dayTotalCustomers;
+
+          const daySalesTotal = combinedTransactions.reduce((sum, t) => sum + (t.amount ?? 0), 0);
+          dailySalesTotal += daySalesTotal;
+        });
+
+        const warning = warningMessages.length > 0 ? warningMessages.join(' ') : null;
+        setError(warning);
+
+        const result = aggregateSegments(allTransactions);
+
+        const elapsedDays = dates.length;
+        const averageDailySales = period === 'today' ? dailySalesTotal : (dates.length > 0 ? dailySalesTotal / elapsedDays : null);
+        const overallAveragePerCustomer = dailyCustomersTotal > 0 ? dailySalesTotal / dailyCustomersTotal : null;
+
+        const sortedDailyTrend = dailyTrend.sort((a, b) => a.date.localeCompare(b.date));
+        const aggregatedTrend = aggregateTrendByGranularity(sortedDailyTrend, granularityFor(period));
+
+        setData({
+          period,
+          periodStart: dates[0] ?? baseDate,
+          periodEnd: dates[dates.length - 1] ?? baseDate,
+          elapsedDays,
+          totalSales: dailySalesTotal,
+          totalCustomers: dailyCustomersTotal,
+          averageDailySales,
+          overallAveragePerCustomer,
+          customersBySegment: result.customers,
+          salesBySegment: result.sales,
+          acquisitionBreakdown: result.acquisition,
+          dailyTrend: aggregatedTrend,
+        });
+        setTransactions(allTransactions);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          return;
+        }
+        setError(err instanceof Error ? err.message : MSG.error.fetch);
+        setData(null);
+        setTransactions([]);
+      } finally {
+        if (!currentAbortController.signal.aborted) {
+          setLoading(false);
+        }
+      }
+      return;
+    }
+
+    // 新コードパス (sales-range Layer 1 + 期間 ≤ 35 日のときのみ Layer 2)
+    try {
+      const response = await fetchSalesRange({
+        start_date,
+        end_date,
+        location_id: locationId,
+        start_hour: startHour,
+        token,
+        signal: currentAbortController.signal,
+      });
+
+      if (currentAbortController.signal.aborted) return;
+
+      setMeta(response.meta);
+
+      if (response.meta?.warnings && response.meta.warnings.length > 0) {
+        console.warn('[useCustomerSegment] sales-range meta.warnings:', response.meta.warnings);
+      }
+      if (response.meta?.partial_failures && response.meta.partial_failures.length > 0) {
+        console.warn('[useCustomerSegment] sales-range meta.partial_failures:', response.meta.partial_failures);
+      }
+      if (response.meta?.missing_combinations && response.meta.missing_combinations.length > 0) {
+        console.warn('[useCustomerSegment] sales-range meta.missing_combinations:', response.meta.missing_combinations);
+      }
+
+      const segmentData = buildSegmentAnalysisFromSalesRange({
+        byDate: response.byDate,
+        dates,
+        period,
+        baseDate,
+      });
+
+      setData(segmentData);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return;
+      }
+      setError(err instanceof Error ? err.message : MSG.error.fetch);
+      setData(null);
+      setTransactions([]);
+      setLoading(false);
+      return;
+    }
+
+    if (!currentAbortController.signal.aborted) {
+      setLoading(false);
+    }
+
+    if (!isDetailAvailable) {
+      return;
+    }
+
+    // Layer 2: transactions 詳細を別途並列ロード (期間 ≤ 35 日のみ)
+    setDetailLoading(true);
 
     const txUrl = `/api/transactions-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(locationId)}&start_hour=${startHour}&end_hour=${endHour}`;
     const openUrl = `/api/open-orders-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(locationId)}&start_hour=${startHour}&end_hour=${endHour}`;
@@ -114,10 +343,8 @@ export function useCustomerSegment(args: Args): {
       const isOpenFailure = openResult.status === 'rejected';
 
       if (isTxFailure && isOpenFailure) {
-        setError(MSG.error.period);
-        setData(null);
+        setDetailError(MSG.error.period);
         setTransactions([]);
-        setLoading(false);
         return;
       }
 
@@ -125,113 +352,36 @@ export function useCustomerSegment(args: Args): {
       const openByDate = !isOpenFailure ? openResult.value.byDate : {};
 
       const allTransactions: Transaction[] = [];
-      let dailySalesTotal = 0;
-      let dailyCustomersTotal = 0;
-      const dailyTrend: DailySegmentPoint[] = [];
-      const warningMessages: string[] = [];
+      dates.forEach(date => {
+        const dateTransactions = txByDate[date]?.transactions ?? [];
+        const openOrders = openByDate[date]?.orders ?? [];
+        const mappedOpenOrders = openOrders.map(openOrderToTransaction);
+        allTransactions.push(...dateTransactions, ...mappedOpenOrders);
+      });
 
+      const result = aggregateSegments(allTransactions);
+      setData(prev => (prev ? { ...prev, acquisitionBreakdown: result.acquisition } : prev));
+      setTransactions(allTransactions);
+
+      const warningMessages: string[] = [];
       if (isTxFailure) {
         warningMessages.push(`${dates.length}${MSG.warning.partialFailureTransactions}`);
       }
       if (isOpenFailure) {
         warningMessages.push(`${dates.length}${MSG.warning.partialFailureOpenOrders}`);
       }
-
-      dates.forEach(date => {
-        const transactions = txByDate[date]?.transactions ?? [];
-        const openOrders = openByDate[date]?.orders ?? [];
-
-        const mappedOpenOrders = openOrders.map(openOrderToTransaction);
-        const combinedTransactions = [...transactions, ...mappedOpenOrders];
-
-        allTransactions.push(...combinedTransactions);
-
-        let dayNew = 0;
-        let dayRepeat = 0;
-        let dayRegular = 0;
-        let dayStaff = 0;
-        let dayUnlisted = 0;
-        let dayNewSales = 0;
-        let dayRepeatSales = 0;
-        let dayRegularSales = 0;
-        let dayStaffSales = 0;
-        let dayUnlistedSales = 0;
-
-        combinedTransactions.forEach(tx => {
-          const dayCounts = countCustomersByTransaction(tx);
-          dayNew += dayCounts.new;
-          dayRepeat += dayCounts.repeat;
-          dayRegular += dayCounts.regular;
-          dayStaff += dayCounts.staff;
-          dayUnlisted += dayCounts.unlisted;
-
-          const daySales = allocateSalesByTransaction(tx);
-          dayNewSales += daySales.new;
-          dayRepeatSales += daySales.repeat;
-          dayRegularSales += daySales.regular;
-          dayStaffSales += daySales.staff;
-          dayUnlistedSales += daySales.unlisted;
-        });
-
-        dailyTrend.push({
-          date,
-          new: dayNew,
-          repeat: dayRepeat,
-          regular: dayRegular,
-          staff: dayStaff,
-          unlisted: dayUnlisted,
-          newSales: dayNewSales,
-          repeatSales: dayRepeatSales,
-          regularSales: dayRegularSales,
-          staffSales: dayStaffSales,
-          unlistedSales: dayUnlistedSales,
-        });
-
-        const dayTotalCustomers = dayNew + dayRepeat + dayRegular + dayStaff;
-        dailyCustomersTotal += dayTotalCustomers;
-
-        const daySales = combinedTransactions.reduce((sum, t) => sum + (t.amount ?? 0), 0);
-        dailySalesTotal += daySales;
-      });
-
-      const warning = warningMessages.length > 0 ? warningMessages.join(' ') : null;
-      setError(warning);
-
-      const result = aggregateSegments(allTransactions);
-
-      const elapsedDays = dates.length;
-      const averageDailySales = period === 'today' ? dailySalesTotal : (dates.length > 0 ? dailySalesTotal / elapsedDays : null);
-      const overallAveragePerCustomer = dailyCustomersTotal > 0 ? dailySalesTotal / dailyCustomersTotal : null;
-
-      const sortedDailyTrend = dailyTrend.sort((a, b) => a.date.localeCompare(b.date));
-      const aggregatedTrend = aggregateTrendByGranularity(sortedDailyTrend, granularityFor(period));
-
-      setData({
-        period,
-        periodStart: dates[0] ?? baseDate,
-        periodEnd: dates[dates.length - 1] ?? baseDate,
-        elapsedDays,
-        totalSales: dailySalesTotal,
-        totalCustomers: dailyCustomersTotal,
-        averageDailySales,
-        overallAveragePerCustomer,
-        customersBySegment: result.customers,
-        salesBySegment: result.sales,
-        acquisitionBreakdown: result.acquisition,
-        dailyTrend: aggregatedTrend,
-      });
-      setTransactions(allTransactions);
-
+      if (warningMessages.length > 0) {
+        setDetailError(warningMessages.join(' '));
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         return;
       }
-      setError(err instanceof Error ? err.message : MSG.error.fetch);
-      setData(null);
+      setDetailError(err instanceof Error ? err.message : MSG.error.fetch);
       setTransactions([]);
     } finally {
       if (!currentAbortController.signal.aborted) {
-        setLoading(false);
+        setDetailLoading(false);
       }
     }
   }, [token, locationId, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled]);
@@ -254,5 +404,9 @@ export function useCustomerSegment(args: Args): {
     error,
     refresh: fetchData,
     availableWeeks,
+    detailLoading,
+    detailError,
+    detailAvailable,
+    meta,
   };
 }

@@ -158,6 +158,9 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     loading: segmentLoading,
     error: segmentError,
     availableWeeks: segmentAvailableWeeks,
+    detailAvailable: segmentDetailAvailable,
+    detailLoading: segmentDetailLoading,
+    detailError: segmentDetailError,
   } = useCustomerSegment({
     token,
     locationId: selectedLocationId,
@@ -266,6 +269,9 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
                   onQuarterIndexChange={setQuarterIndex}
                   startHour={startHour}
                   endHour={endHour}
+                  detailAvailable={segmentDetailAvailable}
+                  detailLoading={segmentDetailLoading}
+                  detailError={segmentDetailError}
                 />
               </Suspense>
             </div>

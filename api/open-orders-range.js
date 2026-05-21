@@ -1,5 +1,31 @@
 import { parseRangeTimeRange, computeBusinessDate, fetchCustomers, setCors, validateToken, squareHeaders } from './_shared.js';
 
+const DAYS_BETWEEN_LIMIT = 35;
+
+/**
+ * 'YYYY-MM-DD' 形式かつ実在する日付か判定。
+ *   '2026-02-31' のような Date round-trip で別日に化けるケースを弾く。
+ *   (sales-range.js と同一実装)
+ */
+function isValidDateStr(s) {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(s + 'T00:00:00Z');
+  if (Number.isNaN(d.getTime())) return false;
+  const roundtrip = d.toISOString().slice(0, 10);
+  return roundtrip === s;
+}
+
+/**
+ * inclusive な日数差 (start_date=end_date のとき 1)。
+ */
+function daysBetweenInclusive(startStr, endStr) {
+  const [sy, sm, sd] = startStr.split('-').map(Number);
+  const [ey, em, ed] = endStr.split('-').map(Number);
+  const s = Date.UTC(sy, sm - 1, sd);
+  const e = Date.UTC(ey, em - 1, ed);
+  return Math.floor((e - s) / 86400000) + 1;
+}
+
 export default async (req, res) => {
   if (setCors(req, res)) {
     return res.status(200).end();
@@ -16,6 +42,24 @@ export default async (req, res) => {
     if (!location_id) return res.status(400).json({ error: 'location_id is required' });
     if (!start_date) return res.status(400).json({ error: 'start_date is required' });
     if (!end_date) return res.status(400).json({ error: 'end_date is required' });
+
+    if (!isValidDateStr(start_date) || !isValidDateStr(end_date)) {
+      return res.status(400).json({ error: 'invalid_date', message: 'start_date / end_date must be valid YYYY-MM-DD' });
+    }
+
+    if (start_date > end_date) {
+      return res.status(400).json({ error: 'invalid_date_range', message: 'start_date must be <= end_date' });
+    }
+
+    const requestedDays = daysBetweenInclusive(start_date, end_date);
+    if (requestedDays > DAYS_BETWEEN_LIMIT) {
+      return res.status(400).json({
+        error: 'period_too_long',
+        message: `期間が長すぎます (${requestedDays} 日)。明細表示は ${DAYS_BETWEEN_LIMIT} 日以内のみ可能です。`,
+        max_days: DAYS_BETWEEN_LIMIT,
+        requested_days: requestedDays,
+      });
+    }
 
     const startHourNum = parseInt(start_hour ?? '0', 10);
 
