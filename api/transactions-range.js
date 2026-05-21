@@ -40,7 +40,7 @@ export default async (req, res) => {
           name: item.name ?? '不明',
           quantity: item.quantity,
           amount: item.gross_sales_money?.amount ?? 0,
-          category: variationCategoryMap[item.catalog_object_id] ?? null
+          category: variationCategoryMap[item.catalog_object_id]?.name ?? null
         }));
 
       const tx = {

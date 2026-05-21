@@ -1,0 +1,8 @@
+-- Square Dashboard 店舗メタ seed
+-- 対象 project: kintai prod (zjjbfffhbobwwxyvdszl) の square_dashboard schema
+-- 作成: 2026-05-21 (Phase 1 / Engineer A)
+--
+-- 7 店舗の Square start_date は全て 2024-01-01 (オーナー回答 Q3)
+-- location_id / location_name は cron 初回実行時に api/locations.js から同期される想定
+-- ここでは空 INSERT のみ（実 ID は cron に任せる）
+-- もし手動で投入する場合は本 migration を更新する

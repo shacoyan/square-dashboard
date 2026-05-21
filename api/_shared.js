@@ -258,7 +258,12 @@ export async function fetchCatalogVariationCategoryMap(ordersMap) {
   for (const [varId, itemId] of Object.entries(variationToItemId)) {
     if (!itemId) { localVariationCategoryMap[varId] = null; continue; }
     const catId = itemToCategoryId[itemId];
-    localVariationCategoryMap[varId] = catId ? (categoryIdToName[catId] ?? null) : null;
+    if (catId) {
+      const catName = categoryIdToName[catId] ?? null;
+      localVariationCategoryMap[varId] = { id: catId, name: catName };
+    } else {
+      localVariationCategoryMap[varId] = null;
+    }
   }
 
   return localVariationCategoryMap;
