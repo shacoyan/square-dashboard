@@ -60,9 +60,12 @@ export function setUseSalesRange(value: boolean): void {
 }
 
 /**
- * React hook 風エイリアス（命名は指示書準拠）。
- * 現状は値を返すだけ（reactive ではない）。State 連動が必要になったら useSyncExternalStore 化する。
+ * sales-range フラグ取得用の公開エイリアス。
+ *
+ * `use*` の名前は React Hook 規約 (react-hooks/rules-of-hooks) に紛らわしいため、
+ * Phase 3.5 で `getSalesRangeFlag` にリネーム。中身は単なる localStorage 読み出し。
+ * State 連動が必要になったら useSyncExternalStore 化する。
  */
-export function useSalesRange(): boolean {
+export function getSalesRangeFlag(): boolean {
   return getUseSalesRange();
 }

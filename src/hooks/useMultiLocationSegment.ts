@@ -6,9 +6,7 @@ import { calculatePeriodDates } from '../lib/periodDates';
 import { MSG } from '../lib/messages';
 import { fetchSalesRange, dayMetricsToTrendPoint } from '../lib/salesRangeAdapter';
 import type { SalesRangeMeta, SalesRangeResponse } from '../lib/salesRangeAdapter';
-import { useSalesRange } from '../lib/featureFlags';
-
-const DETAIL_MAX_DAYS = 35;
+import { getSalesRangeFlag } from '../lib/featureFlags';
 
 function openOrderToTransaction(o: OpenOrder): Transaction {
   return {
@@ -107,9 +105,10 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
       const start_date = dates[0];
       const end_date = dates[dates.length - 1];
 
-      const useSalesRangeFlag = useSalesRange();
-      const isDetailAvailable = dates.length <= DETAIL_MAX_DAYS;
-      setDetailAvailable(useSalesRangeFlag ? isDetailAvailable : true);
+      const useSalesRangeFlag = getSalesRangeFlag();
+      // 35 日ガード撤廃 (2026-05-21): 長期間 (四半期/年間) でも明細セクションを常時表示するため。
+      // detailAvailable は将来の別理由 (権限・機能フラグ等) で false にする余地を残し、デフォルト true 固定。
+      setDetailAvailable(true);
 
       const elapsedDays = dates.length;
       const granularity = granularityFor(period);
@@ -535,11 +534,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
       setError(warn);
       setLoading(false);
 
-      if (!isDetailAvailable) {
-        return;
-      }
-
-      // Layer 2: transactions / open-orders を店舗ごとに並列ロード (期間 ≤ 35 日のみ)
+      // Layer 2: transactions / open-orders を店舗ごとに並列ロード (期間長に関わらず常時試行)
       setDetailLoading(true);
 
       const layer2Tasks: Promise<RangeFetchResult>[] = locations.map(loc => {
@@ -584,11 +579,14 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
         const txByLocation = new Map<string, Transaction[]>();
         const acqByLocation = new Map<string, AcquisitionBreakdown>();
         let allLayer2Failed = true;
+        const failedLocationNames: string[] = [];
+        const locationNameMap = new Map<string, string>(locations.map(l => [l.id, l.name]));
 
         for (const { locationId, txByDate, openByDate, txFailed, openFailed } of layer2Results) {
           if (txFailed && openFailed) {
             txByLocation.set(locationId, []);
             acqByLocation.set(locationId, { ...ZERO_ACQUISITION });
+            failedLocationNames.push(locationNameMap.get(locationId) ?? locationId);
             continue;
           }
           allLayer2Failed = false;
@@ -606,6 +604,11 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
         if (allLayer2Failed) {
           setDetailError(MSG.error.period);
           return;
+        }
+
+        // 部分失敗 (一部店舗のみ Layer 2 失敗) を detailError に反映
+        if (failedLocationNames.length > 0) {
+          setDetailError(`${failedLocationNames.length}店舗の明細取得失敗: ${failedLocationNames.join(', ')}`);
         }
 
         setData(prev => {

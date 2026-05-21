@@ -21,6 +21,42 @@ interface Props {
   detailError?: string | null;
 }
 
-export default function SegmentTabPanel(props: Props) {
-  return <CustomerSegmentSection {...props} />;
+export default function SegmentTabPanel({
+  data,
+  transactions,
+  loading,
+  error,
+  period,
+  onPeriodChange,
+  weekIndex,
+  onWeekIndexChange,
+  availableWeeks,
+  quarterIndex,
+  onQuarterIndexChange,
+  startHour,
+  endHour,
+  detailAvailable,
+  detailLoading,
+  detailError,
+}: Props) {
+  return (
+    <CustomerSegmentSection
+      data={data}
+      transactions={transactions}
+      loading={loading}
+      error={error}
+      period={period}
+      onPeriodChange={onPeriodChange}
+      weekIndex={weekIndex}
+      onWeekIndexChange={onWeekIndexChange}
+      availableWeeks={availableWeeks}
+      quarterIndex={quarterIndex}
+      onQuarterIndexChange={onQuarterIndexChange}
+      startHour={startHour}
+      endHour={endHour}
+      detailAvailable={detailAvailable}
+      detailLoading={detailLoading}
+      detailError={detailError}
+    />
+  );
 }

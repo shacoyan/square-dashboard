@@ -63,7 +63,7 @@ export default function LocationComparisonSection(props: Props) {
     enabled,
   } = props;
 
-  const { data, loading, error, detailAvailable = true, detailError } = useMultiLocationSegment({
+  const { data, loading, error, detailAvailable = true, detailLoading = false, detailError } = useMultiLocationSegment({
     token,
     locations,
     period,
@@ -74,8 +74,6 @@ export default function LocationComparisonSection(props: Props) {
     quarterIndex,
     enabled: enabled && locations.length > 0,
   });
-
-  const DETAIL_GUARD_MESSAGE = '期間が 35 日を超えるため、店舗別 新規獲得経路・着座分析は表示されません。詳細を確認したい場合は 月間 / 週間 / 当日 に切り替えてください。';
 
   const barColorsMap = React.useMemo(
     () => getLocationColors(data ? data.rows.map(r => r.locationId) : []),
@@ -119,7 +117,16 @@ export default function LocationComparisonSection(props: Props) {
         <td className={TD_NUM}>{row.customersBySegment.regular.toLocaleString()}</td>
         <td className={TD_NUM}>{row.customersBySegment.staff.toLocaleString()}</td>
         <td className={TD_NUM}>{formatYen(row.salesBySegment.unlisted)}</td>
-        {detailAvailable && (
+        {detailAvailable && detailLoading && (
+          <>
+            <td className={TD_NUM}>--</td>
+            <td className={TD_NUM}>--</td>
+            <td className={TD_NUM}>--</td>
+            <td className={TD_NUM}>--</td>
+            <td className={TD_NUM}>--</td>
+          </>
+        )}
+        {detailAvailable && !detailLoading && (
           <>
             <td className={TD_NUM}>{row.acquisitionBreakdown.google.toLocaleString()}</td>
             <td className={TD_NUM}>{row.acquisitionBreakdown.review.toLocaleString()}</td>
@@ -209,16 +216,6 @@ export default function LocationComparisonSection(props: Props) {
                 <p className="text-xs text-warning-800 mt-2">※ 一部日付のデータ取得に失敗した店舗です。平均日売上は全期間日数で按分しているため実績より低く表示されている可能性があります。</p>
               )}
             </div>
-
-            {!detailAvailable && (
-              <ErrorState
-                variant="inline"
-                tone="warning"
-                role="status"
-                title="長期間モード"
-                description={DETAIL_GUARD_MESSAGE}
-              />
-            )}
 
             {detailAvailable && detailError && (
               <ErrorState
@@ -332,7 +329,14 @@ export default function LocationComparisonSection(props: Props) {
                 </div>
               </div>
 
-              {detailAvailable && (
+              {detailAvailable && detailLoading && (
+                <div className="bg-surface-muted rounded-xl border border-border p-4">
+                  <h3 className="text-md font-bold text-text mb-4">店舗別 新規獲得経路</h3>
+                  <ChartSkeleton heightPreset="standard" />
+                </div>
+              )}
+
+              {detailAvailable && !detailLoading && (
               <div className="bg-surface-muted rounded-xl border border-border p-4">
                 <h3 className="text-md font-bold text-text mb-4">店舗別 新規獲得経路</h3>
                 <LocationStackChart
@@ -436,7 +440,14 @@ export default function LocationComparisonSection(props: Props) {
                 </div>
               )}
 
-              {detailAvailable && (
+              {detailAvailable && detailLoading && (
+                <div className="bg-surface-muted rounded-xl border border-border p-2 md:p-4">
+                  <h3 className="text-md font-bold text-text mb-4">着座分析</h3>
+                  <ChartSkeleton heightPreset="standard" />
+                </div>
+              )}
+
+              {detailAvailable && !detailLoading && (
                 <div className="bg-surface-muted rounded-xl border border-border p-2 md:p-4">
                   <OccupancyAnalysisSection transactions={data.rows.flatMap((r) => r.transactions ?? [])} startHour={startHour} endHour={endHour} />
                 </div>

@@ -1,7 +1,7 @@
 import { formatYen } from '../utils';
 import type { CustomerSegmentAnalysis, PeriodPreset, SegmentBreakdown, AcquisitionBreakdown, Transaction } from '../types';
 import { SegmentPieChart, SegmentTrendChart, AcquisitionChart } from './charts';
-import { PeriodSelector, Card, KpiSkeleton, EmptyState, ErrorState } from './ui';
+import { PeriodSelector, Card, KpiSkeleton, ChartSkeleton, EmptyState, ErrorState } from './ui';
 import { MSG } from '../lib/messages';
 import { granularityFor, cardTitleByGranularity, formatBucketRangeLabel } from '../lib/trendAggregation';
 import WeekdayAnalysisSection from './WeekdayAnalysisSection';
@@ -22,13 +22,11 @@ interface Props {
   startHour?: number;
   endHour?: number;
   // Phase 3 Team B: 2 段階ロード対応
-  // detailAvailable === false のとき、着座分析・集客経路は非表示にする
+  // detailAvailable: 将来の権限・機能フラグ等で false にする余地を残すため props は維持 (デフォルト true)
   detailAvailable?: boolean;
   detailLoading?: boolean;
   detailError?: string | null;
 }
-
-const DETAIL_GUARD_MESSAGE = '期間が 35 日を超えるため、着座分析・集客経路は表示されません。詳細を確認したい場合は 月間 / 週間 / 当日 に切り替えてください。';
 
 function SegmentCustomerCard({ label, count, sales, showCount = true }: { label: string; count: number; sales: number; showCount?: boolean }) {
   return (
@@ -85,6 +83,7 @@ export default function CustomerSegmentSection({
   startHour,
   endHour,
   detailAvailable = true,
+  detailLoading = false,
   detailError = null,
 }: Props) {
   const totalSales = data ? data.totalSales : 0;
@@ -232,17 +231,18 @@ export default function CustomerSegmentSection({
             <WeekdayAnalysisSection dailyTrend={data.dailyTrend} />
           )}
 
-          {!detailAvailable && (
-            <ErrorState
-              variant="inline"
-              tone="warning"
-              role="status"
-              title="長期間モード"
-              description={DETAIL_GUARD_MESSAGE}
-            />
+          {detailAvailable && detailLoading && (
+            <>
+              <Card title="新規獲得経路">
+                <ChartSkeleton heightPreset="standard" />
+              </Card>
+              <Card title="着座分析">
+                <ChartSkeleton heightPreset="standard" />
+              </Card>
+            </>
           )}
 
-          {detailAvailable && (
+          {detailAvailable && !detailLoading && (
             <>
               <OccupancyAnalysisSection transactions={transactions} startHour={startHour} endHour={endHour} />
 

@@ -1,7 +1,5 @@
 import { setCors, validateToken, parseRangeTimeRange, computeBusinessDate, fetchAllPayments, fetchOrdersBatch, fetchCatalogVariationCategoryMap, fetchCustomers, normalizePaymentsForReporting } from './_shared.js';
 
-const DAYS_BETWEEN_LIMIT = 35;
-
 /**
  * 'YYYY-MM-DD' 形式かつ実在する日付か判定。
  *   '2026-02-31' のような Date round-trip で別日に化けるケースを弾く。
@@ -13,17 +11,6 @@ function isValidDateStr(s) {
   if (Number.isNaN(d.getTime())) return false;
   const roundtrip = d.toISOString().slice(0, 10);
   return roundtrip === s;
-}
-
-/**
- * inclusive な日数差 (start_date=end_date のとき 1)。
- */
-function daysBetweenInclusive(startStr, endStr) {
-  const [sy, sm, sd] = startStr.split('-').map(Number);
-  const [ey, em, ed] = endStr.split('-').map(Number);
-  const s = Date.UTC(sy, sm - 1, sd);
-  const e = Date.UTC(ey, em - 1, ed);
-  return Math.floor((e - s) / 86400000) + 1;
 }
 
 export default async (req, res) => {
@@ -44,16 +31,6 @@ export default async (req, res) => {
 
   if (start_date > end_date) {
     return res.status(400).json({ error: 'invalid_date_range', message: 'start_date must be <= end_date' });
-  }
-
-  const requestedDays = daysBetweenInclusive(start_date, end_date);
-  if (requestedDays > DAYS_BETWEEN_LIMIT) {
-    return res.status(400).json({
-      error: 'period_too_long',
-      message: `期間が長すぎます (${requestedDays} 日)。明細表示は ${DAYS_BETWEEN_LIMIT} 日以内のみ可能です。`,
-      max_days: DAYS_BETWEEN_LIMIT,
-      requested_days: requestedDays,
-    });
   }
 
   try {

@@ -41,7 +41,7 @@ describe('api/transactions-range — 入力検証ガード', () => {
     vi.clearAllMocks();
   });
 
-  it('期間 36 日で 400 + period_too_long を返す', async () => {
+  it('期間 36 日でも 200 を返す (35 日ガード撤廃)', async () => {
     const req = makeReq({
       start_date: '2026-04-01',
       end_date: '2026-05-06', // 36 日
@@ -50,13 +50,11 @@ describe('api/transactions-range — 入力検証ガード', () => {
     const res = makeRes();
     await handler(req, res);
 
-    expect(res.statusCode).toBe(400);
-    expect(res.body.error).toBe('period_too_long');
-    expect(res.body.max_days).toBe(35);
-    expect(res.body.requested_days).toBe(36);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ byDate: {} });
   });
 
-  it('期間 35 日 (境界 OK) は 200 を返す', async () => {
+  it('期間 35 日でも 200 を返す', async () => {
     const req = makeReq({
       start_date: '2026-04-01',
       end_date: '2026-05-05', // 35 日
@@ -108,7 +106,7 @@ describe('api/transactions-range — 入力検証ガード', () => {
     expect(res.body.error).toBe('invalid_date');
   });
 
-  it('120 日のリクエストで requested_days=120 を返す', async () => {
+  it('120 日 (長期間) のリクエストでも 200 を返す (35 日ガード撤廃)', async () => {
     const req = makeReq({
       start_date: '2026-01-01',
       end_date: '2026-04-30',
@@ -117,9 +115,8 @@ describe('api/transactions-range — 入力検証ガード', () => {
     const res = makeRes();
     await handler(req, res);
 
-    expect(res.statusCode).toBe(400);
-    expect(res.body.error).toBe('period_too_long');
-    expect(res.body.requested_days).toBe(120);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ byDate: {} });
   });
 
   it('必須パラメータ未指定で 400 を返す (既存挙動)', async () => {

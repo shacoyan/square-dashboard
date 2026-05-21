@@ -6,7 +6,7 @@ import { calculatePeriodDates, getMonthWeekCount } from '../lib/periodDates';
 import { MSG } from '../lib/messages';
 import { fetchSalesRange, buildSegmentAnalysisFromSalesRange } from '../lib/salesRangeAdapter';
 import type { SalesRangeMeta } from '../lib/salesRangeAdapter';
-import { useSalesRange } from '../lib/featureFlags';
+import { getSalesRangeFlag } from '../lib/featureFlags';
 
 interface Args {
   token: string;
@@ -32,8 +32,6 @@ export interface UseCustomerSegmentResult {
   detailAvailable: boolean;
   meta: SalesRangeMeta | null;
 }
-
-const DETAIL_MAX_DAYS = 35;
 
 function openOrderToTransaction(o: OpenOrder): Transaction {
   return {
@@ -96,9 +94,10 @@ export function useCustomerSegment(args: Args): UseCustomerSegmentResult {
       return;
     }
 
-    const useSalesRangeFlag = useSalesRange();
-    const isDetailAvailable = dates.length <= DETAIL_MAX_DAYS;
-    setDetailAvailable(useSalesRangeFlag ? isDetailAvailable : true);
+    const useSalesRangeFlag = getSalesRangeFlag();
+    // 35 日ガード撤廃 (2026-05-21): 長期間 (四半期/年間) でも明細セクションを常時表示するため。
+    // detailAvailable は将来の別理由 (権限・機能フラグ等) で false にする余地を残し、デフォルト true 固定。
+    setDetailAvailable(true);
 
     const headers: HeadersInit = {
       Authorization: `Bearer ${token}`,
@@ -260,7 +259,7 @@ export function useCustomerSegment(args: Args): UseCustomerSegmentResult {
       return;
     }
 
-    // 新コードパス (sales-range Layer 1 + 期間 ≤ 35 日のときのみ Layer 2)
+    // 新コードパス (sales-range Layer 1 + Layer 2 は期間長に関わらず常時試行)
     try {
       const response = await fetchSalesRange({
         start_date,
@@ -308,11 +307,7 @@ export function useCustomerSegment(args: Args): UseCustomerSegmentResult {
       setLoading(false);
     }
 
-    if (!isDetailAvailable) {
-      return;
-    }
-
-    // Layer 2: transactions 詳細を別途並列ロード (期間 ≤ 35 日のみ)
+    // Layer 2: transactions 詳細を別途並列ロード (期間長に関わらず常時試行)
     setDetailLoading(true);
 
     const txUrl = `/api/transactions-range?start_date=${start_date}&end_date=${end_date}&location_id=${encodeURIComponent(locationId)}&start_hour=${startHour}&end_hour=${endHour}`;
