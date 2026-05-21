@@ -7,7 +7,7 @@ import { MSG } from '../lib/messages';
 import { granularityFor, cardTitleByGranularity, formatBucketRangeLabel } from '../lib/trendAggregation';
 import WeekdayAnalysisSection from './WeekdayAnalysisSection';
 import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
-import { formatYoY, yoyClassToColorClass, type SalesRangeYoYResult, type DailyTotalPoint } from '../lib/yoy';
+import { formatYoY, yoyClassToColorClass, calculateYoY, type SalesRangeYoYResult, type DailyTotalPoint, type YoYDelta } from '../lib/yoy';
 
 interface Props {
   data: CustomerSegmentAnalysis | null;
@@ -33,7 +33,21 @@ interface Props {
   showYoY?: boolean;
 }
 
-function SegmentCustomerCard({ label, count, sales, showCount = true }: { label: string; count: number; sales: number; showCount?: boolean }) {
+function SegmentCustomerCard({
+  label,
+  count,
+  sales,
+  showCount = true,
+  yoyDelta,
+  showYoY,
+}: {
+  label: string;
+  count: number;
+  sales: number;
+  showCount?: boolean;
+  yoyDelta?: YoYDelta | null;
+  showYoY?: boolean;
+}) {
   return (
     <div className="bg-surface-muted rounded-xl border border-border p-6">
       <p className="text-sm font-medium text-text-muted mb-1">{label}</p>
@@ -44,6 +58,11 @@ function SegmentCustomerCard({ label, count, sales, showCount = true }: { label:
         </>
       ) : (
         <p className="text-2xl font-bold text-text">{formatYen(sales)}</p>
+      )}
+      {showYoY && yoyDelta && (
+        <p className={`text-xs mt-1 ${yoyClassToColorClass(yoyDelta.classification)}`}>
+          {formatYoY(yoyDelta)}
+        </p>
       )}
     </div>
   );
@@ -103,6 +122,34 @@ export default function CustomerSegmentSection({
       .filter(b => b.lastYear !== null)
       .map(b => ({ date: b.lastYearDate, total: b.lastYear!.customer_count, currentDate: b.business_date }));
   }, [yoy, showYoY]);
+
+  // 派生 YoY: 平均日売上 / 全体客単価。
+  // 当年値は data.averageDailySales / data.overallAveragePerCustomer をそのまま使い、
+  // 前年値は yoy.lastYear から派生計算する。
+  //   - 前年平均日売上   = lastYear.total_amount / 前年実在日数 (yoy.byDate で lastYear !== null の数)
+  //   - 前年全体客単価   = lastYear.total_amount / lastYear.customer_count
+  // 前年データがない場合 (yoy.lastYear === null) は calculateYoY が 'no_data' で返るよう null を渡す。
+  const derivedYoY = useMemo<{ avgDaily: YoYDelta | null; perCustomer: YoYDelta | null }>(() => {
+    if (!data) return { avgDaily: null, perCustomer: null };
+
+    const lyTotal = yoy?.lastYear?.total_amount ?? null;
+    const lyCustomerCount = yoy?.lastYear?.customer_count ?? null;
+    const lyDays = yoy?.byDate.filter(b => b.lastYear !== null).length ?? 0;
+
+    const lyAvgDaily = lyTotal !== null && lyDays > 0 ? lyTotal / lyDays : null;
+    const lyPerCustomer = lyTotal !== null && lyCustomerCount !== null && lyCustomerCount > 0
+      ? lyTotal / lyCustomerCount
+      : null;
+
+    const avgDaily = data.averageDailySales !== null
+      ? calculateYoY(data.averageDailySales, lyAvgDaily)
+      : null;
+    const perCustomer = data.overallAveragePerCustomer !== null
+      ? calculateYoY(data.overallAveragePerCustomer, lyPerCustomer)
+      : null;
+
+    return { avgDaily, perCustomer };
+  }, [yoy, data]);
   const totalAcquisition = data
     ? ACQUISITION_CONFIG.reduce(
         (sum, item) => sum + (data.acquisitionBreakdown[item.key] || 0),
@@ -170,6 +217,11 @@ export default function CustomerSegmentSection({
                 <p className="text-2xl font-bold text-text">
                   {data.averageDailySales !== null ? formatYen(Math.round(data.averageDailySales)) : '--'}
                 </p>
+                {showYoY && derivedYoY.avgDaily && (
+                  <p className={`text-xs mt-1 ${yoyClassToColorClass(derivedYoY.avgDaily.classification)}`}>
+                    {formatYoY(derivedYoY.avgDaily)}
+                  </p>
+                )}
               </div>
 
               <div className="bg-surface-muted rounded-xl border border-border p-6">
@@ -177,6 +229,11 @@ export default function CustomerSegmentSection({
                 <p className="text-2xl font-bold text-text">
                   {data.overallAveragePerCustomer !== null ? formatYen(Math.round(data.overallAveragePerCustomer)) : '--'}
                 </p>
+                {showYoY && derivedYoY.perCustomer && (
+                  <p className={`text-xs mt-1 ${yoyClassToColorClass(derivedYoY.perCustomer.classification)}`}>
+                    {formatYoY(derivedYoY.perCustomer)}
+                  </p>
+                )}
               </div>
 
               <div className="bg-surface-muted rounded-xl border border-border p-6">
@@ -198,6 +255,12 @@ export default function CustomerSegmentSection({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               {SEGMENT_LABELS.map(({ key, label }) => {
                 const isUnlisted = key === 'unlisted';
+                const segmentYoYMap: Partial<Record<keyof SegmentBreakdown, YoYDelta | undefined>> = {
+                  new: yoy?.yoy.new_customer_count,
+                  repeat: yoy?.yoy.repeat_customer_count,
+                  regular: yoy?.yoy.regular_customer_count,
+                  staff: yoy?.yoy.staff_customer_count,
+                };
                 return (
                   <SegmentCustomerCard
                     key={key}
@@ -205,6 +268,8 @@ export default function CustomerSegmentSection({
                     count={data.customersBySegment[key]}
                     sales={data.salesBySegment[key]}
                     showCount={!isUnlisted}
+                    yoyDelta={segmentYoYMap[key]}
+                    showYoY={showYoY}
                   />
                 );
               })}

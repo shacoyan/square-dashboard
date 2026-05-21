@@ -66,6 +66,15 @@ describe('buildYoYResultFromResponses (useYoYCompare の純粋ロジック)', ()
     expect(res.byDate[0].business_date).toBe('2026-05-01');
     expect(res.byDate[0].lastYearDate).toBe('2025-05-01');
     expect(res.byDate[0].lastYear).not.toBeNull();
+
+    // セグメント別 YoY が計算される (makeDay defaults: new=2, repeat=3, regular=1, staff=0)
+    expect(res.current.new_customer_count).toBe(4);     // 2 + 2
+    expect(res.lastYear?.new_customer_count).toBe(4);    // 2 + 2
+    expect(res.yoy.new_customer_count.classification).toBe('flat');
+    expect(res.yoy.repeat_customer_count.classification).toBe('flat');
+    expect(res.yoy.regular_customer_count.classification).toBe('flat');
+    // staff は両期間 0 のため lastYear=0 で no_data
+    expect(res.yoy.staff_customer_count.classification).toBe('no_data');
   });
 
   it('lastYear=null → 部分成功、yoy.* は no_data', () => {
@@ -85,6 +94,10 @@ describe('buildYoYResultFromResponses (useYoYCompare の純粋ロジック)', ()
     expect(res.yoy.total_amount.classification).toBe('no_data');
     expect(res.yoy.transaction_count.classification).toBe('no_data');
     expect(res.yoy.customer_count.classification).toBe('no_data');
+    expect(res.yoy.new_customer_count.classification).toBe('no_data');
+    expect(res.yoy.repeat_customer_count.classification).toBe('no_data');
+    expect(res.yoy.regular_customer_count.classification).toBe('no_data');
+    expect(res.yoy.staff_customer_count.classification).toBe('no_data');
     expect(res.dataCoverage).toBe(0);
     expect(res.byDate[0].lastYear).toBeNull();
   });
@@ -169,6 +182,15 @@ describe('buildYoYResultFromResponses (useYoYCompare の純粋ロジック)', ()
 
     expect(res.dataCoverage).toBe(0);
     expect(res.byDate).toEqual([]);
-    expect(res.current).toEqual({ total_amount: 0, transaction_count: 0, customer_count: 0 });
+    expect(res.current).toEqual({
+      total_amount: 0,
+      transaction_count: 0,
+      customer_count: 0,
+      new_customer_count: 0,
+      repeat_customer_count: 0,
+      regular_customer_count: 0,
+      staff_customer_count: 0,
+      unlisted_customer_count: 0,
+    });
   });
 });

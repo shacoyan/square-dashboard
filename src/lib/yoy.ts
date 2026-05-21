@@ -91,7 +91,7 @@ export function formatYoY(delta: YoYDelta, opts?: { compact?: boolean }): string
       return `±0.0%${flatSuffix}`;
     }
     case 'no_data':
-      return `—${suffix}`;
+      return `前年データなし`;
   }
 }
 
@@ -112,16 +112,44 @@ export interface SalesRangeTotal {
   total_amount: number;
   transaction_count: number;
   customer_count: number;
+  new_customer_count: number;
+  repeat_customer_count: number;
+  regular_customer_count: number;
+  staff_customer_count: number;
+  unlisted_customer_count: number;
 }
 
 export function aggregateSalesRangeTotals(
-  byDate: Record<string, { total_amount: number; transaction_count: number; customer_count: number }>
+  byDate: Record<string, {
+    total_amount: number;
+    transaction_count: number;
+    customer_count: number;
+    new_customer_count?: number;
+    repeat_customer_count?: number;
+    regular_customer_count?: number;
+    staff_customer_count?: number;
+    unlisted_customer_count?: number;
+  }>
 ): SalesRangeTotal {
-  const result: SalesRangeTotal = { total_amount: 0, transaction_count: 0, customer_count: 0 };
+  const result: SalesRangeTotal = {
+    total_amount: 0,
+    transaction_count: 0,
+    customer_count: 0,
+    new_customer_count: 0,
+    repeat_customer_count: 0,
+    regular_customer_count: 0,
+    staff_customer_count: 0,
+    unlisted_customer_count: 0,
+  };
   for (const val of Object.values(byDate)) {
     result.total_amount += val.total_amount;
     result.transaction_count += val.transaction_count;
     result.customer_count += val.customer_count;
+    result.new_customer_count += val.new_customer_count ?? 0;
+    result.repeat_customer_count += val.repeat_customer_count ?? 0;
+    result.regular_customer_count += val.regular_customer_count ?? 0;
+    result.staff_customer_count += val.staff_customer_count ?? 0;
+    result.unlisted_customer_count += val.unlisted_customer_count ?? 0;
   }
   return result;
 }
@@ -143,7 +171,7 @@ export interface DailyTotalPoint {
 }
 
 /**
- * YoY 計算結果の集約型 (KPI 3 指標 + 日別比較)。
+ * YoY 計算結果の集約型 (KPI 3 指標 + セグメント別 4 指標 + 日別比較)。
  * Team B (SalesSummary) / Team C (chart) がこの型を受け取って表示する。
  */
 export interface SalesRangeYoYResult {
@@ -155,6 +183,10 @@ export interface SalesRangeYoYResult {
     total_amount: YoYDelta;
     transaction_count: YoYDelta;
     customer_count: YoYDelta;
+    new_customer_count: YoYDelta;
+    repeat_customer_count: YoYDelta;
+    regular_customer_count: YoYDelta;
+    staff_customer_count: YoYDelta;
   };
   /** 期間内 N 日中、前年同日にデータが存在する日数 M を / N */
   dataCoverage: number;

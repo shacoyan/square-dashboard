@@ -85,6 +85,10 @@ export function buildYoYResultFromResponses(args: {
     total_amount: calculateYoY(currentTotals.total_amount, lastYearTotals?.total_amount ?? null),
     transaction_count: calculateYoY(currentTotals.transaction_count, lastYearTotals?.transaction_count ?? null),
     customer_count: calculateYoY(currentTotals.customer_count, lastYearTotals?.customer_count ?? null),
+    new_customer_count: calculateYoY(currentTotals.new_customer_count, lastYearTotals?.new_customer_count ?? null),
+    repeat_customer_count: calculateYoY(currentTotals.repeat_customer_count, lastYearTotals?.repeat_customer_count ?? null),
+    regular_customer_count: calculateYoY(currentTotals.regular_customer_count, lastYearTotals?.regular_customer_count ?? null),
+    staff_customer_count: calculateYoY(currentTotals.staff_customer_count, lastYearTotals?.staff_customer_count ?? null),
   };
 
   return {

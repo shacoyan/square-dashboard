@@ -604,34 +604,49 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
           setLocationYoy(perLocationYoy);
 
           // 全店舗の lastYear byDate を一つに合算 (日付ごとに加算)
-          const lastYearMergedByDate: Record<
-            string,
-            { total_amount: number; transaction_count: number; customer_count: number }
-          > = {};
+          type MergedDayTotals = {
+            total_amount: number;
+            transaction_count: number;
+            customer_count: number;
+            new_customer_count: number;
+            repeat_customer_count: number;
+            regular_customer_count: number;
+            staff_customer_count: number;
+            unlisted_customer_count: number;
+          };
+          const makeEmptyMergedDay = (): MergedDayTotals => ({
+            total_amount: 0,
+            transaction_count: 0,
+            customer_count: 0,
+            new_customer_count: 0,
+            repeat_customer_count: 0,
+            regular_customer_count: 0,
+            staff_customer_count: 0,
+            unlisted_customer_count: 0,
+          });
+          const lastYearMergedByDate: Record<string, MergedDayTotals> = {};
           let lastYearAnySuccess = false;
           for (const r of lastYearResults) {
             if (r.status !== 'fulfilled') continue;
             lastYearAnySuccess = true;
             for (const [date, day] of Object.entries(r.value.byDate)) {
-              const acc = lastYearMergedByDate[date] ?? {
-                total_amount: 0,
-                transaction_count: 0,
-                customer_count: 0,
-              };
+              const acc = lastYearMergedByDate[date] ?? makeEmptyMergedDay();
               acc.total_amount += day.total_amount;
               acc.transaction_count += day.transaction_count;
               acc.customer_count += day.customer_count;
+              acc.new_customer_count += day.new_customer_count ?? 0;
+              acc.repeat_customer_count += day.repeat_customer_count ?? 0;
+              acc.regular_customer_count += day.regular_customer_count ?? 0;
+              acc.staff_customer_count += day.staff_customer_count ?? 0;
+              acc.unlisted_customer_count += day.unlisted_customer_count ?? 0;
               lastYearMergedByDate[date] = acc;
             }
           }
 
           // current 側の全店舗合算 byDate を組み立てる (layer1Map から)
-          const currentMergedByDate: Record<
-            string,
-            { total_amount: number; transaction_count: number; customer_count: number }
-          > = {};
+          const currentMergedByDate: Record<string, MergedDayTotals> = {};
           for (const date of dates) {
-            const acc = { total_amount: 0, transaction_count: 0, customer_count: 0 };
+            const acc = makeEmptyMergedDay();
             for (const loc of locations) {
               const response = layer1Map.get(loc.id);
               if (!response) continue;
@@ -640,6 +655,11 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
               acc.total_amount += day.total_amount;
               acc.transaction_count += day.transaction_count;
               acc.customer_count += day.customer_count;
+              acc.new_customer_count += day.new_customer_count ?? 0;
+              acc.repeat_customer_count += day.repeat_customer_count ?? 0;
+              acc.regular_customer_count += day.regular_customer_count ?? 0;
+              acc.staff_customer_count += day.staff_customer_count ?? 0;
+              acc.unlisted_customer_count += day.unlisted_customer_count ?? 0;
             }
             currentMergedByDate[date] = acc;
           }
@@ -677,6 +697,10 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
               total_amount: calculateYoY(currentTotals.total_amount, lastYearTotals?.total_amount ?? null),
               transaction_count: calculateYoY(currentTotals.transaction_count, lastYearTotals?.transaction_count ?? null),
               customer_count: calculateYoY(currentTotals.customer_count, lastYearTotals?.customer_count ?? null),
+              new_customer_count: calculateYoY(currentTotals.new_customer_count, lastYearTotals?.new_customer_count ?? null),
+              repeat_customer_count: calculateYoY(currentTotals.repeat_customer_count, lastYearTotals?.repeat_customer_count ?? null),
+              regular_customer_count: calculateYoY(currentTotals.regular_customer_count, lastYearTotals?.regular_customer_count ?? null),
+              staff_customer_count: calculateYoY(currentTotals.staff_customer_count, lastYearTotals?.staff_customer_count ?? null),
             },
             dataCoverage,
             byDate: byDateArr,

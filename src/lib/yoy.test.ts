@@ -116,10 +116,15 @@ describe('aggregateSalesRangeTotals', () => {
       total_amount: 0,
       transaction_count: 0,
       customer_count: 0,
+      new_customer_count: 0,
+      repeat_customer_count: 0,
+      regular_customer_count: 0,
+      staff_customer_count: 0,
+      unlisted_customer_count: 0,
     });
   });
 
-  it('1 日のみ → そのままの値', () => {
+  it('1 日のみ → そのままの値 (セグメント未指定は 0)', () => {
     const res = aggregateSalesRangeTotals({
       '2024-01-01': { total_amount: 100, transaction_count: 10, customer_count: 5 },
     });
@@ -127,10 +132,15 @@ describe('aggregateSalesRangeTotals', () => {
       total_amount: 100,
       transaction_count: 10,
       customer_count: 5,
+      new_customer_count: 0,
+      repeat_customer_count: 0,
+      regular_customer_count: 0,
+      staff_customer_count: 0,
+      unlisted_customer_count: 0,
     });
   });
 
-  it('複数日 → 正しく SUM される', () => {
+  it('複数日 → 正しく SUM される (セグメント未指定は 0)', () => {
     const res = aggregateSalesRangeTotals({
       '2024-01-01': { total_amount: 100, transaction_count: 10, customer_count: 5 },
       '2024-01-02': { total_amount: 200, transaction_count: 20, customer_count: 10 },
@@ -140,6 +150,34 @@ describe('aggregateSalesRangeTotals', () => {
       total_amount: 600,
       transaction_count: 60,
       customer_count: 30,
+      new_customer_count: 0,
+      repeat_customer_count: 0,
+      regular_customer_count: 0,
+      staff_customer_count: 0,
+      unlisted_customer_count: 0,
+    });
+  });
+
+  it('セグメント別フィールド付き → 全フィールドが SUM される', () => {
+    const res = aggregateSalesRangeTotals({
+      '2024-01-01': {
+        total_amount: 100, transaction_count: 10, customer_count: 5,
+        new_customer_count: 2, repeat_customer_count: 1, regular_customer_count: 1, staff_customer_count: 1, unlisted_customer_count: 0,
+      },
+      '2024-01-02': {
+        total_amount: 200, transaction_count: 20, customer_count: 10,
+        new_customer_count: 3, repeat_customer_count: 4, regular_customer_count: 2, staff_customer_count: 1, unlisted_customer_count: 0,
+      },
+    });
+    expect(res).toEqual({
+      total_amount: 300,
+      transaction_count: 30,
+      customer_count: 15,
+      new_customer_count: 5,
+      repeat_customer_count: 5,
+      regular_customer_count: 3,
+      staff_customer_count: 2,
+      unlisted_customer_count: 0,
     });
   });
 });
@@ -163,7 +201,7 @@ describe('formatYoY', () => {
   });
 
   it('no_data のフルテキスト', () => {
-    expect(formatYoY(baseNoData)).toBe('— vs 前年');
+    expect(formatYoY(baseNoData)).toBe('前年データなし');
   });
 
   it('compact=true で up が省略', () => {
@@ -178,8 +216,8 @@ describe('formatYoY', () => {
     expect(formatYoY(baseFlat, { compact: true })).toBe('±0.0%');
   });
 
-  it('compact=true で no_data が省略', () => {
-    expect(formatYoY(baseNoData, { compact: true })).toBe('—');
+  it('compact=true でも no_data は「前年データなし」で統一', () => {
+    expect(formatYoY(baseNoData, { compact: true })).toBe('前年データなし');
   });
 });
 
