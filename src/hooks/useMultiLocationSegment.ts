@@ -14,6 +14,7 @@ import {
   aggregateSalesRangeTotals,
 } from '../lib/yoy';
 import type { SalesRangeYoYResult, SalesRangeTotal } from '../lib/yoy';
+import { buildYoYResultFromResponses } from './useYoYCompare';
 
 function openOrderToTransaction(o: OpenOrder): Transaction {
   return {
@@ -39,9 +40,9 @@ export interface UseMultiLocationSegmentArgs {
   quarterIndex?: number;
   enabled: boolean;
   /**
-   * 前年同期比 (YoY) 計算を有効化する (店舗合計のみ、店舗別 YoY は Phase 4 範囲外)。
+   * 前年同期比 (YoY) 計算を有効化する (全店舗合計 + 店舗別)。
    * false (default) のときは既存挙動完全互換 (追加 fetch なし)。
-   * 設計書: §4.5
+   * 設計書: §4.5 / 2026-05-22 店舗別 YoY 拡張
    */
   enableYoy?: boolean;
 }
@@ -57,6 +58,11 @@ export interface UseMultiLocationSegmentResult {
   meta: SalesRangeMeta | null;
   /** 店舗合計の前年同期比結果。enableYoy=false 時は常に null。 */
   yoy: SalesRangeYoYResult | null;
+  /**
+   * 店舗別の前年同期比結果。enableYoy=false 時は常に空オブジェクト。
+   * key: location_id / value: その店舗単独の SalesRangeYoYResult
+   */
+  locationYoy: Record<string, SalesRangeYoYResult>;
   yoyLoading: boolean;
   yoyError: string | null;
 }
@@ -83,6 +89,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
   const [detailAvailable, setDetailAvailable] = useState<boolean>(true);
   const [meta, setMeta] = useState<SalesRangeMeta | null>(null);
   const [yoy, setYoy] = useState<SalesRangeYoYResult | null>(null);
+  const [locationYoy, setLocationYoy] = useState<Record<string, SalesRangeYoYResult>>({});
   const [yoyLoading, setYoyLoading] = useState<boolean>(false);
   const [yoyError, setYoyError] = useState<string | null>(null);
 
@@ -108,6 +115,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
     setMeta(null);
     setDetailAvailable(true);
     setYoy(null);
+    setLocationYoy({});
     setYoyLoading(false);
     setYoyError(null);
 
@@ -577,6 +585,24 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
           const lastYearResults = await Promise.allSettled(lastYearPromises);
           if (controller.signal.aborted) return;
 
+          // 店舗別 YoY: 各店舗の current/lastYear ペアを buildYoYResultFromResponses で組み立てる
+          // (current 側に layer1Map のレスポンスが無い店舗、または lastYear が rejected の店舗はスキップ)
+          const perLocationYoy: Record<string, SalesRangeYoYResult> = {};
+          for (let i = 0; i < locations.length; i++) {
+            const loc = locations[i];
+            const currentRes = layer1Map.get(loc.id);
+            if (!currentRes) continue;
+            const lyResult = lastYearResults[i];
+            const lastYearRes = lyResult && lyResult.status === 'fulfilled' ? lyResult.value : null;
+            perLocationYoy[loc.id] = buildYoYResultFromResponses({
+              start_date,
+              end_date,
+              currentRes,
+              lastYearRes,
+            });
+          }
+          setLocationYoy(perLocationYoy);
+
           // 全店舗の lastYear byDate を一つに合算 (日付ごとに加算)
           const lastYearMergedByDate: Record<
             string,
@@ -829,6 +855,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
     detailAvailable,
     meta,
     yoy,
+    locationYoy,
     yoyLoading,
     yoyError,
   };
