@@ -7,6 +7,13 @@ import { MSG } from '../lib/messages';
 import { fetchSalesRange, dayMetricsToTrendPoint } from '../lib/salesRangeAdapter';
 import type { SalesRangeMeta, SalesRangeResponse } from '../lib/salesRangeAdapter';
 import { getSalesRangeFlag } from '../lib/featureFlags';
+import {
+  calculateYoY,
+  shiftRangeOneYearBack,
+  shiftDateOneYearBack,
+  aggregateSalesRangeTotals,
+} from '../lib/yoy';
+import type { SalesRangeYoYResult, SalesRangeTotal } from '../lib/yoy';
 
 function openOrderToTransaction(o: OpenOrder): Transaction {
   return {
@@ -31,6 +38,12 @@ export interface UseMultiLocationSegmentArgs {
   weekIndex?: number;
   quarterIndex?: number;
   enabled: boolean;
+  /**
+   * 前年同期比 (YoY) 計算を有効化する (店舗合計のみ、店舗別 YoY は Phase 4 範囲外)。
+   * false (default) のときは既存挙動完全互換 (追加 fetch なし)。
+   * 設計書: §4.5
+   */
+  enableYoy?: boolean;
 }
 
 export interface UseMultiLocationSegmentResult {
@@ -42,6 +55,10 @@ export interface UseMultiLocationSegmentResult {
   detailError: string | null;
   detailAvailable: boolean;
   meta: SalesRangeMeta | null;
+  /** 店舗合計の前年同期比結果。enableYoy=false 時は常に null。 */
+  yoy: SalesRangeYoYResult | null;
+  yoyLoading: boolean;
+  yoyError: string | null;
 }
 
 type RangeFetchResult = {
@@ -56,7 +73,7 @@ const ZERO_SEGMENT: SegmentBreakdown = { new: 0, repeat: 0, regular: 0, staff: 0
 const ZERO_ACQUISITION: AcquisitionBreakdown = { google: 0, review: 0, signboard: 0, sns: 0, unknown: 0 };
 
 export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseMultiLocationSegmentResult {
-  const { token, locations, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled } = args;
+  const { token, locations, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled, enableYoy = false } = args;
 
   const [data, setData] = useState<LocationComparisonData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -65,6 +82,9 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailAvailable, setDetailAvailable] = useState<boolean>(true);
   const [meta, setMeta] = useState<SalesRangeMeta | null>(null);
+  const [yoy, setYoy] = useState<SalesRangeYoYResult | null>(null);
+  const [yoyLoading, setYoyLoading] = useState<boolean>(false);
+  const [yoyError, setYoyError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -87,6 +107,9 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
     setDetailError(null);
     setMeta(null);
     setDetailAvailable(true);
+    setYoy(null);
+    setYoyLoading(false);
+    setYoyError(null);
 
     try {
       const dates = calculatePeriodDates(period, baseDate, weekIndex, quarterIndex);
@@ -534,6 +557,124 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
       setError(warn);
       setLoading(false);
 
+      // YoY: enableYoy=true なら lastYear を店舗ごとに並列 fetch し、店舗合計の YoY のみ算出 (§4.5)
+      if (enableYoy) {
+        setYoyLoading(true);
+        const lastYearRange = shiftRangeOneYearBack({ start_date, end_date });
+
+        const lastYearPromises = locations.map(loc =>
+          fetchSalesRange({
+            start_date: lastYearRange.start_date,
+            end_date: lastYearRange.end_date,
+            location_id: loc.id,
+            start_hour: startHour,
+            token,
+            signal: controller.signal,
+          })
+        );
+
+        try {
+          const lastYearResults = await Promise.allSettled(lastYearPromises);
+          if (controller.signal.aborted) return;
+
+          // 全店舗の lastYear byDate を一つに合算 (日付ごとに加算)
+          const lastYearMergedByDate: Record<
+            string,
+            { total_amount: number; transaction_count: number; customer_count: number }
+          > = {};
+          let lastYearAnySuccess = false;
+          for (const r of lastYearResults) {
+            if (r.status !== 'fulfilled') continue;
+            lastYearAnySuccess = true;
+            for (const [date, day] of Object.entries(r.value.byDate)) {
+              const acc = lastYearMergedByDate[date] ?? {
+                total_amount: 0,
+                transaction_count: 0,
+                customer_count: 0,
+              };
+              acc.total_amount += day.total_amount;
+              acc.transaction_count += day.transaction_count;
+              acc.customer_count += day.customer_count;
+              lastYearMergedByDate[date] = acc;
+            }
+          }
+
+          // current 側の全店舗合算 byDate を組み立てる (layer1Map から)
+          const currentMergedByDate: Record<
+            string,
+            { total_amount: number; transaction_count: number; customer_count: number }
+          > = {};
+          for (const date of dates) {
+            const acc = { total_amount: 0, transaction_count: 0, customer_count: 0 };
+            for (const loc of locations) {
+              const response = layer1Map.get(loc.id);
+              if (!response) continue;
+              const day = response.byDate[date];
+              if (!day) continue;
+              acc.total_amount += day.total_amount;
+              acc.transaction_count += day.transaction_count;
+              acc.customer_count += day.customer_count;
+            }
+            currentMergedByDate[date] = acc;
+          }
+
+          const currentTotals: SalesRangeTotal = aggregateSalesRangeTotals(currentMergedByDate);
+          const lastYearTotals: SalesRangeTotal | null =
+            lastYearAnySuccess && Object.keys(lastYearMergedByDate).length > 0
+              ? aggregateSalesRangeTotals(lastYearMergedByDate)
+              : null;
+
+          const currentDates = Object.keys(currentMergedByDate).sort();
+          let matchedDays = 0;
+          const byDateArr: SalesRangeYoYResult['byDate'] = currentDates.map(date => {
+            const cur = currentMergedByDate[date];
+            const lastYearDate = shiftDateOneYearBack(date);
+            const lyDay = lastYearMergedByDate[lastYearDate] ?? null;
+            if (lyDay) matchedDays++;
+            return {
+              business_date: date,
+              lastYearDate,
+              current: cur,
+              lastYear: lyDay,
+            };
+          });
+
+          const totalDays = currentDates.length;
+          const dataCoverage = totalDays > 0 ? matchedDays / totalDays : 0;
+
+          const yoyResult: SalesRangeYoYResult = {
+            period: { start: start_date, end: end_date },
+            lastYearPeriod: { start: lastYearRange.start_date, end: lastYearRange.end_date },
+            current: currentTotals,
+            lastYear: lastYearTotals,
+            yoy: {
+              total_amount: calculateYoY(currentTotals.total_amount, lastYearTotals?.total_amount ?? null),
+              transaction_count: calculateYoY(currentTotals.transaction_count, lastYearTotals?.transaction_count ?? null),
+              customer_count: calculateYoY(currentTotals.customer_count, lastYearTotals?.customer_count ?? null),
+            },
+            dataCoverage,
+            byDate: byDateArr,
+          };
+
+          setYoy(yoyResult);
+
+          // 全店舗失敗時のみ yoyError 設定 (current は影響なし)
+          const allLastYearFailed = lastYearResults.every(r => r.status === 'rejected');
+          if (allLastYearFailed) {
+            setYoyError('YoY 取得失敗 (前年)');
+          }
+        } catch (yoyErr) {
+          if (yoyErr instanceof DOMException && yoyErr.name === 'AbortError') {
+            return;
+          }
+          setYoyError(yoyErr instanceof Error ? yoyErr.message : 'YoY 取得失敗 (前年)');
+        } finally {
+          if (!controller.signal.aborted) {
+            setYoyLoading(false);
+          }
+        }
+      }
+
       // Layer 2: transactions / open-orders を店舗ごとに並列ロード (期間長に関わらず常時試行)
       setDetailLoading(true);
 
@@ -662,7 +803,7 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
         setLoading(false);
       }
     }
-  }, [token, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled, locationIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [token, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled, locationIdsKey, enableYoy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchData();
@@ -687,5 +828,8 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
     detailError,
     detailAvailable,
     meta,
+    yoy,
+    yoyLoading,
+    yoyError,
   };
 }

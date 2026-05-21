@@ -9,6 +9,7 @@ import DailyTabPanel from './tabs/DailyTabPanel';
 import { useSquareData } from '../hooks/useSquareData';
 import { useOpenOrders } from '../hooks/useOpenOrders';
 import { useCustomerSegment } from '../hooks/useCustomerSegment';
+import { useShowYoYFlag } from '../hooks/useShowYoYFlag';
 import type { Location } from '../types';
 import type { PeriodPreset } from '../types';
 import { getBusinessDate } from '../lib/businessDate';
@@ -152,6 +153,9 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     endHour,
   });
 
+  // Phase 4 YoY: ControlBar のトグル状態を localStorage と双方向同期 (Team C)
+  const [showYoY, setShowYoY] = useShowYoYFlag();
+
   const {
     data: segmentData,
     transactions: segmentTransactions,
@@ -161,6 +165,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     detailAvailable: segmentDetailAvailable,
     detailLoading: segmentDetailLoading,
     detailError: segmentDetailError,
+    yoy: segmentYoY,
   } = useCustomerSegment({
     token,
     locationId: selectedLocationId,
@@ -171,6 +176,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
     weekIndex,
     quarterIndex,
     enabled: hasSegmentBeenActive,
+    enableYoy: showYoY,
   });
 
   const { orders: openOrders, loading: openOrdersLoading, error: openOrdersError } = useOpenOrders({
@@ -215,6 +221,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
             onRefresh={refresh}
             periodLabel={getPeriodLabel(date, startHour, endHour)}
             formattedLastUpdated={formattedLastUpdated}
+            showYoY={showYoY}
+            onShowYoYChange={setShowYoY}
           />
 
           {error && (
@@ -244,6 +252,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
                 openOrdersLoading={openOrdersLoading}
                 openOrdersError={openOrdersError}
                 transactions={transactions}
+                yoy={null}
+                showYoy={false}
               />
             </div>
           ) : activeTab === 'segment' ? (
@@ -272,6 +282,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
                   detailAvailable={segmentDetailAvailable}
                   detailLoading={segmentDetailLoading}
                   detailError={segmentDetailError}
+                  yoy={segmentYoY}
+                  showYoY={showYoY}
                 />
               </Suspense>
             </div>
@@ -298,6 +310,7 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
                   startHour={startHour}
                   endHour={endHour}
                   enabled={hasCompareBeenActive}
+                  showYoY={showYoY}
                 />
               </Suspense>
             </div>

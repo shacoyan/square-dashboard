@@ -1,5 +1,6 @@
 import CustomerSegmentSection from '../CustomerSegmentSection';
 import type { CustomerSegmentAnalysis, PeriodPreset, Transaction } from '../../types';
+import type { SalesRangeYoYResult } from '../../lib/yoy';
 
 interface Props {
   data: CustomerSegmentAnalysis | null;
@@ -19,6 +20,9 @@ interface Props {
   detailAvailable?: boolean;
   detailLoading?: boolean;
   detailError?: string | null;
+  // Phase 4 Team C: YoY pass-through (optional)
+  yoy?: SalesRangeYoYResult | null;
+  showYoY?: boolean;
 }
 
 export default function SegmentTabPanel({
@@ -38,6 +42,8 @@ export default function SegmentTabPanel({
   detailAvailable,
   detailLoading,
   detailError,
+  yoy,
+  showYoY,
 }: Props) {
   return (
     <CustomerSegmentSection
@@ -57,6 +63,8 @@ export default function SegmentTabPanel({
       detailAvailable={detailAvailable}
       detailLoading={detailLoading}
       detailError={detailError}
+      yoy={yoy}
+      showYoY={showYoY}
     />
   );
 }

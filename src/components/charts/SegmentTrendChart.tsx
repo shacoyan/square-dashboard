@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -16,6 +16,9 @@ import { chartTheme } from '../../lib/chartTheme';
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
 import { granularityFor, formatDateLabel } from '../../lib/trendAggregation';
 import { MSG } from '../../lib/messages';
+import { shiftDateOneYearForward, type DailyTotalPoint } from '../../lib/yoy';
+
+const LAST_YEAR_TOTAL_KEY = '__last_year_total__';
 
 interface Props {
   data: DailySegmentPoint[];
@@ -25,6 +28,13 @@ interface Props {
    * 省略時は 'month'（既存挙動 = daily ラベル）。
    */
   period?: PeriodPreset;
+  /**
+   * 前年同期の合計系列 (date は前年日付 'YYYY-MM-DD', total は人数 or 売上)。
+   * 合計線のみ重ね描き (セグメント別 YoY は初版抑制、設計書 §6.6)。
+   */
+  lastYearTotalsSeries?: DailyTotalPoint[];
+  /** 前年系列を表示するか。false / period='week' / 'today' のとき抑制。 */
+  showYoY?: boolean;
 }
 
 type CountKey = 'new' | 'repeat' | 'regular' | 'staff' | 'unlisted';
@@ -71,20 +81,48 @@ const ALL_OFF_VISIBLE_KEYS: Record<CountKey, boolean> = {
   unlisted: false,
 };
 
-export default function SegmentTrendChart({ data, period = 'month' }: Props) {
+export default function SegmentTrendChart({
+  data,
+  period = 'month',
+  lastYearTotalsSeries,
+  showYoY = false,
+}: Props) {
   const [visibleKeys, setVisibleKeys] = useState<Record<CountKey, boolean>>(INITIAL_VISIBLE_KEYS);
 
   const granularity = granularityFor(period);
 
   const isEmpty = !data || data.length === 0;
 
-  const chartData: DailySegmentPoint[] = isEmpty
+  // 前年系列を current 日付軸にマッピング (lastYear 'YYYY-MM-DD' → current 'YYYY+1-MM-DD')。
+  // period='week'/'today' は UI 過密回避のため抑制 (設計書 §1.3 / §6.6)。
+  const yoyEnabled = showYoY && period !== 'week' && period !== 'today';
+  const lastYearByCurrentDate = useMemo(() => {
+    const m = new Map<string, number>();
+    if (!yoyEnabled || !lastYearTotalsSeries || lastYearTotalsSeries.length === 0) {
+      return m;
+    }
+    for (const p of lastYearTotalsSeries) {
+      // currentDate (当年実日付) があれば優先。なければ shift にフォールバック (後方互換)。
+      // 設計書 §6.8 — うるう年 (2/29) などで shift が日付をずらしてしまうケースを回避する。
+      m.set(p.currentDate ?? shiftDateOneYearForward(p.date), p.total);
+    }
+    return m;
+  }, [yoyEnabled, lastYearTotalsSeries]);
+
+  const hasLastYearData = yoyEnabled && lastYearByCurrentDate.size > 0;
+
+  type ChartRow = DailySegmentPoint & { [LAST_YEAR_TOTAL_KEY]?: number | null };
+  const chartData: ChartRow[] = isEmpty
     ? [{
         date: '',
         new: 0, repeat: 0, regular: 0, staff: 0, unlisted: 0,
         newSales: 0, repeatSales: 0, regularSales: 0, staffSales: 0, unlistedSales: 0,
       }]
-    : data;
+    : data.map(p => {
+        if (!hasLastYearData) return p;
+        const ly = lastYearByCurrentDate.get(p.date);
+        return { ...p, [LAST_YEAR_TOTAL_KEY]: ly !== undefined ? ly : null };
+      });
 
   const checkboxItems: SeriesCheckboxItem[] = SERIES.map(s => ({
     key: s.key,
@@ -110,6 +148,10 @@ export default function SegmentTrendChart({ data, period = 'month' }: Props) {
       return `${n.toLocaleString()}人`;
     };
   }
+  formatters[LAST_YEAR_TOTAL_KEY] = (v) => {
+    const n = typeof v === 'number' ? v : Number(v) || 0;
+    return `${n.toLocaleString()}人 (前年合計)`;
+  };
 
   return (
     <div className="w-full min-w-0">
@@ -144,10 +186,12 @@ export default function SegmentTrendChart({ data, period = 'month' }: Props) {
               />
               <Tooltip
                 content={(p) => {
-                  // hide 系列が Recharts の payload に残るバージョン互換のため visibleKeys でフィルタ
+                  // hide 系列が Recharts の payload に残るバージョン互換のため visibleKeys でフィルタ。
+                  // 前年系列 (LAST_YEAR_TOTAL_KEY) は visibleKeys 管理外なので常時通す。
                   const filtered = (p.payload as ChartTooltipPayloadItem[] | undefined)?.filter(
                     (it) => {
                       const k = it.dataKey != null ? String(it.dataKey) : '';
+                      if (k === LAST_YEAR_TOTAL_KEY) return hasLastYearData;
                       if (!COUNT_KEYS.has(k)) return false;
                       return visibleKeys[k as CountKey];
                     },
@@ -177,6 +221,21 @@ export default function SegmentTrendChart({ data, period = 'month' }: Props) {
                   hide={!visibleKeys[s.key]}
                 />
               ))}
+              {hasLastYearData && (
+                <Line
+                  type="monotone"
+                  dataKey={LAST_YEAR_TOTAL_KEY}
+                  name="合計 (前年)"
+                  stroke="#6b7280"
+                  strokeWidth={2}
+                  strokeOpacity={0.3}
+                  strokeDasharray="4 4"
+                  dot={false}
+                  activeDot={{ r: 4, strokeOpacity: 0.5 }}
+                  connectNulls={false}
+                  isAnimationActive={false}
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         </ChartFigure>

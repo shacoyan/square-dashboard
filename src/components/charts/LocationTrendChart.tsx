@@ -19,8 +19,10 @@ import { ChartTooltip, type ChartTooltipPayloadItem, ChartFigure, EmptyState } f
 import SeriesCheckboxGroup, { type SeriesCheckboxItem } from './SeriesCheckboxGroup';
 import { granularityFor, formatDateLabel } from '../../lib/trendAggregation';
 import { MSG } from '../../lib/messages';
+import { shiftDateOneYearForward, type DailyTotalPoint } from '../../lib/yoy';
 
 const TOTAL_KEY = '__total__';
+const LAST_YEAR_TOTAL_KEY = '__last_year_total__';
 
 function getTotalCount(point: DailySegmentPoint): number {
   return (point.new ?? 0) + (point.repeat ?? 0) + (point.regular ?? 0) + (point.staff ?? 0);
@@ -48,6 +50,14 @@ interface Props {
    * 省略時は 'month'（既存挙動 = daily ラベル）。
    */
   period?: PeriodPreset;
+  /**
+   * 前年同期の合計系列 (date は前年日付 'YYYY-MM-DD')。
+   * undefined/empty 時は前年系列を描画しない。
+   * 設計書: 2026-05-22-square-dashboard-phase4-yoy-techdesign.md §6.5
+   */
+  lastYearTotalsSeries?: DailyTotalPoint[];
+  /** 前年系列を表示するかのフラグ。false / period='week' / 'today' のとき抑制。 */
+  showYoY?: boolean;
 }
 
 export default function LocationTrendChart({
@@ -57,6 +67,8 @@ export default function LocationTrendChart({
   metric = 'customers',
   colorMap,
   period = 'month',
+  lastYearTotalsSeries,
+  showYoY = false,
 }: Props) {
   const getValue = metric === 'sales' ? getTotalSales : getTotalCount;
   const granularity = granularityFor(period);
@@ -103,17 +115,40 @@ export default function LocationTrendChart({
     return m;
   }, [totalsSeries, getValue]);
 
+  // 前年系列を current 日付軸にマッピング (lastYear 'YYYY-MM-DD' → current 'YYYY+1-MM-DD')。
+  // period='week'/'today' のときは UI 過密回避のため抑制 (設計書 §1.3 / §6.5.2)。
+  const yoyEnabled = showYoY && period !== 'week' && period !== 'today';
+  const lastYearByCurrentDate = useMemo(() => {
+    const m = new Map<string, number>();
+    if (!yoyEnabled || !lastYearTotalsSeries || lastYearTotalsSeries.length === 0) {
+      return m;
+    }
+    for (const p of lastYearTotalsSeries) {
+      // currentDate (当年実日付) があれば優先。なければ shift にフォールバック (後方互換)。
+      // 設計書 §6.8 — うるう年 (2/29) などで shift が日付をずらしてしまうケースを回避する。
+      const currentDate = p.currentDate ?? shiftDateOneYearForward(p.date);
+      m.set(currentDate, p.total);
+    }
+    return m;
+  }, [yoyEnabled, lastYearTotalsSeries]);
+
+  const hasLastYearData = yoyEnabled && lastYearByCurrentDate.size > 0;
+
   const chartData = useMemo(() => {
     return allDates.map((date) => {
-      const row: Record<string, string | number> = { date };
+      const row: Record<string, string | number | null> = { date };
       for (const loc of locationSeries) {
         const val = locationPointsByDate.get(date)?.get(loc.locationId) ?? 0;
         row[loc.locationId] = val;
       }
       row[TOTAL_KEY] = totalsByDate.get(date) ?? 0;
+      if (hasLastYearData) {
+        const ly = lastYearByCurrentDate.get(date);
+        row[LAST_YEAR_TOTAL_KEY] = ly !== undefined ? ly : null;
+      }
       return row;
     });
-  }, [allDates, locationSeries, locationPointsByDate, totalsByDate]);
+  }, [allDates, locationSeries, locationPointsByDate, totalsByDate, hasLastYearData, lastYearByCurrentDate]);
 
   const allZero = chartData.every((row) => {
     for (const loc of locationSeries) {
@@ -165,6 +200,7 @@ export default function LocationTrendChart({
       map[loc.locationId] = fmt;
     }
     map[TOTAL_KEY] = fmt;
+    map[LAST_YEAR_TOTAL_KEY] = fmt;
     return map;
   }, [locationSeries, metric]);
 
@@ -261,7 +297,7 @@ export default function LocationTrendChart({
               <Line
                 type="monotone"
                 dataKey={TOTAL_KEY}
-                name="合計"
+                name="合計 (当年)"
                 stroke={TOTAL_LINE_COLOR}
                 strokeWidth={4}
                 dot={{ r: 4, fill: TOTAL_LINE_COLOR }}
@@ -279,6 +315,22 @@ export default function LocationTrendChart({
                   />
                 )}
               </Line>
+              {hasLastYearData && (
+                <Line
+                  type="monotone"
+                  dataKey={LAST_YEAR_TOTAL_KEY}
+                  name="合計 (前年)"
+                  stroke={TOTAL_LINE_COLOR}
+                  strokeWidth={2}
+                  strokeOpacity={0.3}
+                  strokeDasharray="4 4"
+                  dot={false}
+                  activeDot={{ r: 4, strokeOpacity: 0.5 }}
+                  connectNulls={false}
+                  isAnimationActive={false}
+                  hide={!visibility[TOTAL_KEY]}
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         </ChartFigure>

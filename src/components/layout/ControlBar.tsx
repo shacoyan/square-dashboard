@@ -19,6 +19,9 @@ interface ControlBarProps {
   onRefresh: () => void;
   periodLabel: string;
   formattedLastUpdated: string;
+  /** 前年比 (YoY) 表示 ON/OFF (Phase 4)。default true。 */
+  showYoY: boolean;
+  onShowYoYChange: (v: boolean) => void;
 }
 
 const selectClass =
@@ -40,6 +43,8 @@ export default function ControlBar({
   onRefresh,
   periodLabel,
   formattedLastUpdated,
+  showYoY,
+  onShowYoYChange,
 }: ControlBarProps) {
   return (
     <>
@@ -144,8 +149,8 @@ export default function ControlBar({
             </div>
           </div>
 
-          {/* Row 4: 更新 + メタ (PC) */}
-          <div className="hidden md:flex items-center justify-between pt-2 border-t border-border">
+          {/* Row 4: 更新 + YoY トグル + メタ (PC) */}
+          <div className="hidden md:flex items-center justify-between pt-2 border-t border-border gap-4">
             <Button
               variant="primary"
               isLoading={loading}
@@ -154,7 +159,19 @@ export default function ControlBar({
             >
               {loading ? MSG.loading.generic : MSG.cta.refresh}
             </Button>
-            <div className="text-right">
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label="前年比較表示"
+                aria-checked={showYoY}
+                checked={showYoY}
+                onChange={(e) => onShowYoYChange(e.target.checked)}
+                className="h-4 w-4 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+              />
+              <span className="text-text">前年比較</span>
+            </label>
+            <div className="text-right ml-auto">
               <p className="text-xs text-text-muted">{periodLabel}</p>
               <span className="text-xs text-text-muted">
                 最終更新: {formattedLastUpdated}
@@ -162,8 +179,20 @@ export default function ControlBar({
             </div>
           </div>
 
-          {/* Row 4: メタのみ (SP) */}
-          <div className="md:hidden flex items-center justify-between pt-2 border-t border-border">
+          {/* Row 4: YoY トグル + メタ (SP) */}
+          <div className="md:hidden flex flex-col gap-2 pt-2 border-t border-border">
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label="前年比較表示"
+                aria-checked={showYoY}
+                checked={showYoY}
+                onChange={(e) => onShowYoYChange(e.target.checked)}
+                className="h-4 w-4 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+              />
+              <span className="text-text">前年比較</span>
+            </label>
             <div className="text-xs text-text-muted">
               <div>{periodLabel}</div>
               <div>最終更新: {formattedLastUpdated}</div>

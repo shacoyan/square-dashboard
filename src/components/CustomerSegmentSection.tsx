@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { formatYen } from '../utils';
 import type { CustomerSegmentAnalysis, PeriodPreset, SegmentBreakdown, AcquisitionBreakdown, Transaction } from '../types';
 import { SegmentPieChart, SegmentTrendChart, AcquisitionChart } from './charts';
@@ -6,6 +7,7 @@ import { MSG } from '../lib/messages';
 import { granularityFor, cardTitleByGranularity, formatBucketRangeLabel } from '../lib/trendAggregation';
 import WeekdayAnalysisSection from './WeekdayAnalysisSection';
 import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
+import { formatYoY, yoyClassToColorClass, type SalesRangeYoYResult, type DailyTotalPoint } from '../lib/yoy';
 
 interface Props {
   data: CustomerSegmentAnalysis | null;
@@ -26,6 +28,9 @@ interface Props {
   detailAvailable?: boolean;
   detailLoading?: boolean;
   detailError?: string | null;
+  // Phase 4 Team C: YoY 前年系列 (optional pass-through、SegmentTrendChart 客数線に重ね描き)
+  yoy?: SalesRangeYoYResult | null;
+  showYoY?: boolean;
 }
 
 function SegmentCustomerCard({ label, count, sales, showCount = true }: { label: string; count: number; sales: number; showCount?: boolean }) {
@@ -85,8 +90,19 @@ export default function CustomerSegmentSection({
   detailAvailable = true,
   detailLoading = false,
   detailError = null,
+  yoy = null,
+  showYoY = false,
 }: Props) {
   const totalSales = data ? data.totalSales : 0;
+
+  // 前年同期の合計客数系列 (新+リピート+常連+スタッフ)。SegmentTrendChart は人数 metric なので customer_count を使用。
+  // currentDate を併せて渡すことで、うるう年 (2/29) などのケースでも chart 側で当年軸へ正しくマップできる。
+  const lastYearTotalsSeries = useMemo<DailyTotalPoint[] | undefined>(() => {
+    if (!showYoY || !yoy?.byDate) return undefined;
+    return yoy.byDate
+      .filter(b => b.lastYear !== null)
+      .map(b => ({ date: b.lastYearDate, total: b.lastYear!.customer_count, currentDate: b.business_date }));
+  }, [yoy, showYoY]);
   const totalAcquisition = data
     ? ACQUISITION_CONFIG.reduce(
         (sum, item) => sum + (data.acquisitionBreakdown[item.key] || 0),
@@ -142,6 +158,11 @@ export default function CustomerSegmentSection({
                 <p className="text-xs text-text-muted mt-1">
                   {data.periodStart} 〜 {data.periodEnd} ({data.elapsedDays}日間)
                 </p>
+                {showYoY && yoy?.yoy.total_amount && (
+                  <p className={`text-xs mt-1 ${yoyClassToColorClass(yoy.yoy.total_amount.classification)}`}>
+                    {formatYoY(yoy.yoy.total_amount)}
+                  </p>
+                )}
               </div>
 
               <div className="bg-surface-muted rounded-xl border border-border p-6">
@@ -166,6 +187,11 @@ export default function CustomerSegmentSection({
                 <p className="text-xs text-text-muted mt-1">
                   新規 {data.customersBySegment.new} / リピート {data.customersBySegment.repeat} / 常連 {data.customersBySegment.regular} / スタ {data.customersBySegment.staff}
                 </p>
+                {showYoY && yoy?.yoy.customer_count && (
+                  <p className={`text-xs mt-1 ${yoyClassToColorClass(yoy.yoy.customer_count.classification)}`}>
+                    {formatYoY(yoy.yoy.customer_count)}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -215,7 +241,12 @@ export default function CustomerSegmentSection({
           <Card title={trendCardTitle}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
               <div className="md:col-span-2">
-                <SegmentTrendChart data={data.dailyTrend} period={period} />
+                <SegmentTrendChart
+                  data={data.dailyTrend}
+                  period={period}
+                  lastYearTotalsSeries={lastYearTotalsSeries}
+                  showYoY={showYoY}
+                />
               </div>
               <div className="max-h-[280px] overflow-y-auto space-y-2">
                 {data.dailyTrend.map((day) => (

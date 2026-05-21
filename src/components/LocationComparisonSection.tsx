@@ -8,6 +8,7 @@ import { formatYen } from '../utils';
 import WeekdayLocationAnalysisSection from './WeekdayLocationAnalysisSection';
 import { getLocationColors } from '../lib/locationColors';
 import { granularityFor, cardTitleByGranularity } from '../lib/trendAggregation';
+import type { DailyTotalPoint } from '../lib/yoy';
 
 import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
 
@@ -44,6 +45,8 @@ interface Props {
   startHour: number;
   endHour: number;
   enabled: boolean;
+  /** Phase 4 Team C: YoY 前年系列を LocationTrendChart に重ね描き */
+  showYoY?: boolean;
 }
 
 export default function LocationComparisonSection(props: Props) {
@@ -61,9 +64,10 @@ export default function LocationComparisonSection(props: Props) {
     startHour,
     endHour,
     enabled,
+    showYoY = false,
   } = props;
 
-  const { data, loading, error, detailAvailable = true, detailLoading = false, detailError } = useMultiLocationSegment({
+  const { data, loading, error, detailAvailable = true, detailLoading = false, detailError, yoy } = useMultiLocationSegment({
     token,
     locations,
     period,
@@ -73,7 +77,24 @@ export default function LocationComparisonSection(props: Props) {
     weekIndex,
     quarterIndex,
     enabled: enabled && locations.length > 0,
+    enableYoy: showYoY,
   });
+
+  // 前年合計系列を metric (customers / sales) ごとに事前算出
+  // currentDate を併せて渡すことで、うるう年 (2/29) などのケースでも chart 側で当年軸へ正しくマップできる。
+  const lastYearTotalsCustomers = React.useMemo<DailyTotalPoint[] | undefined>(() => {
+    if (!showYoY || !yoy?.byDate) return undefined;
+    return yoy.byDate
+      .filter(b => b.lastYear !== null)
+      .map(b => ({ date: b.lastYearDate, total: b.lastYear!.customer_count, currentDate: b.business_date }));
+  }, [yoy, showYoY]);
+
+  const lastYearTotalsSales = React.useMemo<DailyTotalPoint[] | undefined>(() => {
+    if (!showYoY || !yoy?.byDate) return undefined;
+    return yoy.byDate
+      .filter(b => b.lastYear !== null)
+      .map(b => ({ date: b.lastYearDate, total: b.lastYear!.total_amount, currentDate: b.business_date }));
+  }, [yoy, showYoY]);
 
   const barColorsMap = React.useMemo(
     () => getLocationColors(data ? data.rows.map(r => r.locationId) : []),
@@ -408,6 +429,8 @@ export default function LocationComparisonSection(props: Props) {
                   metric="customers"
                   colorMap={barColorsMap}
                   period={period}
+                  lastYearTotalsSeries={lastYearTotalsCustomers}
+                  showYoY={showYoY}
                 />
               </div>
 
@@ -424,6 +447,8 @@ export default function LocationComparisonSection(props: Props) {
                   metric="sales"
                   colorMap={barColorsMap}
                   period={period}
+                  lastYearTotalsSeries={lastYearTotalsSales}
+                  showYoY={showYoY}
                 />
               </div>
 

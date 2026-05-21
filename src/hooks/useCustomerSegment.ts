@@ -5,8 +5,11 @@ import { aggregateTrendByGranularity, granularityFor } from '../lib/trendAggrega
 import { calculatePeriodDates, getMonthWeekCount } from '../lib/periodDates';
 import { MSG } from '../lib/messages';
 import { fetchSalesRange, buildSegmentAnalysisFromSalesRange } from '../lib/salesRangeAdapter';
-import type { SalesRangeMeta } from '../lib/salesRangeAdapter';
+import type { SalesRangeMeta, SalesRangeResponse } from '../lib/salesRangeAdapter';
 import { getSalesRangeFlag } from '../lib/featureFlags';
+import { shiftRangeOneYearBack } from '../lib/yoy';
+import type { SalesRangeYoYResult } from '../lib/yoy';
+import { buildYoYResultFromResponses } from './useYoYCompare';
 
 interface Args {
   token: string;
@@ -18,6 +21,14 @@ interface Args {
   weekIndex?: number;
   quarterIndex?: number;
   enabled: boolean;
+  /**
+   * 前年同期比 (YoY) 計算を有効化する。
+   * true のとき、current fetch と並行して lastYear (前年同期) を追加 fetch し、
+   * 戻り値の `yoy` フィールドに集計結果を格納する。
+   * false (default) のときは既存挙動完全互換 (追加 fetch なし)。
+   * 設計書: §4.3.3 / §4.4
+   */
+  enableYoy?: boolean;
 }
 
 export interface UseCustomerSegmentResult {
@@ -31,6 +42,12 @@ export interface UseCustomerSegmentResult {
   detailError: string | null;
   detailAvailable: boolean;
   meta: SalesRangeMeta | null;
+  /** 前年同期比結果。enableYoy=false 時は常に null。 */
+  yoy: SalesRangeYoYResult | null;
+  /** YoY 用 lastYear fetch の進行中フラグ (current の loading とは独立)。 */
+  yoyLoading: boolean;
+  /** lastYear fetch 失敗時のエラー (current の error とは独立)。 */
+  yoyError: string | null;
 }
 
 function openOrderToTransaction(o: OpenOrder): Transaction {
@@ -47,7 +64,7 @@ function openOrderToTransaction(o: OpenOrder): Transaction {
 }
 
 export function useCustomerSegment(args: Args): UseCustomerSegmentResult {
-  const { token, locationId, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled } = args;
+  const { token, locationId, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled, enableYoy = false } = args;
 
   const [data, setData] = useState<CustomerSegmentAnalysis | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -57,6 +74,9 @@ export function useCustomerSegment(args: Args): UseCustomerSegmentResult {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailAvailable, setDetailAvailable] = useState(true);
   const [meta, setMeta] = useState<SalesRangeMeta | null>(null);
+  const [yoy, setYoy] = useState<SalesRangeYoYResult | null>(null);
+  const [yoyLoading, setYoyLoading] = useState(false);
+  const [yoyError, setYoyError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -82,6 +102,9 @@ export function useCustomerSegment(args: Args): UseCustomerSegmentResult {
     setDetailLoading(false);
     setDetailError(null);
     setMeta(null);
+    setYoy(null);
+    setYoyLoading(false);
+    setYoyError(null);
 
     const dates = calculatePeriodDates(period, baseDate, weekIndex, quarterIndex);
 
@@ -292,6 +315,49 @@ export function useCustomerSegment(args: Args): UseCustomerSegmentResult {
       });
 
       setData(segmentData);
+
+      // YoY: enableYoy=true なら lastYear を追加 fetch (current は再利用、ネットワーク +1 回)
+      if (enableYoy) {
+        setYoyLoading(true);
+        const lastYearRange = shiftRangeOneYearBack({ start_date, end_date });
+        try {
+          const lastYearResponse: SalesRangeResponse = await fetchSalesRange({
+            start_date: lastYearRange.start_date,
+            end_date: lastYearRange.end_date,
+            location_id: locationId,
+            start_hour: startHour,
+            token,
+            signal: currentAbortController.signal,
+          });
+
+          if (currentAbortController.signal.aborted) return;
+
+          const yoyResult = buildYoYResultFromResponses({
+            start_date,
+            end_date,
+            currentRes: response,
+            lastYearRes: lastYearResponse,
+          });
+          setYoy(yoyResult);
+        } catch (yoyErr) {
+          if (yoyErr instanceof DOMException && yoyErr.name === 'AbortError') {
+            return;
+          }
+          // current 成功 + lastYear 失敗 → 部分成功 (yoy.lastYear=null) で組み立てる
+          const yoyResult = buildYoYResultFromResponses({
+            start_date,
+            end_date,
+            currentRes: response,
+            lastYearRes: null,
+          });
+          setYoy(yoyResult);
+          setYoyError(yoyErr instanceof Error ? yoyErr.message : 'YoY 取得失敗 (前年)');
+        } finally {
+          if (!currentAbortController.signal.aborted) {
+            setYoyLoading(false);
+          }
+        }
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         return;
@@ -379,7 +445,7 @@ export function useCustomerSegment(args: Args): UseCustomerSegmentResult {
         setDetailLoading(false);
       }
     }
-  }, [token, locationId, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled]);
+  }, [token, locationId, period, baseDate, startHour, endHour, weekIndex, quarterIndex, enabled, enableYoy]);
 
   useEffect(() => {
     fetchData();
@@ -403,5 +469,8 @@ export function useCustomerSegment(args: Args): UseCustomerSegmentResult {
     detailError,
     detailAvailable,
     meta,
+    yoy,
+    yoyLoading,
+    yoyError,
   };
 }
