@@ -12,28 +12,6 @@ interface StoreSwitcherProps {
 export default function StoreSwitcher({ locations, selectedId, onChange }: StoreSwitcherProps) {
   const pillRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  if (locations.length >= 6) {
-    return (
-      <div className="inline-flex items-center gap-2">
-        <label htmlFor="store-switcher-select" className="text-sm text-text-muted">
-          店舗
-        </label>
-        <select
-          id="store-switcher-select"
-          value={selectedId}
-          onChange={(e) => onChange(e.target.value)}
-          className="bg-surface border border-border rounded-lg px-3 py-1.5 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus:outline-none"
-        >
-          {locations.map((loc) => (
-            <option key={loc.id} value={loc.id}>
-              {loc.name}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  }
-
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
     let nextIndex = index;
 
