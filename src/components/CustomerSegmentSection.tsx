@@ -128,32 +128,46 @@ export default function CustomerSegmentSection({
   }, [yoy, showYoY]);
 
   // 派生 YoY: 平均日売上 / 全体客単価。
-  // 当年値は data.averageDailySales / data.overallAveragePerCustomer をそのまま使い、
-  // 前年値は yoy.lastYear から派生計算する。
+  // 当年値は yoy.current (sales-range 集計テーブル由来) から派生計算し、
+  // 前年値は yoy.lastYear から派生計算する。計算式を当年 / 前年で統一。
+  //   - 当年平均日売上   = current.total_amount / 当年期間日数 (yoy.byDate.length、current は常に存在)
+  //   - 当年全体客単価   = current.total_amount / (new + repeat + regular + staff) 客数合計
   //   - 前年平均日売上   = lastYear.total_amount / 前年実在日数 (yoy.byDate で lastYear !== null の数)
-  //   - 前年全体客単価   = lastYear.total_amount / lastYear.customer_count
+  //   - 前年全体客単価   = lastYear.total_amount / (new + repeat + regular + staff) 客数合計
+  // 客単価は 4 セグメント客数合計を分母とする (unlisted は除外)。
   // 前年データがない場合 (yoy.lastYear === null) は calculateYoY が 'no_data' で返るよう null を渡す。
   const derivedYoY = useMemo<{ avgDaily: YoYDelta | null; perCustomer: YoYDelta | null }>(() => {
-    if (!data) return { avgDaily: null, perCustomer: null };
+    if (!yoy) return { avgDaily: null, perCustomer: null };
 
-    const lyTotal = yoy?.lastYear?.total_amount ?? null;
-    const lyCustomerCount = yoy?.lastYear?.customer_count ?? null;
-    const lyDays = yoy?.byDate.filter(b => b.lastYear !== null).length ?? 0;
+    const curTotal = yoy.current.total_amount;
+    const curSegmentTotal = (yoy.current.new_customer_count ?? 0)
+      + (yoy.current.repeat_customer_count ?? 0)
+      + (yoy.current.regular_customer_count ?? 0)
+      + (yoy.current.staff_customer_count ?? 0);
+    const curDays = yoy.byDate.length;
+
+    const curAvgDaily = curDays > 0 ? curTotal / curDays : null;
+    const curPerCustomer = curSegmentTotal > 0 ? curTotal / curSegmentTotal : null;
+
+    const lyTotal = yoy.lastYear?.total_amount ?? null;
+    const lySegmentTotal = yoy.lastYear
+      ? (yoy.lastYear.new_customer_count ?? 0)
+        + (yoy.lastYear.repeat_customer_count ?? 0)
+        + (yoy.lastYear.regular_customer_count ?? 0)
+        + (yoy.lastYear.staff_customer_count ?? 0)
+      : null;
+    const lyDays = yoy.byDate.filter(b => b.lastYear !== null).length;
 
     const lyAvgDaily = lyTotal !== null && lyDays > 0 ? lyTotal / lyDays : null;
-    const lyPerCustomer = lyTotal !== null && lyCustomerCount !== null && lyCustomerCount > 0
-      ? lyTotal / lyCustomerCount
+    const lyPerCustomer = lyTotal !== null && lySegmentTotal !== null && lySegmentTotal > 0
+      ? lyTotal / lySegmentTotal
       : null;
 
-    const avgDaily = data.averageDailySales !== null
-      ? calculateYoY(data.averageDailySales, lyAvgDaily)
-      : null;
-    const perCustomer = data.overallAveragePerCustomer !== null
-      ? calculateYoY(data.overallAveragePerCustomer, lyPerCustomer)
-      : null;
+    const avgDaily = curAvgDaily !== null ? calculateYoY(curAvgDaily, lyAvgDaily) : null;
+    const perCustomer = curPerCustomer !== null ? calculateYoY(curPerCustomer, lyPerCustomer) : null;
 
     return { avgDaily, perCustomer };
-  }, [yoy, data]);
+  }, [yoy]);
   const totalAcquisition = data
     ? ACQUISITION_CONFIG.reduce(
         (sum, item) => sum + (data.acquisitionBreakdown[item.key] || 0),

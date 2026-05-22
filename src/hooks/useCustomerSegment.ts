@@ -247,6 +247,7 @@ export function useCustomerSegment(args: Args): UseCustomerSegmentResult {
 
         const elapsedDays = dates.length;
         const averageDailySales = period === 'today' ? dailySalesTotal : (dates.length > 0 ? dailySalesTotal / elapsedDays : null);
+        // 客単価 = 総売上 / (新規 + リピート + 常連 + スタッフ) 客数合計。unlisted は除外。
         const overallAveragePerCustomer = dailyCustomersTotal > 0 ? dailySalesTotal / dailyCustomersTotal : null;
 
         const sortedDailyTrend = dailyTrend.sort((a, b) => a.date.localeCompare(b.date));

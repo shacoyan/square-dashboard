@@ -108,6 +108,7 @@ export default function LocationComparisonSection(props: Props) {
   // 行ごとの YoY ヘルパー: 行の locationId (合計行は null) から YoY セットを返す
   // - 売上 / 客数 は SalesRangeYoYResult から直接取得
   // - 平均日売上 / 客単価 は current/lastYear から派生計算して YoY を組み立てる
+  // - 客単価 = total_amount / (new + repeat + regular + staff) 客数合計 (unlisted 除外)
   const getRowYoy = (locationId: string | null): {
     totalSales: YoYDelta;
     avgDailySales: YoYDelta;
@@ -125,8 +126,18 @@ export default function LocationComparisonSection(props: Props) {
     const daysLy = yoyData.byDate.filter(b => b.lastYear !== null).length;
     const avgDailyCur = daysCur > 0 ? cur.total_amount / daysCur : 0;
     const avgDailyLy = ly && daysLy > 0 ? ly.total_amount / daysLy : null;
-    const perCusCur = cur.customer_count > 0 ? cur.total_amount / cur.customer_count : 0;
-    const perCusLy = ly && ly.customer_count > 0 ? ly.total_amount / ly.customer_count : null;
+    const curSegTotal = (cur.new_customer_count ?? 0)
+      + (cur.repeat_customer_count ?? 0)
+      + (cur.regular_customer_count ?? 0)
+      + (cur.staff_customer_count ?? 0);
+    const lySegTotal = ly
+      ? (ly.new_customer_count ?? 0)
+        + (ly.repeat_customer_count ?? 0)
+        + (ly.regular_customer_count ?? 0)
+        + (ly.staff_customer_count ?? 0)
+      : null;
+    const perCusCur = curSegTotal > 0 ? cur.total_amount / curSegTotal : 0;
+    const perCusLy = ly && lySegTotal !== null && lySegTotal > 0 ? ly.total_amount / lySegTotal : null;
     return {
       totalSales: yoyData.yoy.total_amount,
       customers: yoyData.yoy.customer_count,
