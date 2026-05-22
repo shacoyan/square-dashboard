@@ -114,6 +114,7 @@ describe('aggregateSalesRangeTotals', () => {
     const res = aggregateSalesRangeTotals({});
     expect(res).toEqual({
       total_amount: 0,
+      open_total_amount: 0,
       transaction_count: 0,
       customer_count: 0,
       new_customer_count: 0,
@@ -130,6 +131,7 @@ describe('aggregateSalesRangeTotals', () => {
     });
     expect(res).toEqual({
       total_amount: 100,
+      open_total_amount: 0,
       transaction_count: 10,
       customer_count: 5,
       new_customer_count: 0,
@@ -148,6 +150,7 @@ describe('aggregateSalesRangeTotals', () => {
     });
     expect(res).toEqual({
       total_amount: 600,
+      open_total_amount: 0,
       transaction_count: 60,
       customer_count: 30,
       new_customer_count: 0,
@@ -171,12 +174,38 @@ describe('aggregateSalesRangeTotals', () => {
     });
     expect(res).toEqual({
       total_amount: 300,
+      open_total_amount: 0,
       transaction_count: 30,
       customer_count: 15,
       new_customer_count: 5,
       repeat_customer_count: 5,
       regular_customer_count: 3,
       staff_customer_count: 2,
+      unlisted_customer_count: 0,
+    });
+  });
+
+  it('open_total_amount 付き → 未決済も正しく SUM される', () => {
+    const res = aggregateSalesRangeTotals({
+      '2024-01-01': {
+        total_amount: 100, open_total_amount: 50, transaction_count: 10, customer_count: 5,
+      },
+      '2024-01-02': {
+        total_amount: 200, open_total_amount: 30, transaction_count: 20, customer_count: 10,
+      },
+      '2024-01-03': {
+        total_amount: 300, transaction_count: 30, customer_count: 15, // open_total_amount 省略 → 0 扱い
+      },
+    });
+    expect(res).toEqual({
+      total_amount: 600,
+      open_total_amount: 80,
+      transaction_count: 60,
+      customer_count: 30,
+      new_customer_count: 0,
+      repeat_customer_count: 0,
+      regular_customer_count: 0,
+      staff_customer_count: 0,
       unlisted_customer_count: 0,
     });
   });

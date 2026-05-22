@@ -178,11 +178,13 @@ export default function CustomerSegmentSection({
         + (cur.repeat_customer_count ?? 0)
         + (cur.regular_customer_count ?? 0)
         + (cur.staff_customer_count ?? 0);
+      // 未決済含む合計売上 (オーナー要望: 全店舗比較と店舗データ分析で売上値を統一)
+      const totalWithOpen = (cur.total_amount ?? 0) + (cur.open_total_amount ?? 0);
       return {
-        totalSales: cur.total_amount,
+        totalSales: totalWithOpen,
         totalCustomers: segTotal,
-        overallAveragePerCustomer: segTotal > 0 ? cur.total_amount / segTotal : null,
-        averageDailySales: yoy.byDate.length > 0 ? cur.total_amount / yoy.byDate.length : null,
+        overallAveragePerCustomer: segTotal > 0 ? totalWithOpen / segTotal : null,
+        averageDailySales: yoy.byDate.length > 0 ? totalWithOpen / yoy.byDate.length : null,
         newCount: cur.new_customer_count ?? 0,
         repeatCount: cur.repeat_customer_count ?? 0,
         regularCount: cur.regular_customer_count ?? 0,

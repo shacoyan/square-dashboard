@@ -184,6 +184,7 @@ describe('buildYoYResultFromResponses (useYoYCompare の純粋ロジック)', ()
     expect(res.byDate).toEqual([]);
     expect(res.current).toEqual({
       total_amount: 0,
+      open_total_amount: 0,
       transaction_count: 0,
       customer_count: 0,
       new_customer_count: 0,

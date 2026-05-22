@@ -121,6 +121,7 @@ export function yoyClassToColorClass(c: YoYClassification): string {
 
 export interface SalesRangeTotal {
   total_amount: number;
+  open_total_amount: number;
   transaction_count: number;
   customer_count: number;
   new_customer_count: number;
@@ -133,6 +134,7 @@ export interface SalesRangeTotal {
 export function aggregateSalesRangeTotals(
   byDate: Record<string, {
     total_amount: number;
+    open_total_amount?: number;
     transaction_count: number;
     customer_count: number;
     new_customer_count?: number;
@@ -144,6 +146,7 @@ export function aggregateSalesRangeTotals(
 ): SalesRangeTotal {
   const result: SalesRangeTotal = {
     total_amount: 0,
+    open_total_amount: 0,
     transaction_count: 0,
     customer_count: 0,
     new_customer_count: 0,
@@ -154,6 +157,7 @@ export function aggregateSalesRangeTotals(
   };
   for (const val of Object.values(byDate)) {
     result.total_amount += val.total_amount;
+    result.open_total_amount += val.open_total_amount ?? 0;
     result.transaction_count += val.transaction_count;
     result.customer_count += val.customer_count;
     result.new_customer_count += val.new_customer_count ?? 0;
