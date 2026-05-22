@@ -116,8 +116,6 @@ export default function CustomerSegmentSection({
   yoy = null,
   showYoY = false,
 }: Props) {
-  const totalSales = data ? data.totalSales : 0;
-
   // 前年同期の合計客数系列 (新+リピート+常連+スタッフ)。SegmentTrendChart は人数 metric なので customer_count を使用。
   // currentDate を併せて渡すことで、うるう年 (2/29) などのケースでも chart 側で当年軸へ正しくマップできる。
   const lastYearTotalsSeries = useMemo<DailyTotalPoint[] | undefined>(() => {
@@ -168,6 +166,43 @@ export default function CustomerSegmentSection({
 
     return { avgDaily, perCustomer };
   }, [yoy]);
+
+  // UI 表示の合計売上 / 合計客数 / 客単価 / 平均日売上 / 各セグメント客数を yoy.current 由来に統一する。
+  // これで derivedYoY (YoY 計算) と表示値の data source が完全一致し整合性を保つ。
+  // yoy が無い場合 (showYoY=false など) は従来の data 由来にフォールバック。
+  const displayMetrics = useMemo(() => {
+    if (!data) return null;
+    if (yoy?.current) {
+      const cur = yoy.current;
+      const segTotal = (cur.new_customer_count ?? 0)
+        + (cur.repeat_customer_count ?? 0)
+        + (cur.regular_customer_count ?? 0)
+        + (cur.staff_customer_count ?? 0);
+      return {
+        totalSales: cur.total_amount,
+        totalCustomers: segTotal,
+        overallAveragePerCustomer: segTotal > 0 ? cur.total_amount / segTotal : null,
+        averageDailySales: yoy.byDate.length > 0 ? cur.total_amount / yoy.byDate.length : null,
+        newCount: cur.new_customer_count ?? 0,
+        repeatCount: cur.repeat_customer_count ?? 0,
+        regularCount: cur.regular_customer_count ?? 0,
+        staffCount: cur.staff_customer_count ?? 0,
+        unlistedCount: cur.unlisted_customer_count ?? 0,
+      };
+    }
+    return {
+      totalSales: data.totalSales,
+      totalCustomers: data.totalCustomers,
+      overallAveragePerCustomer: data.overallAveragePerCustomer,
+      averageDailySales: data.averageDailySales,
+      newCount: data.customersBySegment?.new ?? 0,
+      repeatCount: data.customersBySegment?.repeat ?? 0,
+      regularCount: data.customersBySegment?.regular ?? 0,
+      staffCount: data.customersBySegment?.staff ?? 0,
+      unlistedCount: data.customersBySegment?.unlisted ?? 0,
+    };
+  }, [yoy, data]);
+
   const totalAcquisition = data
     ? ACQUISITION_CONFIG.reduce(
         (sum, item) => sum + (data.acquisitionBreakdown[item.key] || 0),
@@ -219,7 +254,7 @@ export default function CustomerSegmentSection({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <div className="bg-surface-muted rounded-xl border border-border p-6">
                 <p className="text-sm font-medium text-text-muted mb-1">期間売上</p>
-                <p className="text-2xl font-bold text-text">{formatYen(totalSales)}</p>
+                <p className="text-2xl font-bold text-text">{formatYen(displayMetrics?.totalSales ?? 0)}</p>
                 <p className="text-xs text-text-muted mt-1">
                   {data.periodStart} 〜 {data.periodEnd} ({data.elapsedDays}日間)
                 </p>
@@ -233,7 +268,7 @@ export default function CustomerSegmentSection({
               <div className="bg-surface-muted rounded-xl border border-border p-6">
                 <p className="text-sm font-medium text-text-muted mb-1">平均日売上</p>
                 <p className="text-2xl font-bold text-text">
-                  {data.averageDailySales !== null ? formatYen(Math.round(data.averageDailySales)) : '--'}
+                  {displayMetrics?.averageDailySales != null ? formatYen(Math.round(displayMetrics.averageDailySales)) : '--'}
                 </p>
                 {showYoY && derivedYoY.avgDaily && (
                   <p className={`text-xs mt-1 ${yoyClassToColorClass(derivedYoY.avgDaily.classification)}`}>
@@ -245,7 +280,7 @@ export default function CustomerSegmentSection({
               <div className="bg-surface-muted rounded-xl border border-border p-6">
                 <p className="text-sm font-medium text-text-muted mb-1">全体客単価</p>
                 <p className="text-2xl font-bold text-text">
-                  {data.overallAveragePerCustomer !== null ? formatYen(Math.round(data.overallAveragePerCustomer)) : '--'}
+                  {displayMetrics?.overallAveragePerCustomer != null ? formatYen(Math.round(displayMetrics.overallAveragePerCustomer)) : '--'}
                 </p>
                 {showYoY && derivedYoY.perCustomer && (
                   <p className={`text-xs mt-1 ${yoyClassToColorClass(derivedYoY.perCustomer.classification)}`}>
@@ -257,10 +292,10 @@ export default function CustomerSegmentSection({
               <div className="bg-surface-muted rounded-xl border border-border p-6">
                 <p className="text-sm font-medium text-text-muted mb-1">合計客数</p>
                 <p className="text-2xl font-bold text-text">
-                  {(data.customersBySegment.new + data.customersBySegment.repeat + data.customersBySegment.regular + data.customersBySegment.staff).toLocaleString()}人
+                  {(displayMetrics?.totalCustomers ?? 0).toLocaleString()}人
                 </p>
                 <p className="text-xs text-text-muted mt-1">
-                  新規 {data.customersBySegment.new} / リピート {data.customersBySegment.repeat} / 常連 {data.customersBySegment.regular} / スタ {data.customersBySegment.staff}
+                  新規 {displayMetrics?.newCount ?? 0} / リピート {displayMetrics?.repeatCount ?? 0} / 常連 {displayMetrics?.regularCount ?? 0} / スタ {displayMetrics?.staffCount ?? 0}
                 </p>
                 {showYoY && yoy?.yoy.customer_count && (
                   <p className={`text-xs mt-1 ${yoyClassToColorClass(yoy.yoy.customer_count.classification)}`}>
@@ -279,11 +314,18 @@ export default function CustomerSegmentSection({
                   regular: yoy?.yoy.regular_customer_count,
                   staff: yoy?.yoy.staff_customer_count,
                 };
+                const segmentCountMap: Record<keyof SegmentBreakdown, number> = {
+                  new: displayMetrics?.newCount ?? 0,
+                  repeat: displayMetrics?.repeatCount ?? 0,
+                  regular: displayMetrics?.regularCount ?? 0,
+                  staff: displayMetrics?.staffCount ?? 0,
+                  unlisted: displayMetrics?.unlistedCount ?? 0,
+                };
                 return (
                   <SegmentCustomerCard
                     key={key}
                     label={isUnlisted ? `${label}売上` : `${label}客数`}
-                    count={data.customersBySegment[key]}
+                    count={segmentCountMap[key]}
                     sales={data.salesBySegment[key]}
                     showCount={!isUnlisted}
                     yoyDelta={segmentYoYMap[key]}
@@ -309,7 +351,8 @@ export default function CustomerSegmentSection({
               <div className="space-y-2">
                 {SEGMENT_LABELS.map(({ key, label }) => {
                   const sales = data.salesBySegment[key];
-                  const percent = totalSales > 0 ? Math.round((sales / totalSales) * 100) : 0;
+                  const totalSalesForPercent = displayMetrics?.totalSales ?? 0;
+                  const percent = totalSalesForPercent > 0 ? Math.round((sales / totalSalesForPercent) * 100) : 0;
                   return (
                     <div key={key} className="text-sm text-text-muted flex items-center">
                       <span className="inline-block w-3 h-3 rounded-full mr-2 flex-shrink-0" style={{ backgroundColor: SALES_COLORS[key] }} />
