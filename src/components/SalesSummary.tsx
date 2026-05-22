@@ -18,6 +18,10 @@ interface SalesSummaryProps {
   yoy?: SalesRangeYoYResult | null;
   /** YoY 表示 ON/OFF (ControlBar トグル連動、false 時は yoy を渡されても表示しない) */
   showYoy?: boolean;
+  /** 表示対象日 (YYYY-MM-DD)。指定時は KPI カード上に期間ラベルを表示 */
+  date?: string;
+  /** 営業日範囲ラベル (例: "深夜 26 時切替 04/22(火)") */
+  periodLabel?: string;
 }
 
 function getYoYAriaLabel(
@@ -85,19 +89,28 @@ export default function SalesSummary({
   openCount,
   yoy,
   showYoy,
+  date,
+  periodLabel,
 }: SalesSummaryProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Card>
-          <KpiSkeleton showLabel={false} />
-        </Card>
-        <Card>
-          <KpiSkeleton showLabel={false} />
-        </Card>
-        <Card>
-          <KpiSkeleton showLabel={false} />
-        </Card>
+      <div className="space-y-2">
+        {(date || periodLabel) && (
+          <p className="text-xs text-text-muted" aria-label="表示対象期間">
+            期間: {periodLabel ?? date}
+          </p>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Card>
+            <KpiSkeleton showLabel={false} />
+          </Card>
+          <Card>
+            <KpiSkeleton showLabel={false} />
+          </Card>
+          <Card>
+            <KpiSkeleton showLabel={false} />
+          </Card>
+        </div>
       </div>
     );
   }
@@ -106,7 +119,13 @@ export default function SalesSummary({
   const showYoYRow = showYoy !== false && yoy != null;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div className="space-y-2">
+      {(date || periodLabel) && (
+        <p className="text-xs text-text-muted" aria-label="表示対象期間">
+          期間: {periodLabel ?? date}
+        </p>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <Card aria-label="合計売上（未決済含む）">
         <p className="text-xs text-text-muted font-medium tracking-wide uppercase">
           合計売上（未決済含む）
@@ -140,6 +159,7 @@ export default function SalesSummary({
         </p>
         {showYoYRow && <NoDataYoYRow />}
       </Card>
+      </div>
     </div>
   );
 }

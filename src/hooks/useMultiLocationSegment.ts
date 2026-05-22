@@ -12,6 +12,7 @@ import {
   shiftRangeOneYearBack,
   shiftDateOneYearBack,
   aggregateSalesRangeTotals,
+  isLastYearDataInsufficient,
 } from '../lib/yoy';
 import type { SalesRangeYoYResult, SalesRangeTotal } from '../lib/yoy';
 import { buildYoYResultFromResponses } from './useYoYCompare';
@@ -665,17 +666,22 @@ export function useMultiLocationSegment(args: UseMultiLocationSegmentArgs): UseM
           }
 
           const currentTotals: SalesRangeTotal = aggregateSalesRangeTotals(currentMergedByDate);
-          const lastYearTotals: SalesRangeTotal | null =
+          const rawLastYearTotals: SalesRangeTotal | null =
             lastYearAnySuccess && Object.keys(lastYearMergedByDate).length > 0
               ? aggregateSalesRangeTotals(lastYearMergedByDate)
               : null;
+
+          // 前年 4 セグメント客数合計が閾値未満なら事実上データなしとみなし null 化。
+          // SABABA は Square 本格運用が 2025-03 開始 → 2024 年度以前は集計が空。
+          const lastYearInsufficient = isLastYearDataInsufficient(rawLastYearTotals);
+          const lastYearTotals: SalesRangeTotal | null = lastYearInsufficient ? null : rawLastYearTotals;
 
           const currentDates = Object.keys(currentMergedByDate).sort();
           let matchedDays = 0;
           const byDateArr: SalesRangeYoYResult['byDate'] = currentDates.map(date => {
             const cur = currentMergedByDate[date];
             const lastYearDate = shiftDateOneYearBack(date);
-            const lyDay = lastYearMergedByDate[lastYearDate] ?? null;
+            const lyDay = lastYearInsufficient ? null : (lastYearMergedByDate[lastYearDate] ?? null);
             if (lyDay) matchedDays++;
             return {
               business_date: date,

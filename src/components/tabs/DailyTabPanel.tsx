@@ -18,6 +18,10 @@ interface Props {
   yoy?: SalesRangeYoYResult | null;
   /** YoY 表示 ON/OFF (ControlBar トグル連動) */
   showYoy?: boolean;
+  /** 表示対象日 (YYYY-MM-DD) */
+  date?: string;
+  /** 営業日範囲ラベル (例: "深夜 26 時切替 04/22(火)") */
+  periodLabel?: string;
 }
 
 export default function DailyTabPanel({
@@ -32,6 +36,8 @@ export default function DailyTabPanel({
   transactions,
   yoy,
   showYoy,
+  date,
+  periodLabel,
 }: Props) {
   return (
     <div className="space-y-6">
@@ -43,6 +49,8 @@ export default function DailyTabPanel({
         loading={loading}
         yoy={yoy}
         showYoy={showYoy}
+        date={date}
+        periodLabel={periodLabel}
       />
       <OpenOrderList
         orders={openOrders}

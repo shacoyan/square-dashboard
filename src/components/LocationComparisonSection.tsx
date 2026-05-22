@@ -272,6 +272,9 @@ export default function LocationComparisonSection(props: Props) {
 
         {data && (
           <>
+            <p className="text-xs text-text-muted" aria-label="表示対象期間">
+              期間: {data.periodStart} 〜 {data.periodEnd} ({data.elapsedDays}日間)
+            </p>
             <div className="overflow-auto -mx-5 px-5 max-h-[70vh]">
               <table className="min-w-[1100px] w-full text-sm">
                 <thead className="bg-surface-subtle sticky top-0 z-20">

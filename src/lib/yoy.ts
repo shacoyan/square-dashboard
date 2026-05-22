@@ -7,6 +7,34 @@ export interface YoYDelta {
   classification: YoYClassification;
 }
 
+/**
+ * 前年データが事実上空とみなす客数閾値 (4 セグメント合計)。
+ *
+ * SABABA は Square 本格運用が 2025-03 開始のため、2024 年度以前は
+ * 集計テーブルがほぼ空 → 当年と比較すると YoY が +99,999% 等の異常値になる。
+ * 前年 4 セグメント (新規/リピート/常連/スタッフ) 客数合計が
+ * この閾値未満の場合、YoY 全フィールドを no_data に強制する。
+ */
+export const MIN_LASTYEAR_CUSTOMERS = 10;
+
+/**
+ * 前年 SalesRangeTotal が「実質データなし」とみなせるかを判定する。
+ *
+ * 4 セグメント客数 (new/repeat/regular/staff) の合計が
+ * MIN_LASTYEAR_CUSTOMERS 未満なら true。lastYearTotals が null の場合も true。
+ */
+export function isLastYearDataInsufficient(
+  lastYearTotals: SalesRangeTotal | null
+): boolean {
+  if (!lastYearTotals) return true;
+  const fourSegSum =
+    lastYearTotals.new_customer_count +
+    lastYearTotals.repeat_customer_count +
+    lastYearTotals.regular_customer_count +
+    lastYearTotals.staff_customer_count;
+  return fourSegSum < MIN_LASTYEAR_CUSTOMERS;
+}
+
 export function calculateYoY(current: number, lastYear: number | null): YoYDelta {
   if (lastYear === null || lastYear === 0) {
     return { current, lastYear, deltaPercent: null, classification: 'no_data' };

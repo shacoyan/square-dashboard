@@ -253,6 +253,9 @@ export default function CustomerSegmentSection({
 
         {!loading && !error && data && (
           <>
+            <p className="text-xs text-text-muted mb-3" aria-label="表示対象期間">
+              期間: {data.periodStart} 〜 {data.periodEnd} ({data.elapsedDays}日間)
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <div className="bg-surface-muted rounded-xl border border-border p-6">
                 <p className="text-sm font-medium text-text-muted mb-1">期間売上</p>

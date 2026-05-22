@@ -254,6 +254,8 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
                 transactions={transactions}
                 yoy={null}
                 showYoy={false}
+                date={date}
+                periodLabel={getPeriodLabel(date, startHour, endHour)}
               />
             </div>
           ) : activeTab === 'segment' ? (

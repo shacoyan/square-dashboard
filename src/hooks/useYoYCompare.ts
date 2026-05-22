@@ -6,6 +6,7 @@ import {
   shiftRangeOneYearBack,
   shiftDateOneYearBack,
   aggregateSalesRangeTotals,
+  isLastYearDataInsufficient,
 } from '../lib/yoy';
 import type { SalesRangeYoYResult, SalesRangeTotal } from '../lib/yoy';
 
@@ -48,9 +49,16 @@ export function buildYoYResultFromResponses(args: {
   const lastYearRes = hasLastYear ? args.lastYearRes : null;
 
   const currentTotals: SalesRangeTotal = aggregateSalesRangeTotals(currentRes.byDate);
-  const lastYearTotals: SalesRangeTotal | null = lastYearRes
+  const rawLastYearTotals: SalesRangeTotal | null = lastYearRes
     ? aggregateSalesRangeTotals(lastYearRes.byDate)
     : null;
+
+  // 前年 4 セグメント客数合計が MIN_LASTYEAR_CUSTOMERS 未満なら
+  // 事実上データなしとみなし、lastYear 全体を null 化 (YoY 全フィールド no_data)。
+  // SABABA は Square 本格運用が 2025-03 開始のため 2024 年度以前は集計が空。
+  const lastYearInsufficient = isLastYearDataInsufficient(rawLastYearTotals);
+  const lastYearTotals: SalesRangeTotal | null = lastYearInsufficient ? null : rawLastYearTotals;
+  const effectiveLastYearRes = lastYearInsufficient ? null : lastYearRes;
 
   const currentDates = Object.keys(currentRes.byDate).sort();
   let matchedDays = 0;
@@ -58,7 +66,7 @@ export function buildYoYResultFromResponses(args: {
   const byDate: SalesRangeYoYResult['byDate'] = currentDates.map((date) => {
     const cur = currentRes.byDate[date];
     const lastYearDate = shiftDateOneYearBack(date);
-    const lyDay = lastYearRes?.byDate[lastYearDate] ?? null;
+    const lyDay = effectiveLastYearRes?.byDate[lastYearDate] ?? null;
     if (lyDay) matchedDays++;
     return {
       business_date: date,

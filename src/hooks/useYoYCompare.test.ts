@@ -150,8 +150,18 @@ describe('buildYoYResultFromResponses (useYoYCompare の純粋ロジック)', ()
     const currentRes = makeResponse({
       '2024-02-29': makeDay({ total_amount: 1000, transaction_count: 10, customer_count: 5 }),
     });
+    // 4 セグメント合計が MIN_LASTYEAR_CUSTOMERS (=10) 以上になるように設定
+    // (デフォルト makeDay: new=2 + repeat=3 + regular=1 + staff=0 = 6 → 閾値未満で no_data 化されてしまう)
     const lastYearRes = makeResponse({
-      '2023-02-28': makeDay({ total_amount: 1000, transaction_count: 10, customer_count: 5 }),
+      '2023-02-28': makeDay({
+        total_amount: 1000,
+        transaction_count: 10,
+        customer_count: 11,
+        new_customer_count: 4,
+        repeat_customer_count: 4,
+        regular_customer_count: 2,
+        staff_customer_count: 1,
+      }),
     });
 
     const res = buildYoYResultFromResponses({
