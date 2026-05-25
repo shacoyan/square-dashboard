@@ -27,7 +27,7 @@
  *       },
  *       ...
  *     },
- *     "meta": { "source": "live" | "aggregate" | "hybrid", "location_ids": [...], "live_dates": [...], "aggregate_dates": [...] }
+ *     "meta": { "source": "live" | "aggregate" | "hybrid", "location_ids": [...], "live_dates": [...], "aggregate_dates": [...], "live_window_days": <number> }
  *   }
  *
  * 制約 (Phase 3 Team A スコープ):
@@ -185,6 +185,22 @@ function getDateArray(startDate, endDate) {
     cur.setUTCDate(cur.getUTCDate() + 1);
   }
   return arr;
+}
+
+/**
+ * 指定された YYYY-MM-DD 日付から N 日減算した日付を返す (UTC 起点の純粋文字列演算)。
+ * @param {string} date - 基準日 (YYYY-MM-DD)
+ * @param {number} n - 減算する日数
+ * @returns {string} 減算後の日付 (YYYY-MM-DD)
+ */
+function subtractBusinessDays(date, n) {
+  const [y, m, d] = date.split('-').map(Number);
+  const cur = new Date(Date.UTC(y, m - 1, d));
+  cur.setUTCDate(cur.getUTCDate() - n);
+  const ry = cur.getUTCFullYear();
+  const rm = String(cur.getUTCMonth() + 1).padStart(2, '0');
+  const rd = String(cur.getUTCDate()).padStart(2, '0');
+  return `${ry}-${rm}-${rd}`;
 }
 
 /**
@@ -620,6 +636,7 @@ export default async (req, res) => {
   try {
     const dates = getDateArray(start_date, end_date);
     const todayBusinessDate = getTodayBusinessDate(startHour);
+    const liveWindowDays = Math.max(0, Math.min(7, parseInt(process.env.SQ_LIVE_WINDOW_DAYS || '1', 10) || 1));
     const shortRange = dates.length <= SHORT_RANGE_THRESHOLD;
     const useAggregate = isAggregateEnabled();
 
@@ -640,8 +657,9 @@ export default async (req, res) => {
       liveDates = dates.filter((d) => d <= todayBusinessDate);
       aggregateDates = [];
     } else {
-      liveDates = dates.filter((d) => d === todayBusinessDate);
-      aggregateDates = dates.filter((d) => d < todayBusinessDate);
+      const liveBoundary = subtractBusinessDays(todayBusinessDate, liveWindowDays);
+      liveDates = dates.filter((d) => d >= liveBoundary && d <= todayBusinessDate);
+      aggregateDates = dates.filter((d) => d < liveBoundary);
     }
 
     // location_id 解決 (ALL / 単一) + storeLabel フィルタ
@@ -790,6 +808,7 @@ export default async (req, res) => {
       aggregate_dates: aggregateDates,
       future_dates: futureDates,
       use_aggregate: useAggregate,
+      live_window_days: liveWindowDays,
     };
     if (missingCombinations.length > 0) {
       meta.missing_combinations = missingCombinations;

@@ -49,6 +49,7 @@ export interface SalesRangeMeta {
   missing_combinations?: Array<{ business_date: string; location_id: string }>;
   partial_failures?: Array<{ business_date: string; location_id: string; error: string }>;
   warnings?: string[];
+  live_window_days?: number;
 }
 
 export interface SalesRangeResponse {

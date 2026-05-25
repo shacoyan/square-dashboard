@@ -8,6 +8,7 @@ import { granularityFor, cardTitleByGranularity, formatBucketRangeLabel } from '
 import WeekdayAnalysisSection from './WeekdayAnalysisSection';
 import OccupancyAnalysisSection from './sections/OccupancyAnalysisSection';
 import { formatYoY, yoyClassToColorClass, calculateYoY, type SalesRangeYoYResult, type DailyTotalPoint, type YoYDelta } from '../lib/yoy';
+import type { SalesRangeMeta } from '../lib/salesRangeAdapter';
 
 interface Props {
   data: CustomerSegmentAnalysis | null;
@@ -31,6 +32,8 @@ interface Props {
   // Phase 4 Team C: YoY 前年系列 (optional pass-through、SegmentTrendChart 客数線に重ね描き)
   yoy?: SalesRangeYoYResult | null;
   showYoY?: boolean;
+  // Phase 3 Engineer B: hybrid モード暫定値バナー用 meta (optional pass-through)
+  meta?: SalesRangeMeta | null;
 }
 
 function SegmentCustomerCard({
@@ -115,6 +118,7 @@ export default function CustomerSegmentSection({
   detailError = null,
   yoy = null,
   showYoY = false,
+  meta = null,
 }: Props) {
   // 前年同期の合計客数系列 (新+リピート+常連+スタッフ)。SegmentTrendChart は人数 metric なので customer_count を使用。
   // currentDate を併せて渡すことで、うるう年 (2/29) などのケースでも chart 側で当年軸へ正しくマップできる。
@@ -214,6 +218,15 @@ export default function CustomerSegmentSection({
 
   return (
     <div className="space-y-6">
+      {meta?.live_dates && meta.live_dates.length >= 1 && meta.source !== 'live' && (
+        <div
+          className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900"
+          role="status"
+          aria-live="polite"
+        >
+          直近 {meta.live_dates.length} 日 ({meta.live_dates.join(', ')}) は集計確定前の暫定値です。翌日以降に確定値に更新されます。
+        </div>
+      )}
       <Card
         title="店舗データ分析"
         actions={
