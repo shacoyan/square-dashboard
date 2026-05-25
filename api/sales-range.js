@@ -636,7 +636,9 @@ export default async (req, res) => {
   try {
     const dates = getDateArray(start_date, end_date);
     const todayBusinessDate = getTodayBusinessDate(startHour);
-    const liveWindowDays = Math.max(0, Math.min(7, parseInt(process.env.SQ_LIVE_WINDOW_DAYS || '1', 10) || 1));
+    // N=0 を明示的にサポート (ロールバック lever): `|| 1` だと 0 が 1 に置換される falsy bug を回避
+    const _parsedLiveWindow = Number.parseInt(process.env.SQ_LIVE_WINDOW_DAYS ?? '1', 10);
+    const liveWindowDays = Number.isNaN(_parsedLiveWindow) ? 1 : Math.max(0, Math.min(7, _parsedLiveWindow));
     const shortRange = dates.length <= SHORT_RANGE_THRESHOLD;
     const useAggregate = isAggregateEnabled();
 
