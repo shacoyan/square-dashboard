@@ -83,6 +83,9 @@ export default function LocationComparisonSection(props: Props) {
 
   // 前年合計系列を metric (customers / sales) ごとに事前算出
   // currentDate を併せて渡すことで、うるう年 (2/29) などのケースでも chart 側で当年軸へ正しくマップできる。
+  // NOTE: byDate[].lastYear.customer_count は unique_cust ベースだが、現在の SalesRangeYoYResult 型に
+  // 日次 seg4 分解が含まれていないため Chart 系列は暫定的に customer_count ベースのまま。
+  // 客数列 (テーブル) の YoY 比較は getRowYoy 内で期間合計 seg4 で計算 (表示値と一致)。
   const lastYearTotalsCustomers = React.useMemo<DailyTotalPoint[] | undefined>(() => {
     if (!showYoY || !yoy?.byDate) return undefined;
     return yoy.byDate
@@ -140,7 +143,10 @@ export default function LocationComparisonSection(props: Props) {
     const perCusLy = ly && lySegTotal !== null && lySegTotal > 0 ? ly.total_amount / lySegTotal : null;
     return {
       totalSales: yoyData.yoy.total_amount,
-      customers: yoyData.yoy.customer_count,
+      // 客数 YoY は seg4 合計 (new+repeat+regular+staff) で比較する。
+      // yoyData.yoy.customer_count は unique_cust (Set(customer_id).size) ベースのため、
+      // 当年表示値 (totalCustomers = seg4 合計) と乖離する。表示と計算の base を揃える。
+      customers: calculateYoY(curSegTotal, lySegTotal),
       avgDailySales: calculateYoY(avgDailyCur, avgDailyLy),
       perCustomer: calculateYoY(perCusCur, perCusLy),
     };
