@@ -361,12 +361,12 @@ export default async function handler(req, res) {
     targetDate = explicitTargetDate || getJSTYesterday();
     const targetLocationId = req.query?.location_id || null;
 
-    // start_hour: 0〜23 の range にクランプ (NaN/範囲外は 13 に丸める)
+    // start_hour: 0〜23 の range にクランプ (NaN/範囲外は 10 に丸める)
     const rawStartHour = req.query?.start_hour;
     const startHour =
       rawStartHour === undefined || rawStartHour === null
-        ? 13
-        : Math.max(0, Math.min(23, parseInt(rawStartHour, 10) || 13));
+        ? 10
+        : Math.max(0, Math.min(23, parseInt(rawStartHour, 10) || 10));
 
     const runType = explicitTargetDate ? 'manual_retry' : 'daily_cron';
     const source = explicitTargetDate ? 'manual' : 'cron';

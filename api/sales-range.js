@@ -623,7 +623,7 @@ export default async (req, res) => {
 
   const startHour = Math.max(
     0,
-    Math.min(23, parseInt(start_hour ?? '13', 10) || 13)
+    Math.min(23, parseInt(start_hour ?? '10', 10) || 10)
   );
 
   // P0-1: storeLabel != 'ALL' のとき location_id='ALL' を拒否
