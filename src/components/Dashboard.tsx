@@ -46,14 +46,9 @@ function getWeekIndexForDate(dateStr: string): number {
 }
 
 export default function Dashboard({ token, onLogout }: DashboardProps) {
-  const [startHour, setStartHour] = useState<number>(() => {
-    const saved = localStorage.getItem('sq_start_hour');
-    return saved ? parseInt(saved, 10) : 10;
-  });
-  const [endHour, setEndHour] = useState<number>(() => {
-    const saved = localStorage.getItem('sq_end_hour');
-    return saved ? parseInt(saved, 10) : 12;
-  });
+  // 営業時間は 10:00 起点 / 翌 09:59 終端で固定 (SABABA 共通運用)
+  const startHour = 10;
+  const endHour = 9;
 
   const [date, setDate] = useState(() => getBusinessDate(startHour));
   const [locations, setLocations] = useState<Location[]>([]);
@@ -201,17 +196,6 @@ export default function Dashboard({ token, onLogout }: DashboardProps) {
           <ControlBar
             date={date}
             onDateChange={setDate}
-            startHour={startHour}
-            endHour={endHour}
-            onStartHourChange={(h) => {
-              setStartHour(h);
-              localStorage.setItem('sq_start_hour', String(h));
-              setDate(getBusinessDate(h));
-            }}
-            onEndHourChange={(h) => {
-              setEndHour(h);
-              localStorage.setItem('sq_end_hour', String(h));
-            }}
             locations={locations}
             selectedLocationId={selectedLocationId}
             onLocationChange={setSelectedLocationId}

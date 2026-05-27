@@ -6,10 +6,6 @@ import { MSG } from '../../lib/messages';
 interface ControlBarProps {
   date: string;
   onDateChange: (d: string) => void;
-  startHour: number;
-  endHour: number;
-  onStartHourChange: (h: number) => void;
-  onEndHourChange: (h: number) => void;
   locations: Location[];
   selectedLocationId: string;
   onLocationChange: (id: string) => void;
@@ -24,16 +20,12 @@ interface ControlBarProps {
   onShowYoYChange: (v: boolean) => void;
 }
 
-const selectClass =
-  'border border-border rounded px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 bg-surface text-text';
+// 営業時間は 10:00 起点で固定 (SABABA 共通運用)
+const FIXED_START_HOUR = 10;
 
 export default function ControlBar({
   date,
   onDateChange,
-  startHour,
-  endHour,
-  onStartHourChange,
-  onEndHourChange,
   locations,
   selectedLocationId,
   onLocationChange,
@@ -70,86 +62,10 @@ export default function ControlBar({
 
           {/* Row 2: 日付 */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <DatePicker value={date} onChange={onDateChange} startHour={startHour} />
+            <DatePicker value={date} onChange={onDateChange} startHour={FIXED_START_HOUR} />
           </div>
 
-          {/* Row 3: 営業時間 */}
-          <div>
-            {/* SP: 折りたたみ */}
-            <details className="md:hidden">
-              <summary className="cursor-pointer text-sm font-medium text-text select-none">
-                設定
-              </summary>
-              <div className="flex flex-col gap-2 mt-2">
-                <div className="flex items-center gap-2">
-                  <label htmlFor="sp-start-hour" className="text-sm font-medium text-text">営業開始:</label>
-                  <select
-                    id="sp-start-hour"
-                    value={startHour}
-                    onChange={(e) => onStartHourChange(parseInt(e.target.value, 10))}
-                    className={selectClass}
-                  >
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <option key={`sp-s-${i}`} value={i}>
-                        {String(i).padStart(2, '0')}:00
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label htmlFor="sp-end-hour" className="text-sm font-medium text-text">営業終了:</label>
-                  <select
-                    id="sp-end-hour"
-                    value={endHour}
-                    onChange={(e) => onEndHourChange(parseInt(e.target.value, 10))}
-                    className={selectClass}
-                  >
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <option key={`sp-e-${i}`} value={i}>
-                        {String(i).padStart(2, '0')}:59
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </details>
-
-            {/* PC: 常時表示 */}
-            <div className="hidden md:flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
-                <label htmlFor="pc-start-hour" className="text-sm font-medium text-text">営業開始:</label>
-                <select
-                  id="pc-start-hour"
-                  value={startHour}
-                  onChange={(e) => onStartHourChange(parseInt(e.target.value, 10))}
-                  className={selectClass}
-                >
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={`pc-s-${i}`} value={i}>
-                      {String(i).padStart(2, '0')}:00
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <label htmlFor="pc-end-hour" className="text-sm font-medium text-text">営業終了:</label>
-                <select
-                  id="pc-end-hour"
-                  value={endHour}
-                  onChange={(e) => onEndHourChange(parseInt(e.target.value, 10))}
-                  className={selectClass}
-                >
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={`pc-e-${i}`} value={i}>
-                      {String(i).padStart(2, '0')}:59
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Row 4: 更新 + YoY トグル + メタ (PC) */}
+          {/* Row 3: 更新 + YoY トグル + メタ (PC) */}
           <div className="hidden md:flex items-center justify-between pt-2 border-t border-border gap-4">
             <Button
               variant="primary"
@@ -179,7 +95,7 @@ export default function ControlBar({
             </div>
           </div>
 
-          {/* Row 4: YoY トグル + メタ (SP) */}
+          {/* Row 3: YoY トグル + メタ (SP) */}
           <div className="md:hidden flex flex-col gap-2 pt-2 border-t border-border">
             <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
               <input
